@@ -123,6 +123,8 @@ PlanEd ist eine Web-Anwendung für Lehrer zur Verwaltung von Arbeitsplänen, die
 - `/api/history`
 - `/api/statistics/{class_id}`
 - `/api/search`
+- `/api/workplan/{class_id}` - GET (mit start/end Query-Params)
+- `/api/workplan/{class_id}/bulk` - POST (Speichern mehrerer Einträge)
 
 ### Export
 - `GET /api/export/excel/{class_id}`
