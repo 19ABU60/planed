@@ -285,36 +285,20 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
             </button>
           </div>
           
+          <button 
+            className="btn btn-secondary" 
+            onClick={resetColumnWidths}
+            style={{ fontSize: '0.85rem' }}
+            title="Spaltenbreiten auf Standard zurücksetzen"
+          >
+            ↺ Reset
+          </button>
+          
           <button className="btn btn-primary" onClick={saveWorkplan} disabled={saving} data-testid="save-workplan-btn">
             {saving ? <span className="spinner" /> : <Save size={18} />} Speichern
           </button>
         </div>
       </div>
-
-      {/* Info bar */}
-      {selectedClass && scheduledDays.length > 0 && (
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'space-between',
-          gap: '0.5rem', 
-          marginBottom: '0.75rem', 
-          padding: '0.5rem 1rem',
-          background: 'rgba(59, 130, 246, 0.1)', 
-          borderRadius: '8px', 
-          fontSize: '0.85rem', 
-          color: 'var(--text-muted)' 
-        }}>
-          <span>Spaltenbreiten mit <strong>−</strong> und <strong>+</strong> Buttons anpassen</span>
-          <button 
-            className="btn btn-ghost" 
-            style={{ fontSize: '0.8rem', padding: '0.25rem 0.75rem' }}
-            onClick={resetColumnWidths}
-          >
-            Zurücksetzen
-          </button>
-        </div>
-      )}
 
       {!selectedClass ? (
         <div className="empty-state">
