@@ -20,12 +20,14 @@ Erstelle eine App für Lehrer zur Erstellung und Verwaltung von Arbeitsplänen f
 10. ✅ Optional: KI-Vorschläge für Unterrichtsthemen (Gemini)
 11. ✅ Freigabe von Arbeitsplänen für Kollegen
 12. ✅ Push-Benachrichtigungen bei Änderungen
+13. ✅ Drag & Drop für Unterrichtsstunden im Kalender
 
 ## Architecture
 - **Backend**: FastAPI + MongoDB
 - **Frontend**: React mit Dark Theme (Custom CSS)
 - **Auth**: JWT-basierte Authentifizierung
 - **AI**: Gemini 3 Flash via Emergent LLM Key
+- **Drag & Drop**: @hello-pangea/dnd
 
 ## What's Been Implemented (December 2024)
 
@@ -40,19 +42,20 @@ Erstelle eine App für Lehrer zur Erstellung und Verwaltung von Arbeitsplänen f
 - Document Upload/Download
 - AI Topic Suggestions (Gemini Integration)
 - Sharing System für Kollegen
-- **NEU: Benachrichtigungs-System**
+- Benachrichtigungs-System
 
 ### Frontend (App.js)
 - Login/Registration Page mit deutschem Dark Theme
 - Dashboard mit Bento Grid Layout
 - Kalender-Ansicht (monatlich, mit Unterrichtsstunden)
+- **NEU: Drag & Drop für Unterrichtsstunden**
 - Statistik-Seite mit Diagrammen und Export-Buttons
 - Klassen-Verwaltung
 - Freigaben-Seite (Arbeitspläne mit Kollegen teilen)
+- Benachrichtigungs-Glocke im Header
 - Dokumente-Seite mit Upload
 - Einstellungen-Seite
 - Sidebar Navigation
-- **NEU: Benachrichtigungs-Glocke im Header**
 - **Alle Beschriftungen auf Deutsch**
 
 ## Prioritized Backlog
@@ -63,20 +66,19 @@ Erstelle eine App für Lehrer zur Erstellung und Verwaltung von Arbeitsplänen f
 - ✅ Authentication
 - ✅ Sharing with colleagues
 - ✅ Notification system
+- ✅ Drag & Drop for lessons
 
 ### P1 (Important) - Next Phase
-- Drag & Drop für Unterrichtsstunden im Kalender
 - Ferienverwaltung mit deutschem Ferienkalender
 - Batch-Erstellung von Unterrichtsstunden
+- E-Mail-Benachrichtigungen
 
 ### P2 (Nice to Have)
 - Vorlagen für häufige Lehrplanpunkte
 - Offline-Modus (PWA)
 - Mobile Optimierung
-- E-Mail-Benachrichtigungen
 
 ## Next Action Items
-1. Drag & Drop für Kalendereinträge implementieren
-2. Deutsche Feiertage/Ferien automatisch laden
-3. Batch-Import aus Excel
-4. Erweitertes Reporting mit Diagrammen
+1. Deutsche Feiertage/Ferien automatisch laden
+2. Batch-Import aus Excel
+3. Erweitertes Reporting mit Diagrammen
