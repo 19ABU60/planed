@@ -132,6 +132,8 @@ const MainApp = () => {
     switch (currentPage) {
       case 'dashboard': 
         return <DashboardPage schoolYears={schoolYears} classes={classes} lessons={lessons} todos={todos} onNavigate={handleNavigate} />;
+      case 'workplan':
+        return <WorkplanTablePage classes={classes} schoolYears={schoolYears} />;
       case 'calendar': 
         return <CalendarPage 
           classes={classes} 
