@@ -481,9 +481,13 @@ async def log_history(user_id: str, action: str, entity_type: str, entity_id: st
 
 @api_router.post("/auth/register", response_model=TokenResponse)
 async def register(user: UserCreate):
+    # Verify invitation code
+    if user.invitation_code != INVITATION_CODE:
+        raise HTTPException(status_code=403, detail="Ungültiger Einladungs-Code")
+    
     existing = await db.users.find_one({"email": user.email})
     if existing:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(status_code=400, detail="E-Mail bereits registriert")
     
     user_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
