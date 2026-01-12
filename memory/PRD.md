@@ -156,6 +156,18 @@ PlanEd ist eine Web-Anwendung für Lehrer zur Verwaltung von Arbeitsplänen, die
 
 ## Changelog
 
+### 12.01.2026 - Arbeitsplan-Tabelle fertiggestellt
+- Neue Excel-ähnliche Arbeitsplan-Tabelle implementiert
+- Schmale Spalten: "Datum", "Tag", "Std." (Stunde)
+- Drei statische Inhaltsspalten:
+  - "Unterrichtseinheit"
+  - "Lehrplan, Bildungsstandards, Begriffe, Hinweise"
+  - "Stundenthema, Zielsetzung"
+- Backend-API für Speichern/Laden angepasst (`/api/workplan/{class_id}`)
+- Daten werden pro Klasse und Datum/Stunde persistent gespeichert
+- Header in Klassenfarbe
+- API: `GET/POST /api/workplan/{class_id}/bulk`
+
 ### 12.01.2026 - Einladungs-Code & Handout
 - Einladungs-Code-System implementiert (Standard: LASP2026)
 - Registrierung nur mit gültigem Code möglich
