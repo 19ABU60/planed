@@ -188,6 +188,7 @@ const CalendarPage = ({ classes, lessons, holidays, schoolHolidays, publicHolida
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState('create');
   const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedPeriod, setSelectedPeriod] = useState(null);
   const [viewMode, setViewMode] = useState('month');
   const { authAxios } = useAuth();
   const [aiLoading, setAiLoading] = useState(false);
