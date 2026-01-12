@@ -137,26 +137,39 @@ const ClassesPage = ({ schoolYears, classes, onCreateClass, onUpdateClass, onDel
     
     return (
       <div className="modal-overlay" onClick={onClose}>
-        <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '550px' }}>
+        <div className="modal-content modal-large" onClick={e => e.stopPropagation()}>
           <div className="modal-header">
             <h3 className="modal-title">{cls ? 'Klasse bearbeiten' : 'Neue Klasse'}</h3>
             <button className="btn btn-ghost btn-icon" onClick={onClose}><X size={20} /></button>
           </div>
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
             <div className="modal-body">
-              <div className="form-group">
-                <label className="form-label">Schuljahr</label>
-                <select 
-                  className="form-input" 
-                  value={formData.school_year_id} 
-                  onChange={e => setFormData({ ...formData, school_year_id: e.target.value })} 
-                  required
-                >
-                  <option value="">Schuljahr wählen</option>
-                  {schoolYears.map(y => (
-                    <option key={y.id} value={y.id}>{y.name} - {y.semester}</option>
-                  ))}
-                </select>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="form-group">
+                  <label className="form-label">Schuljahr</label>
+                  <select 
+                    className="form-input" 
+                    value={formData.school_year_id} 
+                    onChange={e => setFormData({ ...formData, school_year_id: e.target.value })} 
+                    required
+                  >
+                    <option value="">Wählen...</option>
+                    {schoolYears.map(y => (
+                      <option key={y.id} value={y.id}>{y.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Wochenstunden</label>
+                  <input 
+                    type="number" 
+                    className="form-input" 
+                    min="1" 
+                    max="10" 
+                    value={formData.hours_per_week} 
+                    onChange={e => setFormData({ ...formData, hours_per_week: parseInt(e.target.value) || 1 })} 
+                  />
+                </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div className="form-group">
@@ -183,17 +196,6 @@ const ClassesPage = ({ schoolYears, classes, onCreateClass, onUpdateClass, onDel
                 </div>
               </div>
               <div className="form-group">
-                <label className="form-label">Wochenstunden</label>
-                <input 
-                  type="number" 
-                  className="form-input" 
-                  min="1" 
-                  max="10" 
-                  value={formData.hours_per_week} 
-                  onChange={e => setFormData({ ...formData, hours_per_week: parseInt(e.target.value) || 1 })} 
-                />
-              </div>
-              <div className="form-group">
                 <label className="form-label">Farbe</label>
                 <div className="color-picker">
                   {colors.map(color => (
@@ -208,9 +210,9 @@ const ClassesPage = ({ schoolYears, classes, onCreateClass, onUpdateClass, onDel
               </div>
               
               {/* Schedule Editor */}
-              <div className="form-group">
-                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <Clock size={16} /> Stundenplan
+              <div className="form-group" style={{ marginTop: '0.5rem' }}>
+                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                  <Clock size={16} /> Stundenplan (wann findet der Unterricht statt?)
                 </label>
                 <ScheduleEditor 
                   schedule={formData.schedule} 
