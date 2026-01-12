@@ -156,6 +156,14 @@ PlanEd ist eine Web-Anwendung für Lehrer zur Verwaltung von Arbeitsplänen, die
 
 ## Changelog
 
+### 12.01.2026 - PWA-Implementierung
+- Progressive Web App (PWA) hinzugefügt
+- App kann auf Mac, iPad, iPhone, Windows installiert werden
+- Service Worker für Offline-Unterstützung
+- App-Icons für alle Plattformen generiert
+- manifest.json mit deutschen Metadaten
+- Install-Banner für einfache Installation
+
 ### 12.01.2026 - Großes Refactoring
 - App.js von 1750 auf 245 Zeilen reduziert
 - Komponenten in separate Dateien aufgeteilt
