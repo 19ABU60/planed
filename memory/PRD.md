@@ -156,6 +156,12 @@ PlanEd ist eine Web-Anwendung für Lehrer zur Verwaltung von Arbeitsplänen, die
 
 ## Changelog
 
+### 12.01.2026 - Einladungs-Code & Handout
+- Einladungs-Code-System implementiert (Standard: LASP2026)
+- Registrierung nur mit gültigem Code möglich
+- Handout/Kurzanleitung erstellt (HTML, druckbar als PDF)
+- Verfügbar unter: /handout.html
+
 ### 12.01.2026 - PWA-Implementierung
 - Progressive Web App (PWA) hinzugefügt
 - App kann auf Mac, iPad, iPhone, Windows installiert werden
