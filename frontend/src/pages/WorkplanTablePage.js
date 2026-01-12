@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Save, ChevronLeft, ChevronRight, GripVertical } from 'lucide-react';
+import { Save, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -30,9 +30,6 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
     const saved = localStorage.getItem('workplanColumnWidths');
     return saved ? JSON.parse(saved) : DEFAULT_WIDTHS;
   });
-  const [resizingColumn, setResizingColumn] = useState(null);
-  const startXRef = useRef(0);
-  const startWidthRef = useRef(0);
 
   const currentClass = classes.find(c => c.id === selectedClass);
   
@@ -101,50 +98,6 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
     localStorage.setItem('workplanColumnWidths', JSON.stringify(columnWidths));
   }, [columnWidths]);
 
-  // Handle mouse move during resize
-  const handleMouseMove = useCallback((e) => {
-    if (!resizingColumn) return;
-    
-    const diff = e.clientX - startXRef.current;
-    const newWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, startWidthRef.current + diff));
-    
-    setColumnWidths(prev => ({
-      ...prev,
-      [resizingColumn]: newWidth
-    }));
-  }, [resizingColumn]);
-
-  // Handle mouse up to stop resizing
-  const handleMouseUp = useCallback(() => {
-    setResizingColumn(null);
-    document.body.style.cursor = '';
-    document.body.style.userSelect = '';
-  }, []);
-
-  // Add/remove event listeners
-  useEffect(() => {
-    if (resizingColumn) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
-    }
-    
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [resizingColumn, handleMouseMove, handleMouseUp]);
-
-  // Start resizing
-  const startResize = (columnKey, e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setResizingColumn(columnKey);
-    startXRef.current = e.clientX;
-    startWidthRef.current = columnWidths[columnKey];
-  };
-
   // Update cell data
   const updateCell = (dateStr, period, field, value) => {
     const key = `${dateStr}-${period}`;
@@ -196,64 +149,100 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
     toast.success('Spaltenbreiten zurückgesetzt');
   };
 
-  // Column header with resize handle
-  const ColumnHeader = ({ columnKey, label }) => {
-    const [isHovered, setIsHovered] = useState(false);
-    
-    return (
-      <th 
-        style={{ 
-          padding: '0.75rem 0.5rem', 
-          textAlign: 'center', 
-          color: 'white',
-          fontWeight: '600',
-          borderBottom: '2px solid rgba(255,255,255,0.2)',
-          borderLeft: '2px solid rgba(255,255,255,0.2)',
-          width: `${columnWidths[columnKey]}px`,
-          minWidth: `${columnWidths[columnKey]}px`,
-          maxWidth: `${columnWidths[columnKey]}px`,
-          position: 'relative',
-          userSelect: 'none'
-        }}
-      >
-        <span style={{ fontSize: '0.8rem', paddingRight: '20px' }}>{label}</span>
-        {/* Resize Handle - larger clickable area */}
-        <div
-          onMouseDown={(e) => startResize(columnKey, e)}
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
+  // Adjust column width with buttons
+  const adjustWidth = (columnKey, delta) => {
+    setColumnWidths(prev => ({
+      ...prev,
+      [columnKey]: Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, prev[columnKey] + delta))
+    }));
+  };
+
+  // Column header with +/- buttons for resizing
+  const ColumnHeader = ({ columnKey, label }) => (
+    <th 
+      style={{ 
+        padding: '0.5rem 0.25rem', 
+        textAlign: 'center', 
+        color: 'white',
+        fontWeight: '600',
+        borderBottom: '2px solid rgba(255,255,255,0.2)',
+        borderLeft: '2px solid rgba(255,255,255,0.2)',
+        width: `${columnWidths[columnKey]}px`,
+        minWidth: `${columnWidths[columnKey]}px`,
+        maxWidth: `${columnWidths[columnKey]}px`,
+        position: 'relative',
+        userSelect: 'none',
+        verticalAlign: 'middle'
+      }}
+    >
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        gap: '4px'
+      }}>
+        {/* Minus button */}
+        <button
+          onClick={() => adjustWidth(columnKey, -30)}
           style={{
-            position: 'absolute',
-            right: '-8px',
-            top: '0px',
-            bottom: '0px',
-            width: '16px',
-            background: 'transparent',
-            cursor: 'col-resize',
-            zIndex: 20,
+            width: '20px',
+            height: '20px',
+            borderRadius: '4px',
+            border: 'none',
+            background: 'rgba(255,255,255,0.2)',
+            color: 'white',
+            cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            fontSize: '14px',
+            fontWeight: 'bold',
+            padding: 0,
+            lineHeight: 1
           }}
-          title="← → Ziehen zum Anpassen"
+          title="Spalte schmaler"
         >
-          {/* Visual indicator - wider and more visible */}
-          <div style={{
-            width: '6px',
-            height: '100%',
-            background: (resizingColumn === columnKey || isHovered) 
-              ? 'rgba(255,255,255,0.8)' 
-              : 'rgba(255,255,255,0.4)',
-            borderRadius: '3px',
-            transition: 'background 0.15s, width 0.15s',
-            boxShadow: (resizingColumn === columnKey || isHovered) 
-              ? '0 0 8px rgba(255,255,255,0.5)' 
-              : 'none'
-          }} />
-        </div>
-      </th>
-    );
-  };
+          −
+        </button>
+        
+        <span style={{ 
+          fontSize: '0.75rem', 
+          flex: 1, 
+          textAlign: 'center',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          padding: '0 4px'
+        }}>
+          {label}
+        </span>
+        
+        {/* Plus button */}
+        <button
+          onClick={() => adjustWidth(columnKey, 30)}
+          style={{
+            width: '20px',
+            height: '20px',
+            borderRadius: '4px',
+            border: 'none',
+            background: 'rgba(255,255,255,0.2)',
+            color: 'white',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '14px',
+            fontWeight: 'bold',
+            padding: 0,
+            lineHeight: 1
+          }}
+          title="Spalte breiter"
+        >
+          +
+        </button>
+      </div>
+    </th>
+  );
 
   return (
     <div className="page-content" style={{ padding: '1rem' }}>
@@ -302,7 +291,7 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
         </div>
       </div>
 
-      {/* Resize hint */}
+      {/* Info bar */}
       {selectedClass && scheduledDays.length > 0 && (
         <div style={{ 
           display: 'flex', 
@@ -316,10 +305,7 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
           fontSize: '0.85rem', 
           color: 'var(--text-muted)' 
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <GripVertical size={16} />
-            <span>Tipp: Ziehen Sie die weißen Balken zwischen den Spaltenüberschriften, um die Breite anzupassen</span>
-          </div>
+          <span>Spaltenbreiten mit <strong>−</strong> und <strong>+</strong> Buttons anpassen</span>
           <button 
             className="btn btn-ghost" 
             style={{ fontSize: '0.8rem', padding: '0.25rem 0.75rem' }}
@@ -395,7 +381,7 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
                   Std.
                 </th>
                 <ColumnHeader columnKey="unterrichtseinheit" label="Unterrichtseinheit" />
-                <ColumnHeader columnKey="lehrplan" label="Lehrplan, Bildungsstandards, Begriffe, Hinweise" />
+                <ColumnHeader columnKey="lehrplan" label="Lehrplan, Standards, Hinweise" />
                 <ColumnHeader columnKey="stundenthema" label="Stundenthema, Zielsetzung" />
               </tr>
             </thead>
