@@ -830,6 +830,18 @@ async def share_class(data: ShareCreate, user_id: str = Depends(get_current_user
     }
     await db.shares.insert_one(share_doc)
     
+    # Create notification for the recipient
+    class_display = f"{class_info['name']} - {class_info['subject']}"
+    permission = "Bearbeitung" if data.can_edit else "Nur Ansicht"
+    await create_notification(
+        user_id=target_user["id"],
+        notification_type="share_new",
+        title="Neuer Arbeitsplan geteilt",
+        message=f"{owner['name']} hat den Arbeitsplan '{class_display}' mit Ihnen geteilt ({permission})",
+        class_name=class_display,
+        from_user_name=owner["name"]
+    )
+    
     return ShareResponse(**share_doc)
 
 @api_router.get("/shares/my-shares", response_model=List[ShareResponse])
