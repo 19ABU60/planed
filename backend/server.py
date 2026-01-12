@@ -498,7 +498,7 @@ async def register(user: UserCreate):
     token = create_token(user_id, user.email)
     return TokenResponse(
         access_token=token,
-        user=UserResponse(id=user_id, email=user.email, name=user.name, created_at=now, bundesland="bayern", theme="dark")
+        user=UserResponse(id=user_id, email=user.email, name=user.name, created_at=now, bundesland="rheinland-pfalz", theme="dark")
     )
 
 @api_router.post("/auth/login", response_model=TokenResponse)
