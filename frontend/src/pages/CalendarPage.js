@@ -69,7 +69,7 @@ const LessonModal = ({ lesson, date, onSave, onDelete, onCopy, onClose, onAISugg
               />
             </div>
             <div className="form-group">
-              <label className="form-label">Zielsetzung</label>
+              <label className="form-label">Lernziele</label>
               <textarea 
                 className="form-input" 
                 style={{ height: '80px', resize: 'vertical', padding: '0.75rem' }} 
@@ -103,12 +103,12 @@ const LessonModal = ({ lesson, date, onSave, onDelete, onCopy, onClose, onAISugg
             </div>
             <div className="form-group">
               <label className="form-label">Schlüsselbegriffe</label>
-              <input 
-                type="text" 
+              <textarea 
                 className="form-input" 
+                style={{ height: '80px', resize: 'vertical', padding: '0.75rem' }} 
                 value={formData.key_terms} 
                 onChange={e => setFormData({ ...formData, key_terms: e.target.value })}
-                placeholder="Wichtige Begriffe, kommagetrennt" 
+                placeholder="Wichtige Begriffe (z.B. Zähler, Nenner, Bruchstrich...)" 
               />
             </div>
             <div className="form-group">
