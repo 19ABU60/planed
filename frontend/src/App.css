@@ -708,6 +708,7 @@ h1, h2, h3, h4, h5, h6 {
 .badge {
   display: inline-flex;
   align-items: center;
+  gap: 0.25rem;
   padding: 0.25rem 0.75rem;
   border-radius: 9999px;
   font-size: 0.75rem;
@@ -717,6 +718,11 @@ h1, h2, h3, h4, h5, h6 {
 .badge-primary {
   background: rgba(59, 130, 246, 0.2);
   color: var(--primary-light);
+}
+
+.badge-secondary {
+  background: rgba(113, 113, 122, 0.2);
+  color: var(--text-muted);
 }
 
 .badge-success {
