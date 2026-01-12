@@ -410,7 +410,6 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Lesson Items */
 .lesson-item {
-  background: var(--lesson-bg, rgba(59, 130, 246, 0.2));
   border-left: 4px solid var(--lesson-color, var(--primary));
   border-radius: 6px;
   padding: 0.5rem 0.6rem;
