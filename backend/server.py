@@ -418,15 +418,34 @@ async def update_lesson(lesson_id: str, data: LessonUpdate, user_id: str = Depen
         {"$set": update_data}
     )
     if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Lesson not found")
+        raise HTTPException(status_code=404, detail="Stunde nicht gefunden")
     updated = await db.lessons.find_one({"id": lesson_id}, {"_id": 0})
+    
+    # Send notifications to users who have this class shared with them
+    class_info = await db.class_subjects.find_one({"id": updated["class_subject_id"]}, {"_id": 0})
+    if class_info:
+        shares = await db.shares.find({"class_subject_id": updated["class_subject_id"]}, {"_id": 0}).to_list(100)
+        current_user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
+        class_display = f"{class_info['name']} - {class_info['subject']}"
+        
+        for share in shares:
+            # Notify the shared user about the update
+            await create_notification(
+                user_id=share["shared_with_id"],
+                notification_type="share_edit",
+                title="Arbeitsplan aktualisiert",
+                message=f"{current_user['name']} hat eine Stunde im Arbeitsplan '{class_display}' geändert",
+                class_name=class_display,
+                from_user_name=current_user["name"]
+            )
+    
     return LessonResponse(**updated)
 
 @api_router.delete("/lessons/{lesson_id}")
 async def delete_lesson(lesson_id: str, user_id: str = Depends(get_current_user)):
     result = await db.lessons.delete_one({"id": lesson_id, "user_id": user_id})
     if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Lesson not found")
+        raise HTTPException(status_code=404, detail="Stunde nicht gefunden")
     return {"status": "deleted"}
 
 # ============== HOLIDAY ROUTES ==============
