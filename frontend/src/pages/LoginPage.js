@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { GraduationCap } from 'lucide-react';
+import { GraduationCap, Ticket } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
 
@@ -9,6 +9,7 @@ const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [invitationCode, setInvitationCode] = useState('');
   const [loading, setLoading] = useState(false);
   const { login, register } = useAuth();
   const navigate = useNavigate();
@@ -20,7 +21,7 @@ const LoginPage = () => {
       if (isLogin) {
         await login(email, password);
       } else {
-        await register(email, password, name);
+        await register(email, password, name, invitationCode);
       }
       toast.success(isLogin ? 'Willkommen zurück!' : 'Konto erstellt!');
       navigate('/dashboard');
@@ -45,18 +46,39 @@ const LoginPage = () => {
         
         <form onSubmit={handleSubmit}>
           {!isLogin && (
-            <div className="form-group">
-              <label className="form-label">Name</label>
-              <input 
-                type="text" 
-                className="form-input" 
-                placeholder="Ihr Name" 
-                value={name}
-                onChange={(e) => setName(e.target.value)} 
-                required={!isLogin} 
-                data-testid="register-name-input" 
-              />
-            </div>
+            <>
+              <div className="form-group">
+                <label className="form-label">
+                  <Ticket size={14} style={{ marginRight: '0.5rem', display: 'inline' }} />
+                  Einladungs-Code
+                </label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  placeholder="Code eingeben" 
+                  value={invitationCode}
+                  onChange={(e) => setInvitationCode(e.target.value.toUpperCase())} 
+                  required={!isLogin}
+                  style={{ fontFamily: 'monospace', letterSpacing: '0.1em' }}
+                  data-testid="invitation-code-input" 
+                />
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                  Sie erhalten den Code von Ihrer Schulleitung oder Fachschaft
+                </p>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Name</label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  placeholder="Ihr Name" 
+                  value={name}
+                  onChange={(e) => setName(e.target.value)} 
+                  required={!isLogin} 
+                  data-testid="register-name-input" 
+                />
+              </div>
+            </>
           )}
           <div className="form-group">
             <label className="form-label">E-Mail</label>
