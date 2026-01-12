@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, UploadFile, File, status
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, UploadFile, File, status, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -10,7 +10,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field, EmailStr
 from typing import List, Optional, Dict, Any
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, date
 import jwt
 import bcrypt
 from io import BytesIO
@@ -38,7 +38,7 @@ JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24
 
 # Create the main app
-app = FastAPI(title="PlanEd API", version="1.0.0")
+app = FastAPI(title="PlanEd API", version="2.0.0")
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
@@ -49,6 +49,101 @@ security = HTTPBearer()
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+# ============== GERMAN SCHOOL HOLIDAYS DATA ==============
+GERMAN_HOLIDAYS_2025_2026 = {
+    "bayern": [
+        {"name": "Herbstferien 2025", "start": "2025-10-27", "end": "2025-10-31"},
+        {"name": "Weihnachtsferien 2025/26", "start": "2025-12-22", "end": "2026-01-05"},
+        {"name": "Winterferien 2026", "start": "2026-02-16", "end": "2026-02-20"},
+        {"name": "Osterferien 2026", "start": "2026-03-30", "end": "2026-04-10"},
+        {"name": "Pfingstferien 2026", "start": "2026-05-26", "end": "2026-06-05"},
+        {"name": "Sommerferien 2026", "start": "2026-07-27", "end": "2026-09-07"},
+    ],
+    "nrw": [
+        {"name": "Herbstferien 2025", "start": "2025-10-13", "end": "2025-10-25"},
+        {"name": "Weihnachtsferien 2025/26", "start": "2025-12-22", "end": "2026-01-06"},
+        {"name": "Osterferien 2026", "start": "2026-03-30", "end": "2026-04-11"},
+        {"name": "Pfingstferien 2026", "start": "2026-05-26", "end": "2026-05-26"},
+        {"name": "Sommerferien 2026", "start": "2026-06-29", "end": "2026-08-11"},
+    ],
+    "berlin": [
+        {"name": "Herbstferien 2025", "start": "2025-10-20", "end": "2025-11-01"},
+        {"name": "Weihnachtsferien 2025/26", "start": "2025-12-22", "end": "2026-01-02"},
+        {"name": "Winterferien 2026", "start": "2026-02-02", "end": "2026-02-07"},
+        {"name": "Osterferien 2026", "start": "2026-03-30", "end": "2026-04-10"},
+        {"name": "Pfingstferien 2026", "start": "2026-05-15", "end": "2026-05-15"},
+        {"name": "Sommerferien 2026", "start": "2026-07-09", "end": "2026-08-21"},
+    ],
+    "baden-wuerttemberg": [
+        {"name": "Herbstferien 2025", "start": "2025-10-27", "end": "2025-10-30"},
+        {"name": "Weihnachtsferien 2025/26", "start": "2025-12-22", "end": "2026-01-05"},
+        {"name": "Osterferien 2026", "start": "2026-04-06", "end": "2026-04-17"},
+        {"name": "Pfingstferien 2026", "start": "2026-05-26", "end": "2026-06-06"},
+        {"name": "Sommerferien 2026", "start": "2026-07-30", "end": "2026-09-12"},
+    ],
+    "hessen": [
+        {"name": "Herbstferien 2025", "start": "2025-10-06", "end": "2025-10-18"},
+        {"name": "Weihnachtsferien 2025/26", "start": "2025-12-22", "end": "2026-01-10"},
+        {"name": "Osterferien 2026", "start": "2026-04-06", "end": "2026-04-18"},
+        {"name": "Sommerferien 2026", "start": "2026-07-06", "end": "2026-08-14"},
+    ],
+    "sachsen": [
+        {"name": "Herbstferien 2025", "start": "2025-10-20", "end": "2025-11-01"},
+        {"name": "Weihnachtsferien 2025/26", "start": "2025-12-22", "end": "2026-01-03"},
+        {"name": "Winterferien 2026", "start": "2026-02-09", "end": "2026-02-21"},
+        {"name": "Osterferien 2026", "start": "2026-04-03", "end": "2026-04-11"},
+        {"name": "Pfingstferien 2026", "start": "2026-05-15", "end": "2026-05-15"},
+        {"name": "Sommerferien 2026", "start": "2026-06-27", "end": "2026-08-08"},
+    ],
+    "niedersachsen": [
+        {"name": "Herbstferien 2025", "start": "2025-10-20", "end": "2025-10-31"},
+        {"name": "Weihnachtsferien 2025/26", "start": "2025-12-22", "end": "2026-01-05"},
+        {"name": "Osterferien 2026", "start": "2026-03-23", "end": "2026-04-04"},
+        {"name": "Pfingstferien 2026", "start": "2026-05-22", "end": "2026-05-22"},
+        {"name": "Sommerferien 2026", "start": "2026-07-16", "end": "2026-08-26"},
+    ],
+    "hamburg": [
+        {"name": "Herbstferien 2025", "start": "2025-10-20", "end": "2025-10-31"},
+        {"name": "Weihnachtsferien 2025/26", "start": "2025-12-22", "end": "2026-01-02"},
+        {"name": "Frühjahrsferien 2026", "start": "2026-02-02", "end": "2026-02-13"},
+        {"name": "Osterferien 2026", "start": "2026-03-06", "end": "2026-03-20"},
+        {"name": "Pfingstferien 2026", "start": "2026-05-11", "end": "2026-05-15"},
+        {"name": "Sommerferien 2026", "start": "2026-07-23", "end": "2026-09-02"},
+    ],
+}
+
+GERMAN_PUBLIC_HOLIDAYS_2025_2026 = [
+    {"name": "Neujahr", "date": "2025-01-01"},
+    {"name": "Karfreitag", "date": "2025-04-18"},
+    {"name": "Ostermontag", "date": "2025-04-21"},
+    {"name": "Tag der Arbeit", "date": "2025-05-01"},
+    {"name": "Christi Himmelfahrt", "date": "2025-05-29"},
+    {"name": "Pfingstmontag", "date": "2025-06-09"},
+    {"name": "Tag der Deutschen Einheit", "date": "2025-10-03"},
+    {"name": "1. Weihnachtstag", "date": "2025-12-25"},
+    {"name": "2. Weihnachtstag", "date": "2025-12-26"},
+    {"name": "Neujahr", "date": "2026-01-01"},
+    {"name": "Karfreitag", "date": "2026-04-03"},
+    {"name": "Ostermontag", "date": "2026-04-06"},
+    {"name": "Tag der Arbeit", "date": "2026-05-01"},
+    {"name": "Christi Himmelfahrt", "date": "2026-05-14"},
+    {"name": "Pfingstmontag", "date": "2026-05-25"},
+    {"name": "Tag der Deutschen Einheit", "date": "2026-10-03"},
+    {"name": "1. Weihnachtstag", "date": "2026-12-25"},
+    {"name": "2. Weihnachtstag", "date": "2026-12-26"},
+]
+
+BUNDESLAENDER = [
+    {"id": "bayern", "name": "Bayern"},
+    {"id": "nrw", "name": "Nordrhein-Westfalen"},
+    {"id": "berlin", "name": "Berlin"},
+    {"id": "baden-wuerttemberg", "name": "Baden-Württemberg"},
+    {"id": "hessen", "name": "Hessen"},
+    {"id": "sachsen", "name": "Sachsen"},
+    {"id": "niedersachsen", "name": "Niedersachsen"},
+    {"id": "hamburg", "name": "Hamburg"},
+]
 
 # ============== MODELS ==============
 
@@ -66,6 +161,13 @@ class UserResponse(BaseModel):
     email: str
     name: str
     created_at: str
+    bundesland: Optional[str] = "bayern"
+    theme: Optional[str] = "dark"
+
+class UserSettingsUpdate(BaseModel):
+    name: Optional[str] = None
+    bundesland: Optional[str] = None
+    theme: Optional[str] = None
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -73,10 +175,10 @@ class TokenResponse(BaseModel):
     user: UserResponse
 
 class SchoolYearCreate(BaseModel):
-    name: str  # e.g., "2025/2026"
-    semester: str  # "1. Halbjahr" or "2. Halbjahr"
-    start_date: str  # ISO date
-    end_date: str  # ISO date
+    name: str
+    semester: str
+    start_date: str
+    end_date: str
 
 class SchoolYearResponse(BaseModel):
     id: str
@@ -88,9 +190,9 @@ class SchoolYearResponse(BaseModel):
     created_at: str
 
 class ClassSubjectCreate(BaseModel):
-    name: str  # e.g., "6a"
-    subject: str  # e.g., "Deutsch"
-    color: str = "#3b82f6"  # Default blue
+    name: str
+    subject: str
+    color: str = "#3b82f6"
     hours_per_week: int = 4
     school_year_id: str
 
@@ -106,7 +208,7 @@ class ClassSubjectResponse(BaseModel):
 
 class LessonCreate(BaseModel):
     class_subject_id: str
-    date: str  # ISO date
+    date: str
     topic: str = ""
     objective: str = ""
     curriculum_reference: str = ""
@@ -146,11 +248,19 @@ class LessonUpdate(BaseModel):
     cancellation_reason: Optional[str] = None
     date: Optional[str] = None
 
+class BatchLessonCreate(BaseModel):
+    class_subject_id: str
+    dates: List[str]
+    topic: str = ""
+    objective: str = ""
+    curriculum_reference: str = ""
+    teaching_units: int = 1
+
 class HolidayCreate(BaseModel):
     school_year_id: str
     start_date: str
     end_date: str
-    name: str  # e.g., "Herbstferien"
+    name: str
 
 class HolidayResponse(BaseModel):
     id: str
@@ -166,6 +276,8 @@ class StatisticsResponse(BaseModel):
     remaining_hours: int
     hours_by_weekday: Dict[str, int]
     cancelled_hours: int
+    completion_percentage: float
+    topics_covered: int
 
 class AITopicSuggestionRequest(BaseModel):
     subject: str
@@ -207,12 +319,91 @@ class SharedClassResponse(BaseModel):
 class NotificationResponse(BaseModel):
     id: str
     user_id: str
-    type: str  # "share_new", "share_edit", "share_removed"
+    type: str
     title: str
     message: str
     class_name: str
     from_user_name: str
     is_read: bool
+    created_at: str
+
+# Template Models
+class TemplateCreate(BaseModel):
+    name: str
+    subject: str
+    topic: str
+    objective: str = ""
+    curriculum_reference: str = ""
+    educational_standards: str = ""
+    key_terms: str = ""
+    notes: str = ""
+    teaching_units: int = 1
+
+class TemplateResponse(BaseModel):
+    id: str
+    user_id: str
+    name: str
+    subject: str
+    topic: str
+    objective: str
+    curriculum_reference: str
+    educational_standards: str
+    key_terms: str
+    notes: str
+    teaching_units: int
+    created_at: str
+    use_count: int
+
+# Comment Models
+class CommentCreate(BaseModel):
+    lesson_id: str
+    text: str
+
+class CommentResponse(BaseModel):
+    id: str
+    lesson_id: str
+    user_id: str
+    user_name: str
+    text: str
+    created_at: str
+
+# To-Do Models
+class TodoCreate(BaseModel):
+    title: str
+    description: str = ""
+    due_date: Optional[str] = None
+    class_subject_id: Optional[str] = None
+    lesson_id: Optional[str] = None
+    priority: str = "medium"
+
+class TodoResponse(BaseModel):
+    id: str
+    user_id: str
+    title: str
+    description: str
+    due_date: Optional[str]
+    class_subject_id: Optional[str]
+    lesson_id: Optional[str]
+    priority: str
+    is_completed: bool
+    created_at: str
+
+class TodoUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    due_date: Optional[str] = None
+    priority: Optional[str] = None
+    is_completed: Optional[bool] = None
+
+# History Models
+class HistoryResponse(BaseModel):
+    id: str
+    user_id: str
+    user_name: str
+    action: str
+    entity_type: str
+    entity_id: str
+    details: str
     created_at: str
 
 # ============== AUTH HELPERS ==============
@@ -243,6 +434,37 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
+# Helper to create notifications
+async def create_notification(user_id: str, notification_type: str, title: str, message: str, class_name: str, from_user_name: str):
+    doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "type": notification_type,
+        "title": title,
+        "message": message,
+        "class_name": class_name,
+        "from_user_name": from_user_name,
+        "is_read": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.notifications.insert_one(doc)
+    return doc
+
+# Helper to log history
+async def log_history(user_id: str, action: str, entity_type: str, entity_id: str, details: str):
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "name": 1})
+    doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "user_name": user.get("name", "Unbekannt") if user else "Unbekannt",
+        "action": action,
+        "entity_type": entity_type,
+        "entity_id": entity_id,
+        "details": details,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.history.insert_one(doc)
+
 # ============== AUTH ROUTES ==============
 
 @api_router.post("/auth/register", response_model=TokenResponse)
@@ -259,6 +481,8 @@ async def register(user: UserCreate):
         "email": user.email,
         "password": hash_password(user.password),
         "name": user.name,
+        "bundesland": "bayern",
+        "theme": "dark",
         "created_at": now
     }
     await db.users.insert_one(user_doc)
@@ -266,7 +490,7 @@ async def register(user: UserCreate):
     token = create_token(user_id, user.email)
     return TokenResponse(
         access_token=token,
-        user=UserResponse(id=user_id, email=user.email, name=user.name, created_at=now)
+        user=UserResponse(id=user_id, email=user.email, name=user.name, created_at=now, bundesland="bayern", theme="dark")
     )
 
 @api_router.post("/auth/login", response_model=TokenResponse)
@@ -278,7 +502,14 @@ async def login(credentials: UserLogin):
     token = create_token(user["id"], user["email"])
     return TokenResponse(
         access_token=token,
-        user=UserResponse(id=user["id"], email=user["email"], name=user["name"], created_at=user["created_at"])
+        user=UserResponse(
+            id=user["id"], 
+            email=user["email"], 
+            name=user["name"], 
+            created_at=user["created_at"],
+            bundesland=user.get("bundesland", "bayern"),
+            theme=user.get("theme", "dark")
+        )
     )
 
 @api_router.get("/auth/me", response_model=UserResponse)
@@ -287,6 +518,30 @@ async def get_me(user_id: str = Depends(get_current_user)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return UserResponse(**user)
+
+@api_router.put("/auth/settings", response_model=UserResponse)
+async def update_settings(data: UserSettingsUpdate, user_id: str = Depends(get_current_user)):
+    update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    if update_data:
+        await db.users.update_one({"id": user_id}, {"$set": update_data})
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
+    return UserResponse(**user)
+
+# ============== GERMAN HOLIDAYS ROUTES ==============
+
+@api_router.get("/holidays/bundeslaender")
+async def get_bundeslaender():
+    return BUNDESLAENDER
+
+@api_router.get("/holidays/school-holidays/{bundesland}")
+async def get_school_holidays(bundesland: str):
+    if bundesland not in GERMAN_HOLIDAYS_2025_2026:
+        raise HTTPException(status_code=404, detail="Bundesland nicht gefunden")
+    return GERMAN_HOLIDAYS_2025_2026[bundesland]
+
+@api_router.get("/holidays/public-holidays")
+async def get_public_holidays():
+    return GERMAN_PUBLIC_HOLIDAYS_2025_2026
 
 # ============== SCHOOL YEAR ROUTES ==============
 
@@ -302,6 +557,7 @@ async def create_school_year(data: SchoolYearCreate, user_id: str = Depends(get_
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.school_years.insert_one(doc)
+    await log_history(user_id, "create", "school_year", doc["id"], f"Schuljahr {data.name} erstellt")
     return SchoolYearResponse(**doc)
 
 @api_router.get("/school-years", response_model=List[SchoolYearResponse])
@@ -314,7 +570,6 @@ async def delete_school_year(year_id: str, user_id: str = Depends(get_current_us
     result = await db.school_years.delete_one({"id": year_id, "user_id": user_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="School year not found")
-    # Also delete related classes and lessons
     await db.class_subjects.delete_many({"school_year_id": year_id, "user_id": user_id})
     return {"status": "deleted"}
 
@@ -333,6 +588,7 @@ async def create_class(data: ClassSubjectCreate, user_id: str = Depends(get_curr
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.class_subjects.insert_one(doc)
+    await log_history(user_id, "create", "class", doc["id"], f"Klasse {data.name} - {data.subject} erstellt")
     return ClassSubjectResponse(**doc)
 
 @api_router.get("/classes", response_model=List[ClassSubjectResponse])
@@ -386,7 +642,42 @@ async def create_lesson(data: LessonCreate, user_id: str = Depends(get_current_u
         "updated_at": now
     }
     await db.lessons.insert_one(doc)
+    
+    # Log history
+    class_info = await db.class_subjects.find_one({"id": data.class_subject_id}, {"_id": 0})
+    if class_info:
+        await log_history(user_id, "create", "lesson", doc["id"], f"Stunde am {data.date} für {class_info['name']} erstellt")
+    
     return LessonResponse(**doc)
+
+@api_router.post("/lessons/batch", response_model=List[LessonResponse])
+async def create_batch_lessons(data: BatchLessonCreate, user_id: str = Depends(get_current_user)):
+    """Create multiple lessons at once"""
+    now = datetime.now(timezone.utc).isoformat()
+    lessons = []
+    
+    for date_str in data.dates:
+        doc = {
+            "id": str(uuid.uuid4()),
+            "user_id": user_id,
+            "class_subject_id": data.class_subject_id,
+            "date": date_str,
+            "topic": data.topic,
+            "objective": data.objective,
+            "curriculum_reference": data.curriculum_reference,
+            "educational_standards": "",
+            "key_terms": "",
+            "notes": "",
+            "teaching_units": data.teaching_units,
+            "is_cancelled": False,
+            "cancellation_reason": "",
+            "created_at": now,
+            "updated_at": now
+        }
+        await db.lessons.insert_one(doc)
+        lessons.append(LessonResponse(**doc))
+    
+    return lessons
 
 @api_router.get("/lessons", response_model=List[LessonResponse])
 async def get_lessons(
@@ -408,6 +699,24 @@ async def get_lessons(
     lessons = await db.lessons.find(query, {"_id": 0}).sort("date", 1).to_list(1000)
     return [LessonResponse(**l) for l in lessons]
 
+@api_router.post("/lessons/{lesson_id}/copy", response_model=LessonResponse)
+async def copy_lesson(lesson_id: str, new_date: str = Query(...), user_id: str = Depends(get_current_user)):
+    """Copy an existing lesson to a new date"""
+    original = await db.lessons.find_one({"id": lesson_id, "user_id": user_id}, {"_id": 0})
+    if not original:
+        raise HTTPException(status_code=404, detail="Stunde nicht gefunden")
+    
+    now = datetime.now(timezone.utc).isoformat()
+    doc = {
+        **original,
+        "id": str(uuid.uuid4()),
+        "date": new_date,
+        "created_at": now,
+        "updated_at": now
+    }
+    await db.lessons.insert_one(doc)
+    return LessonResponse(**doc)
+
 @api_router.put("/lessons/{lesson_id}", response_model=LessonResponse)
 async def update_lesson(lesson_id: str, data: LessonUpdate, user_id: str = Depends(get_current_user)):
     update_data = {k: v for k, v in data.model_dump().items() if v is not None}
@@ -421,7 +730,7 @@ async def update_lesson(lesson_id: str, data: LessonUpdate, user_id: str = Depen
         raise HTTPException(status_code=404, detail="Stunde nicht gefunden")
     updated = await db.lessons.find_one({"id": lesson_id}, {"_id": 0})
     
-    # Send notifications to users who have this class shared with them
+    # Send notifications to users who have this class shared
     class_info = await db.class_subjects.find_one({"id": updated["class_subject_id"]}, {"_id": 0})
     if class_info:
         shares = await db.shares.find({"class_subject_id": updated["class_subject_id"]}, {"_id": 0}).to_list(100)
@@ -429,7 +738,6 @@ async def update_lesson(lesson_id: str, data: LessonUpdate, user_id: str = Depen
         class_display = f"{class_info['name']} - {class_info['subject']}"
         
         for share in shares:
-            # Notify the shared user about the update
             await create_notification(
                 user_id=share["shared_with_id"],
                 notification_type="share_edit",
@@ -438,6 +746,8 @@ async def update_lesson(lesson_id: str, data: LessonUpdate, user_id: str = Depen
                 class_name=class_display,
                 from_user_name=current_user["name"]
             )
+        
+        await log_history(user_id, "update", "lesson", lesson_id, f"Stunde am {updated['date']} bearbeitet")
     
     return LessonResponse(**updated)
 
@@ -447,6 +757,221 @@ async def delete_lesson(lesson_id: str, user_id: str = Depends(get_current_user)
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Stunde nicht gefunden")
     return {"status": "deleted"}
+
+# ============== TEMPLATE ROUTES ==============
+
+@api_router.post("/templates", response_model=TemplateResponse)
+async def create_template(data: TemplateCreate, user_id: str = Depends(get_current_user)):
+    doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "name": data.name,
+        "subject": data.subject,
+        "topic": data.topic,
+        "objective": data.objective,
+        "curriculum_reference": data.curriculum_reference,
+        "educational_standards": data.educational_standards,
+        "key_terms": data.key_terms,
+        "notes": data.notes,
+        "teaching_units": data.teaching_units,
+        "use_count": 0,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.templates.insert_one(doc)
+    return TemplateResponse(**doc)
+
+@api_router.get("/templates", response_model=List[TemplateResponse])
+async def get_templates(subject: Optional[str] = None, user_id: str = Depends(get_current_user)):
+    query = {"user_id": user_id}
+    if subject:
+        query["subject"] = subject
+    templates = await db.templates.find(query, {"_id": 0}).sort("use_count", -1).to_list(100)
+    return [TemplateResponse(**t) for t in templates]
+
+@api_router.post("/templates/{template_id}/use", response_model=TemplateResponse)
+async def use_template(template_id: str, user_id: str = Depends(get_current_user)):
+    """Increment use count and return template"""
+    await db.templates.update_one(
+        {"id": template_id, "user_id": user_id},
+        {"$inc": {"use_count": 1}}
+    )
+    template = await db.templates.find_one({"id": template_id}, {"_id": 0})
+    if not template:
+        raise HTTPException(status_code=404, detail="Vorlage nicht gefunden")
+    return TemplateResponse(**template)
+
+@api_router.delete("/templates/{template_id}")
+async def delete_template(template_id: str, user_id: str = Depends(get_current_user)):
+    result = await db.templates.delete_one({"id": template_id, "user_id": user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Vorlage nicht gefunden")
+    return {"status": "deleted"}
+
+# ============== TODO ROUTES ==============
+
+@api_router.post("/todos", response_model=TodoResponse)
+async def create_todo(data: TodoCreate, user_id: str = Depends(get_current_user)):
+    doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "title": data.title,
+        "description": data.description,
+        "due_date": data.due_date,
+        "class_subject_id": data.class_subject_id,
+        "lesson_id": data.lesson_id,
+        "priority": data.priority,
+        "is_completed": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.todos.insert_one(doc)
+    return TodoResponse(**doc)
+
+@api_router.get("/todos", response_model=List[TodoResponse])
+async def get_todos(
+    completed: Optional[bool] = None,
+    class_subject_id: Optional[str] = None,
+    user_id: str = Depends(get_current_user)
+):
+    query = {"user_id": user_id}
+    if completed is not None:
+        query["is_completed"] = completed
+    if class_subject_id:
+        query["class_subject_id"] = class_subject_id
+    todos = await db.todos.find(query, {"_id": 0}).sort("due_date", 1).to_list(100)
+    return [TodoResponse(**t) for t in todos]
+
+@api_router.put("/todos/{todo_id}", response_model=TodoResponse)
+async def update_todo(todo_id: str, data: TodoUpdate, user_id: str = Depends(get_current_user)):
+    update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    result = await db.todos.update_one(
+        {"id": todo_id, "user_id": user_id},
+        {"$set": update_data}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Aufgabe nicht gefunden")
+    updated = await db.todos.find_one({"id": todo_id}, {"_id": 0})
+    return TodoResponse(**updated)
+
+@api_router.delete("/todos/{todo_id}")
+async def delete_todo(todo_id: str, user_id: str = Depends(get_current_user)):
+    result = await db.todos.delete_one({"id": todo_id, "user_id": user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Aufgabe nicht gefunden")
+    return {"status": "deleted"}
+
+# ============== COMMENT ROUTES ==============
+
+@api_router.post("/comments", response_model=CommentResponse)
+async def create_comment(data: CommentCreate, user_id: str = Depends(get_current_user)):
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "name": 1})
+    doc = {
+        "id": str(uuid.uuid4()),
+        "lesson_id": data.lesson_id,
+        "user_id": user_id,
+        "user_name": user.get("name", "Unbekannt") if user else "Unbekannt",
+        "text": data.text,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.comments.insert_one(doc)
+    return CommentResponse(**doc)
+
+@api_router.get("/comments/{lesson_id}", response_model=List[CommentResponse])
+async def get_comments(lesson_id: str, user_id: str = Depends(get_current_user)):
+    comments = await db.comments.find({"lesson_id": lesson_id}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return [CommentResponse(**c) for c in comments]
+
+@api_router.delete("/comments/{comment_id}")
+async def delete_comment(comment_id: str, user_id: str = Depends(get_current_user)):
+    result = await db.comments.delete_one({"id": comment_id, "user_id": user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Kommentar nicht gefunden")
+    return {"status": "deleted"}
+
+# ============== HISTORY ROUTES ==============
+
+@api_router.get("/history", response_model=List[HistoryResponse])
+async def get_history(
+    entity_type: Optional[str] = None,
+    entity_id: Optional[str] = None,
+    limit: int = 50,
+    user_id: str = Depends(get_current_user)
+):
+    query = {"user_id": user_id}
+    if entity_type:
+        query["entity_type"] = entity_type
+    if entity_id:
+        query["entity_id"] = entity_id
+    history = await db.history.find(query, {"_id": 0}).sort("created_at", -1).to_list(limit)
+    return [HistoryResponse(**h) for h in history]
+
+@api_router.get("/history/class/{class_subject_id}", response_model=List[HistoryResponse])
+async def get_class_history(class_subject_id: str, user_id: str = Depends(get_current_user)):
+    """Get history for a specific class (including shared)"""
+    # Get lessons for this class
+    lessons = await db.lessons.find({"class_subject_id": class_subject_id}, {"id": 1, "_id": 0}).to_list(1000)
+    lesson_ids = [l["id"] for l in lessons]
+    
+    history = await db.history.find({
+        "$or": [
+            {"entity_type": "class", "entity_id": class_subject_id},
+            {"entity_type": "lesson", "entity_id": {"$in": lesson_ids}}
+        ]
+    }, {"_id": 0}).sort("created_at", -1).to_list(100)
+    
+    return [HistoryResponse(**h) for h in history]
+
+# ============== SEARCH ROUTES ==============
+
+@api_router.get("/search")
+async def global_search(q: str = Query(..., min_length=2), user_id: str = Depends(get_current_user)):
+    """Search across lessons, classes, and templates"""
+    results = {
+        "lessons": [],
+        "classes": [],
+        "templates": [],
+        "todos": []
+    }
+    
+    # Search lessons
+    lessons = await db.lessons.find({
+        "user_id": user_id,
+        "$or": [
+            {"topic": {"$regex": q, "$options": "i"}},
+            {"key_terms": {"$regex": q, "$options": "i"}},
+            {"notes": {"$regex": q, "$options": "i"}}
+        ]
+    }, {"_id": 0}).limit(10).to_list(10)
+    results["lessons"] = lessons
+    
+    # Search classes
+    classes = await db.class_subjects.find({
+        "user_id": user_id,
+        "$or": [
+            {"name": {"$regex": q, "$options": "i"}},
+            {"subject": {"$regex": q, "$options": "i"}}
+        ]
+    }, {"_id": 0}).limit(5).to_list(5)
+    results["classes"] = classes
+    
+    # Search templates
+    templates = await db.templates.find({
+        "user_id": user_id,
+        "$or": [
+            {"name": {"$regex": q, "$options": "i"}},
+            {"topic": {"$regex": q, "$options": "i"}},
+            {"subject": {"$regex": q, "$options": "i"}}
+        ]
+    }, {"_id": 0}).limit(5).to_list(5)
+    results["templates"] = templates
+    
+    # Search todos
+    todos = await db.todos.find({
+        "user_id": user_id,
+        "title": {"$regex": q, "$options": "i"}
+    }, {"_id": 0}).limit(5).to_list(5)
+    results["todos"] = todos
+    
+    return results
 
 # ============== HOLIDAY ROUTES ==============
 
@@ -482,29 +1007,25 @@ async def delete_holiday(holiday_id: str, user_id: str = Depends(get_current_use
 
 @api_router.get("/statistics/{class_subject_id}", response_model=StatisticsResponse)
 async def get_statistics(class_subject_id: str, user_id: str = Depends(get_current_user)):
-    # Get class info
     class_info = await db.class_subjects.find_one({"id": class_subject_id, "user_id": user_id}, {"_id": 0})
     if not class_info:
         raise HTTPException(status_code=404, detail="Class not found")
     
-    # Get school year
     school_year = await db.school_years.find_one({"id": class_info["school_year_id"]}, {"_id": 0})
     if not school_year:
         raise HTTPException(status_code=404, detail="School year not found")
     
-    # Calculate weeks in semester
     start = datetime.fromisoformat(school_year["start_date"])
     end = datetime.fromisoformat(school_year["end_date"])
     weeks = (end - start).days // 7
     total_available = weeks * class_info["hours_per_week"]
     
-    # Get lessons
     lessons = await db.lessons.find({"class_subject_id": class_subject_id, "user_id": user_id}, {"_id": 0}).to_list(1000)
     
     used_hours = sum(l["teaching_units"] for l in lessons if not l["is_cancelled"])
     cancelled_hours = sum(l["teaching_units"] for l in lessons if l["is_cancelled"])
+    topics_covered = len([l for l in lessons if l["topic"] and not l["is_cancelled"]])
     
-    # Hours by weekday
     weekday_names = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
     hours_by_weekday = {day: 0 for day in weekday_names}
     
@@ -514,12 +1035,16 @@ async def get_statistics(class_subject_id: str, user_id: str = Depends(get_curre
             weekday = weekday_names[date.weekday()]
             hours_by_weekday[weekday] += lesson["teaching_units"]
     
+    completion_percentage = (used_hours / total_available * 100) if total_available > 0 else 0
+    
     return StatisticsResponse(
         total_available_hours=total_available,
         used_hours=used_hours,
         remaining_hours=total_available - used_hours,
         hours_by_weekday=hours_by_weekday,
-        cancelled_hours=cancelled_hours
+        cancelled_hours=cancelled_hours,
+        completion_percentage=round(completion_percentage, 1),
+        topics_covered=topics_covered
     )
 
 # ============== EXPORT ROUTES ==============
@@ -536,7 +1061,6 @@ async def export_excel(class_subject_id: str, user_id: str = Depends(get_current
     ws = wb.active
     ws.title = f"{class_info['name']} - {class_info['subject']}"
     
-    # Header styling
     header_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
     header_font = Font(bold=True, color="FFFFFF")
     
@@ -558,7 +1082,6 @@ async def export_excel(class_subject_id: str, user_id: str = Depends(get_current
         ws.cell(row=row, column=7, value=lesson["key_terms"])
         ws.cell(row=row, column=8, value=lesson["teaching_units"])
     
-    # Auto-width columns
     for col in ws.columns:
         max_length = max(len(str(cell.value or "")) for cell in col)
         ws.column_dimensions[col[0].column_letter].width = min(max_length + 2, 50)
@@ -585,14 +1108,12 @@ async def export_word(class_subject_id: str, user_id: str = Depends(get_current_
     
     doc = Document()
     
-    # Title
     title = doc.add_heading(f"Arbeitsplan: {class_info['name']} - {class_info['subject']}", 0)
     if school_year:
         doc.add_paragraph(f"Schuljahr: {school_year['name']} ({school_year['semester']})")
     
     doc.add_paragraph("")
     
-    # Table
     table = doc.add_table(rows=1, cols=6)
     table.style = 'Table Grid'
     
@@ -636,7 +1157,6 @@ async def export_pdf(class_subject_id: str, user_id: str = Depends(get_current_u
     c = canvas.Canvas(output, pagesize=A4)
     width, height = A4
     
-    # Title
     c.setFont("Helvetica-Bold", 16)
     c.drawString(2*cm, height - 2*cm, f"Arbeitsplan: {class_info['name']} - {class_info['subject']}")
     
@@ -708,21 +1228,18 @@ async def get_ai_suggestions(data: AITopicSuggestionRequest, user_id: str = Depe
         
         Antworte NUR mit einem JSON-Array: [{{"topic": "...", "objective": "...", "key_terms": "..."}}]"""
         
-        # Add timeout to prevent long waits
         try:
             response = await asyncio.wait_for(
                 chat.send_message(UserMessage(text=prompt)),
                 timeout=25.0
             )
         except asyncio.TimeoutError:
-            logger.warning("AI request timed out, returning fallback suggestions")
             return AITopicSuggestionResponse(suggestions=[
                 {"topic": f"Einführung in {data.curriculum_topic}", "objective": "Grundlagen verstehen", "key_terms": data.subject},
                 {"topic": f"Vertiefung: {data.curriculum_topic}", "objective": "Anwendung üben", "key_terms": "Übung, Praxis"},
                 {"topic": f"Zusammenfassung {data.curriculum_topic}", "objective": "Wissen festigen", "key_terms": "Wiederholung"}
             ])
         
-        # Extract JSON from response
         json_match = re.search(r'\[.*\]', response, re.DOTALL)
         if json_match:
             try:
@@ -737,7 +1254,6 @@ async def get_ai_suggestions(data: AITopicSuggestionRequest, user_id: str = Depe
         raise
     except Exception as e:
         logger.error(f"AI suggestion error: {e}")
-        # Return fallback suggestions instead of error
         return AITopicSuggestionResponse(suggestions=[
             {"topic": f"Thema zu {data.curriculum_topic}", "objective": "Lernziele definieren", "key_terms": data.subject}
         ])
@@ -751,13 +1267,11 @@ async def upload_document(
     file: UploadFile = File(...),
     user_id: str = Depends(get_current_user)
 ):
-    # Validate file type
     allowed_types = [".docx", ".doc", ".pdf", ".jpg", ".jpeg", ".png"]
     file_ext = Path(file.filename).suffix.lower()
     if file_ext not in allowed_types:
         raise HTTPException(status_code=400, detail=f"File type not allowed. Allowed: {allowed_types}")
     
-    # Read and store file content in MongoDB (GridFS alternative - store as binary)
     content = await file.read()
     
     doc = {
@@ -813,12 +1327,10 @@ async def delete_document(doc_id: str, user_id: str = Depends(get_current_user))
 
 @api_router.post("/shares", response_model=ShareResponse)
 async def share_class(data: ShareCreate, user_id: str = Depends(get_current_user)):
-    # Check if class exists and user owns it
     class_info = await db.class_subjects.find_one({"id": data.class_subject_id, "user_id": user_id}, {"_id": 0})
     if not class_info:
         raise HTTPException(status_code=404, detail="Klasse nicht gefunden")
     
-    # Find target user by email
     target_user = await db.users.find_one({"email": data.shared_with_email}, {"_id": 0, "password": 0})
     if not target_user:
         raise HTTPException(status_code=404, detail="Benutzer mit dieser E-Mail nicht gefunden")
@@ -826,7 +1338,6 @@ async def share_class(data: ShareCreate, user_id: str = Depends(get_current_user
     if target_user["id"] == user_id:
         raise HTTPException(status_code=400, detail="Sie können nicht mit sich selbst teilen")
     
-    # Check if already shared
     existing = await db.shares.find_one({
         "class_subject_id": data.class_subject_id,
         "shared_with_id": target_user["id"]
@@ -834,7 +1345,6 @@ async def share_class(data: ShareCreate, user_id: str = Depends(get_current_user
     if existing:
         raise HTTPException(status_code=400, detail="Bereits mit diesem Benutzer geteilt")
     
-    # Get owner info
     owner = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
     
     share_doc = {
@@ -849,7 +1359,6 @@ async def share_class(data: ShareCreate, user_id: str = Depends(get_current_user
     }
     await db.shares.insert_one(share_doc)
     
-    # Create notification for the recipient
     class_display = f"{class_info['name']} - {class_info['subject']}"
     permission = "Bearbeitung" if data.can_edit else "Nur Ansicht"
     await create_notification(
@@ -865,13 +1374,11 @@ async def share_class(data: ShareCreate, user_id: str = Depends(get_current_user
 
 @api_router.get("/shares/my-shares", response_model=List[ShareResponse])
 async def get_my_shares(user_id: str = Depends(get_current_user)):
-    """Get classes I have shared with others"""
     shares = await db.shares.find({"owner_id": user_id}, {"_id": 0}).to_list(100)
     return [ShareResponse(**s) for s in shares]
 
 @api_router.get("/shares/shared-with-me", response_model=List[SharedClassResponse])
 async def get_shared_with_me(user_id: str = Depends(get_current_user)):
-    """Get classes others have shared with me"""
     shares = await db.shares.find({"shared_with_id": user_id}, {"_id": 0}).to_list(100)
     
     shared_classes = []
@@ -902,8 +1409,6 @@ async def remove_share(share_id: str, user_id: str = Depends(get_current_user)):
 
 @api_router.get("/shares/class/{class_subject_id}", response_model=List[ShareResponse])
 async def get_class_shares(class_subject_id: str, user_id: str = Depends(get_current_user)):
-    """Get all shares for a specific class"""
-    # Check ownership
     class_info = await db.class_subjects.find_one({"id": class_subject_id, "user_id": user_id}, {"_id": 0})
     if not class_info:
         raise HTTPException(status_code=404, detail="Klasse nicht gefunden")
@@ -913,25 +1418,8 @@ async def get_class_shares(class_subject_id: str, user_id: str = Depends(get_cur
 
 # ============== NOTIFICATION ROUTES ==============
 
-async def create_notification(user_id: str, notification_type: str, title: str, message: str, class_name: str, from_user_name: str):
-    """Helper function to create notifications"""
-    doc = {
-        "id": str(uuid.uuid4()),
-        "user_id": user_id,
-        "type": notification_type,
-        "title": title,
-        "message": message,
-        "class_name": class_name,
-        "from_user_name": from_user_name,
-        "is_read": False,
-        "created_at": datetime.now(timezone.utc).isoformat()
-    }
-    await db.notifications.insert_one(doc)
-    return doc
-
 @api_router.get("/notifications", response_model=List[NotificationResponse])
 async def get_notifications(user_id: str = Depends(get_current_user)):
-    """Get all notifications for current user"""
     notifications = await db.notifications.find(
         {"user_id": user_id}, 
         {"_id": 0}
@@ -940,13 +1428,11 @@ async def get_notifications(user_id: str = Depends(get_current_user)):
 
 @api_router.get("/notifications/unread-count")
 async def get_unread_count(user_id: str = Depends(get_current_user)):
-    """Get count of unread notifications"""
     count = await db.notifications.count_documents({"user_id": user_id, "is_read": False})
     return {"count": count}
 
 @api_router.put("/notifications/{notification_id}/read")
 async def mark_as_read(notification_id: str, user_id: str = Depends(get_current_user)):
-    """Mark a notification as read"""
     result = await db.notifications.update_one(
         {"id": notification_id, "user_id": user_id},
         {"$set": {"is_read": True}}
@@ -957,7 +1443,6 @@ async def mark_as_read(notification_id: str, user_id: str = Depends(get_current_
 
 @api_router.put("/notifications/read-all")
 async def mark_all_as_read(user_id: str = Depends(get_current_user)):
-    """Mark all notifications as read"""
     await db.notifications.update_many(
         {"user_id": user_id, "is_read": False},
         {"$set": {"is_read": True}}
@@ -966,7 +1451,6 @@ async def mark_all_as_read(user_id: str = Depends(get_current_user)):
 
 @api_router.delete("/notifications/{notification_id}")
 async def delete_notification(notification_id: str, user_id: str = Depends(get_current_user)):
-    """Delete a notification"""
     result = await db.notifications.delete_one({"id": notification_id, "user_id": user_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Benachrichtigung nicht gefunden")
@@ -976,7 +1460,7 @@ async def delete_notification(notification_id: str, user_id: str = Depends(get_c
 
 @api_router.get("/")
 async def root():
-    return {"message": "PlanEd API v1.0.0", "status": "running"}
+    return {"message": "PlanEd API v2.0.0", "status": "running"}
 
 # Include the router in the main app
 app.include_router(api_router)
