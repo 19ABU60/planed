@@ -239,6 +239,7 @@ class LessonResponse(BaseModel):
     user_id: str
     class_subject_id: str
     date: str
+    period: Optional[int] = None
     topic: str
     objective: str
     curriculum_reference: str
