@@ -1,0 +1,183 @@
+{
+  "brand_identity": {
+    "name": "PlanEd",
+    "persona": "The Architect of Knowledge",
+    "tone": "Professional, Focused, Efficient, Calm",
+    "aesthetic": "Dark Academia Tech",
+    "core_values": [
+      "Clarity over Clutter",
+      "Focus through Contrast",
+      "Efficiency via Structure"
+    ]
+  },
+  "typography": {
+    "font_family": {
+      "headings": "Manrope, sans-serif",
+      "body": "Public Sans, sans-serif",
+      "mono": "JetBrains Mono, monospace"
+    },
+    "weights": {
+      "light": 300,
+      "regular": 400,
+      "medium": 500,
+      "bold": 700,
+      "black": 900
+    },
+    "usage_rules": {
+      "headings": "Use Manrope for all H1-H4. Tracking tight (-0.02em). Weight: Bold or ExtraBold for H1, Medium for H3.",
+      "body": "Use Public Sans. Leading relaxed (1.6).",
+      "labels": "Uppercase, tracking-widest, text-xs, font-bold, opacity-70."
+    },
+    "installation": "Import from Google Fonts: https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;700;800&family=Public+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400&display=swap"
+  },
+  "colors": {
+    "palette": {
+      "background": {
+        "default": "#09090b",
+        "paper": "#121214",
+        "subtle": "#18181b"
+      },
+      "foreground": {
+        "default": "#fafafa",
+        "muted": "#a1a1aa",
+        "disabled": "#52525b"
+      },
+      "primary": {
+        "main": "#3b82f6",
+        "light": "#60a5fa",
+        "dark": "#2563eb",
+        "contrast": "#ffffff"
+      },
+      "secondary": {
+        "main": "#8b5cf6",
+        "light": "#a78bfa",
+        "dark": "#7c3aed"
+      },
+      "accent": {
+        "success": "#10b981",
+        "warning": "#f59e0b",
+        "error": "#ef4444",
+        "info": "#06b6d4"
+      },
+      "border": {
+        "default": "rgba(255, 255, 255, 0.08)",
+        "active": "rgba(255, 255, 255, 0.15)"
+      }
+    },
+    "semantic_usage": {
+      "background": "bg-zinc-950",
+      "card_bg": "bg-zinc-900/50 backdrop-blur-md",
+      "text_primary": "text-zinc-50",
+      "text_secondary": "text-zinc-400",
+      "border_subtle": "border-white/10",
+      "primary_action": "bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.5)]",
+      "calendar_event_default": "bg-zinc-800 border-l-4 border-zinc-500",
+      "calendar_event_exam": "bg-red-900/30 border-l-4 border-red-500 text-red-200",
+      "calendar_event_prep": "bg-blue-900/30 border-l-4 border-blue-500 text-blue-200"
+    }
+  },
+  "layout_system": {
+    "grid_strategy": "Bento Grid (Mode B: Control Room)",
+    "spacing": {
+      "container_padding": "p-6 md:p-8 lg:p-12",
+      "section_gap": "gap-6",
+      "internal_padding": "p-6"
+    },
+    "containers": {
+      "dashboard_card": "rounded-xl border border-white/5 bg-zinc-900/40 backdrop-blur-sm shadow-sm hover:border-white/10 transition-colors duration-300",
+      "main_layout": "max-w-[1600px] mx-auto w-full"
+    },
+    "z_index": {
+      "toast": 50,
+      "modal": 40,
+      "dropdown": 30,
+      "sticky_nav": 20,
+      "default": 1
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "h-10 px-6 rounded-md bg-blue-600 text-white font-medium hover:bg-blue-500 transition-all shadow-lg shadow-blue-900/20",
+      "secondary": "h-10 px-6 rounded-md bg-zinc-800 text-zinc-200 hover:bg-zinc-700 border border-zinc-700",
+      "ghost": "h-10 px-4 rounded-md text-zinc-400 hover:text-white hover:bg-white/5"
+    },
+    "inputs": {
+      "default": "h-10 bg-zinc-950/50 border border-zinc-800 rounded-md focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder:text-zinc-600 text-zinc-200"
+    },
+    "cards": {
+      "glass": "bg-black/40 backdrop-blur-xl border border-white/10 shadow-2xl"
+    },
+    "calendar": {
+      "cell": "min-h-[120px] border-r border-b border-zinc-800/50 p-2 hover:bg-white/[0.02] transition-colors",
+      "header": "text-sm font-medium text-zinc-400 uppercase tracking-wider py-4 text-center bg-zinc-900/50"
+    }
+  },
+  "visual_enhancers": {
+    "gradients": {
+      "subtle_glow": "bg-gradient-to-tr from-blue-500/10 via-transparent to-transparent",
+      "card_hover": "hover:bg-gradient-to-br hover:from-white/5 hover:to-transparent"
+    },
+    "shadows": {
+      "neon": "shadow-[0_0_20px_-5px_rgba(59,130,246,0.3)]",
+      "deep": "shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)]"
+    },
+    "borders": {
+      "glass": "border border-white/10"
+    }
+  },
+  "assets": {
+    "icons": {
+      "library": "lucide-react",
+      "style": "Stroke width 1.5px, size 20px for UI, 24px for Nav"
+    },
+    "images": {
+      "login_bg": "https://images.unsplash.com/photo-1690079374922-7f50d5c1a102?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "placeholder_avatar": "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix",
+      "empty_state_illustration": "Use abstract geometric shapes or minimal line art"
+    }
+  },
+  "motion": {
+    "transitions": {
+      "default": "transition-all duration-200 ease-out",
+      "slow": "transition-all duration-500 ease-in-out"
+    },
+    "animations": {
+      "fade_in": "animate-in fade-in duration-500",
+      "slide_up": "animate-in slide-in-from-bottom-4 duration-500"
+    }
+  },
+  "accessibility": {
+    "contrast": "Ensure text-zinc-400 is only used for non-critical text. Use text-zinc-200 for body.",
+    "focus_states": "All interactive elements must have visible focus rings (ring-2 ring-blue-500/50).",
+    "aria": "Calendar cells must have aria-label with full date."
+  },
+  "instructions_to_main_agent": [
+    "1. SETUP: Install 'lucide-react', 'date-fns', 'recharts', 'framer-motion', 'clsx', 'tailwind-merge'.",
+    "2. THEME: Ensure 'dark' class is applied to the root HTML element by default.",
+    "3. LAYOUT: Use the 'Bento Grid' strategy for the Dashboard. Do not create a generic list.",
+    "4. CALENDAR: Build a custom grid using CSS Grid for the calendar. Do not use a heavy library if possible, or style 'react-big-calendar' heavily to match the design.",
+    "5. FORMS: Use Shadcn UI patterns but override the styles to match the 'Dark Academia' aesthetic (darker backgrounds, sharper borders).",
+    "6. DATA-TESTID: Add data-testid to all buttons, inputs, and calendar cells.",
+    "7. MOCK DATA: Create realistic mock data for lessons (Math, German, History) to populate the dashboard."
+  ],
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients",
+    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
+    "Create depth through layered design elements with z-index hierarchy",
+    "Use glass-morphism effects with backdrop filters (12-24px blur)",
+    "You MUST NOT apply universal transition. Eg: transition: all. This results in breaking transforms. Always add transitions for specific interactive elements like button, input excluding transforms",
+    "You MUST NOT center align the app container, ie do not add .App { text-align: center; } in the css file. This disrupts the human natural reading flow of text",
+    "Always use modern button styles like pill-shaped, or sharp button with interaction animations & color relevant to the app style",
+    "NEVER: use AI assistant Emoji characters like 🤖🧠💭💡🔮🎯📚🎭🎬🎪🎉🎊🎁🎀🎂🍰🎈🎨🎰💰💵💳🏦💎🪙💸🤑📊📈📉💹🔢🏆🥇 etc for icons.",
+    "Every interaction needs micro-animations - hover states, transitions, parallax effects, and entrance animations. Static = dead.",
+    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
+    "Subtle grain textures, noise overlays, custom cursors, selection states, and loading animations: separates good from extraordinary.",
+    "Main agent relies on these image URLs. Missing categories (especially sponsor logos) = main agent will use placeholder text which is FORBIDDEN",
+    "Prioritize using pre-existing components from src/components/ui when applicable",
+    "Create new components that match the style and conventions of existing components when needed",
+    "Examine existing components to understand the project's component patterns before creating new ones",
+    "Components MUST use named exports (export const ComponentName = ...)",
+    "Pages MUST use default exports (export default function PageName() {...})",
+    "Use sonner for toasts"
+  ]
+}
