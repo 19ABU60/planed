@@ -268,8 +268,9 @@ class LessonUpdate(BaseModel):
 class WorkplanEntry(BaseModel):
     date: str
     period: int
-    entries: List[Dict[str, str]]  # [{"topic": "...", "objective": "..."}, ...]
-    collaborators: Optional[List[str]] = None
+    unterrichtseinheit: Optional[str] = ""
+    lehrplan: Optional[str] = ""
+    stundenthema: Optional[str] = ""
     class_subject_id: Optional[str] = None
 
 class WorkplanBulkSave(BaseModel):
