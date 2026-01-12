@@ -9,10 +9,13 @@ const WEEKDAYS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 
 // Default column widths
 const DEFAULT_WIDTHS = {
-  unterrichtseinheit: 150,
-  lehrplan: 280,
-  stundenthema: 250
+  unterrichtseinheit: 180,
+  lehrplan: 320,
+  stundenthema: 280
 };
+
+const MIN_WIDTH = 100;
+const MAX_WIDTH = 600;
 
 const WorkplanTablePage = ({ classes, schoolYears }) => {
   const { authAxios } = useAuth();
@@ -27,8 +30,9 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
     const saved = localStorage.getItem('workplanColumnWidths');
     return saved ? JSON.parse(saved) : DEFAULT_WIDTHS;
   });
-  const [resizing, setResizing] = useState(null);
-  const tableRef = useRef(null);
+  const [resizingColumn, setResizingColumn] = useState(null);
+  const startXRef = useRef(0);
+  const startWidthRef = useRef(0);
 
   const currentClass = classes.find(c => c.id === selectedClass);
   
@@ -97,32 +101,49 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
     localStorage.setItem('workplanColumnWidths', JSON.stringify(columnWidths));
   }, [columnWidths]);
 
-  // Handle column resize
-  const startResize = (columnKey, e) => {
-    e.preventDefault();
-    setResizing({ columnKey, startX: e.clientX, startWidth: columnWidths[columnKey] });
-  };
+  // Handle mouse move during resize
+  const handleMouseMove = useCallback((e) => {
+    if (!resizingColumn) return;
+    
+    const diff = e.clientX - startXRef.current;
+    const newWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, startWidthRef.current + diff));
+    
+    setColumnWidths(prev => ({
+      ...prev,
+      [resizingColumn]: newWidth
+    }));
+  }, [resizingColumn]);
 
+  // Handle mouse up to stop resizing
+  const handleMouseUp = useCallback(() => {
+    setResizingColumn(null);
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  }, []);
+
+  // Add/remove event listeners
   useEffect(() => {
-    if (!resizing) return;
-
-    const handleMouseMove = (e) => {
-      const diff = e.clientX - resizing.startX;
-      const newWidth = Math.max(80, Math.min(500, resizing.startWidth + diff));
-      setColumnWidths(prev => ({ ...prev, [resizing.columnKey]: newWidth }));
-    };
-
-    const handleMouseUp = () => {
-      setResizing(null);
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    if (resizingColumn) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    }
+    
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [resizing]);
+  }, [resizingColumn, handleMouseMove, handleMouseUp]);
+
+  // Start resizing
+  const startResize = (columnKey, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setResizingColumn(columnKey);
+    startXRef.current = e.clientX;
+    startWidthRef.current = columnWidths[columnKey];
+  };
 
   // Update cell data
   const updateCell = (dateStr, period, field, value) => {
@@ -175,44 +196,43 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
     toast.success('Spaltenbreiten zurückgesetzt');
   };
 
-  // Resizable column header component
-  const ResizableHeader = ({ columnKey, label, color }) => (
-    <th style={{ 
-      padding: '0.75rem 0.5rem', 
-      textAlign: 'center', 
-      color: 'white',
-      fontWeight: '600',
-      borderBottom: '2px solid rgba(255,255,255,0.2)',
-      borderLeft: '2px solid rgba(255,255,255,0.2)',
-      width: `${columnWidths[columnKey]}px`,
-      minWidth: `${columnWidths[columnKey]}px`,
-      position: 'relative',
-      userSelect: 'none'
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-        <span style={{ fontSize: '0.8rem' }}>{label}</span>
-      </div>
-      {/* Resize handle */}
+  // Column header with resize handle
+  const ColumnHeader = ({ columnKey, label }) => (
+    <th 
+      style={{ 
+        padding: '0.75rem 0.5rem', 
+        textAlign: 'center', 
+        color: 'white',
+        fontWeight: '600',
+        borderBottom: '2px solid rgba(255,255,255,0.2)',
+        borderLeft: '2px solid rgba(255,255,255,0.2)',
+        width: `${columnWidths[columnKey]}px`,
+        minWidth: `${columnWidths[columnKey]}px`,
+        maxWidth: `${columnWidths[columnKey]}px`,
+        position: 'relative',
+        userSelect: 'none'
+      }}
+    >
+      <span style={{ fontSize: '0.8rem', paddingRight: '12px' }}>{label}</span>
+      {/* Resize Handle - visible bar on right edge */}
       <div
         onMouseDown={(e) => startResize(columnKey, e)}
         style={{
           position: 'absolute',
-          right: 0,
-          top: 0,
-          bottom: 0,
-          width: '8px',
+          right: '-2px',
+          top: '8px',
+          bottom: '8px',
+          width: '4px',
+          background: resizingColumn === columnKey ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.3)',
+          borderRadius: '2px',
           cursor: 'col-resize',
-          background: resizing?.columnKey === columnKey ? 'rgba(255,255,255,0.3)' : 'transparent',
           transition: 'background 0.15s',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
+          zIndex: 10
         }}
-        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
-        onMouseLeave={(e) => { if (resizing?.columnKey !== columnKey) e.currentTarget.style.background = 'transparent'; }}
-      >
-        <GripVertical size={12} style={{ opacity: 0.5 }} />
-      </div>
+        onMouseEnter={(e) => { if (!resizingColumn) e.currentTarget.style.background = 'rgba(255,255,255,0.6)'; }}
+        onMouseLeave={(e) => { if (!resizingColumn) e.currentTarget.style.background = 'rgba(255,255,255,0.3)'; }}
+        title="Spaltenbreite anpassen"
+      />
     </th>
   );
 
@@ -279,11 +299,11 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <GripVertical size={16} />
-            <span>Tipp: Spaltenbreiten durch Ziehen der Trennlinien anpassen</span>
+            <span>Tipp: Ziehen Sie die weißen Balken zwischen den Spaltenüberschriften, um die Breite anzupassen</span>
           </div>
           <button 
             className="btn btn-ghost" 
-            style={{ fontSize: '0.8rem', padding: '0.25rem 0.5rem' }}
+            style={{ fontSize: '0.8rem', padding: '0.25rem 0.75rem' }}
             onClick={resetColumnWidths}
           >
             Zurücksetzen
@@ -313,8 +333,9 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
           borderRadius: '12px',
           background: 'var(--bg-paper)'
         }}>
-          <table ref={tableRef} style={{ 
-            width: '100%', 
+          <table style={{ 
+            width: 'max-content',
+            minWidth: '100%',
             borderCollapse: 'collapse',
             fontSize: '0.85rem',
             tableLayout: 'fixed'
@@ -326,7 +347,8 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
                   textAlign: 'center', 
                   color: 'white',
                   fontWeight: '600',
-                  width: '75px',
+                  width: '80px',
+                  minWidth: '80px',
                   borderBottom: '2px solid rgba(255,255,255,0.2)'
                 }}>
                   Datum
@@ -336,7 +358,8 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
                   textAlign: 'center', 
                   color: 'white',
                   fontWeight: '600',
-                  width: '40px',
+                  width: '45px',
+                  minWidth: '45px',
                   borderBottom: '2px solid rgba(255,255,255,0.2)'
                 }}>
                   Tag
@@ -346,26 +369,15 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
                   textAlign: 'center', 
                   color: 'white',
                   fontWeight: '600',
-                  width: '40px',
+                  width: '45px',
+                  minWidth: '45px',
                   borderBottom: '2px solid rgba(255,255,255,0.2)'
                 }}>
                   Std.
                 </th>
-                <ResizableHeader 
-                  columnKey="unterrichtseinheit" 
-                  label="Unterrichtseinheit" 
-                  color={currentClass?.color}
-                />
-                <ResizableHeader 
-                  columnKey="lehrplan" 
-                  label="Lehrplan, Bildungsstandards, Begriffe, Hinweise" 
-                  color={currentClass?.color}
-                />
-                <ResizableHeader 
-                  columnKey="stundenthema" 
-                  label="Stundenthema, Zielsetzung" 
-                  color={currentClass?.color}
-                />
+                <ColumnHeader columnKey="unterrichtseinheit" label="Unterrichtseinheit" />
+                <ColumnHeader columnKey="lehrplan" label="Lehrplan, Bildungsstandards, Begriffe, Hinweise" />
+                <ColumnHeader columnKey="stundenthema" label="Stundenthema, Zielsetzung" />
               </tr>
             </thead>
             <tbody>
@@ -396,7 +408,8 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
                             verticalAlign: 'top',
                             borderRight: '1px solid var(--border-default)',
                             fontSize: '0.8rem',
-                            textAlign: 'center'
+                            textAlign: 'center',
+                            width: '80px'
                           }}
                         >
                           {format(day, 'dd.MM.yy')}
@@ -414,7 +427,8 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
                             verticalAlign: 'top',
                             color: isWeekend ? 'var(--text-muted)' : 'var(--text-default)',
                             borderRight: '1px solid var(--border-default)',
-                            fontSize: '0.8rem'
+                            fontSize: '0.8rem',
+                            width: '45px'
                           }}
                         >
                           {WEEKDAYS[getDay(day)]}
@@ -428,7 +442,8 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
                         fontWeight: '600',
                         background: 'rgba(59, 130, 246, 0.05)',
                         borderRight: '1px solid var(--border-default)',
-                        fontSize: '0.8rem'
+                        fontSize: '0.8rem',
+                        width: '45px'
                       }}>
                         {period}.
                       </td>
@@ -437,7 +452,9 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
                       <td style={{ 
                         padding: '0.25rem',
                         borderLeft: '2px solid var(--border-default)',
-                        width: `${columnWidths.unterrichtseinheit}px`
+                        width: `${columnWidths.unterrichtseinheit}px`,
+                        minWidth: `${columnWidths.unterrichtseinheit}px`,
+                        maxWidth: `${columnWidths.unterrichtseinheit}px`
                       }}>
                         <textarea
                           value={rowData.unterrichtseinheit || ''}
@@ -454,7 +471,8 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
                             color: 'var(--text-default)',
                             fontSize: '0.85rem',
                             resize: 'vertical',
-                            outline: 'none'
+                            outline: 'none',
+                            boxSizing: 'border-box'
                           }}
                           onFocus={(e) => e.target.style.borderColor = 'var(--primary)'}
                           onBlur={(e) => e.target.style.borderColor = 'transparent'}
@@ -465,7 +483,9 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
                       <td style={{ 
                         padding: '0.25rem',
                         borderLeft: '2px solid var(--border-default)',
-                        width: `${columnWidths.lehrplan}px`
+                        width: `${columnWidths.lehrplan}px`,
+                        minWidth: `${columnWidths.lehrplan}px`,
+                        maxWidth: `${columnWidths.lehrplan}px`
                       }}>
                         <textarea
                           value={rowData.lehrplan || ''}
@@ -482,7 +502,8 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
                             color: 'var(--text-default)',
                             fontSize: '0.85rem',
                             resize: 'vertical',
-                            outline: 'none'
+                            outline: 'none',
+                            boxSizing: 'border-box'
                           }}
                           onFocus={(e) => e.target.style.borderColor = 'var(--primary)'}
                           onBlur={(e) => e.target.style.borderColor = 'transparent'}
@@ -493,7 +514,9 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
                       <td style={{ 
                         padding: '0.25rem',
                         borderLeft: '2px solid var(--border-default)',
-                        width: `${columnWidths.stundenthema}px`
+                        width: `${columnWidths.stundenthema}px`,
+                        minWidth: `${columnWidths.stundenthema}px`,
+                        maxWidth: `${columnWidths.stundenthema}px`
                       }}>
                         <textarea
                           value={rowData.stundenthema || ''}
@@ -510,7 +533,8 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
                             color: 'var(--text-default)',
                             fontSize: '0.85rem',
                             resize: 'vertical',
-                            outline: 'none'
+                            outline: 'none',
+                            boxSizing: 'border-box'
                           }}
                           onFocus={(e) => e.target.style.borderColor = 'var(--primary)'}
                           onBlur={(e) => e.target.style.borderColor = 'transparent'}
