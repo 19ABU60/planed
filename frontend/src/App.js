@@ -2021,6 +2021,9 @@ const MainApp = () => {
             {currentPage === 'documents' && 'Dokumente'}
             {currentPage === 'settings' && 'Einstellungen'}
           </h1>
+          <div className="main-header-actions">
+            <NotificationBell />
+          </div>
         </header>
         {renderPage()}
       </main>
