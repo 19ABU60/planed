@@ -492,7 +492,9 @@ const CalendarPage = ({ classes, lessons, holidays, schoolHolidays, publicHolida
           onClose={() => setShowModal(false)} 
           onAISuggestion={handleAISuggestion} 
           aiLoading={aiLoading} 
-          mode={modalMode} 
+          mode={modalMode}
+          availablePeriods={selectedDate ? getPeriodsForDay(selectedDate) : []}
+          initialPeriod={selectedPeriod}
         />
       )}
     </div>
