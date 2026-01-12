@@ -623,6 +623,10 @@ async def export_pdf(class_subject_id: str, user_id: str = Depends(get_current_u
 
 @api_router.post("/ai/suggestions", response_model=AITopicSuggestionResponse)
 async def get_ai_suggestions(data: AITopicSuggestionRequest, user_id: str = Depends(get_current_user)):
+    import asyncio
+    import json
+    import re
+    
     try:
         from emergentintegrations.llm.chat import LlmChat, UserMessage
         
@@ -638,36 +642,47 @@ async def get_ai_suggestions(data: AITopicSuggestionRequest, user_id: str = Depe
             Antworte immer auf Deutsch und strukturiere deine Vorschläge klar."""
         ).with_model("gemini", "gemini-3-flash-preview")
         
-        prompt = f"""Erstelle 5 Unterrichtsthemen-Vorschläge für:
+        prompt = f"""Erstelle 3 Unterrichtsthemen-Vorschläge für:
         Fach: {data.subject}
         Klassenstufe: {data.grade}
         Lehrplanthema: {data.curriculum_topic}
-        {"Bereits behandelte Themen: " + ", ".join(data.previous_topics) if data.previous_topics else ""}
+        {"Bereits behandelte Themen: " + ", ".join(data.previous_topics[:3]) if data.previous_topics else ""}
         
-        Für jedes Thema gib an:
-        1. Stundenthema (kurz und prägnant)
-        2. Lernziel/Zielsetzung
-        3. Schlüsselbegriffe
+        Antworte NUR mit einem JSON-Array: [{{"topic": "...", "objective": "...", "key_terms": "..."}}]"""
         
-        Formatiere als JSON-Array mit Objekten: {{"topic": "...", "objective": "...", "key_terms": "..."}}"""
-        
-        response = await chat.send_message(UserMessage(text=prompt))
-        
-        # Parse response
-        import json
-        import re
+        # Add timeout to prevent long waits
+        try:
+            response = await asyncio.wait_for(
+                chat.send_message(UserMessage(text=prompt)),
+                timeout=25.0
+            )
+        except asyncio.TimeoutError:
+            logger.warning("AI request timed out, returning fallback suggestions")
+            return AITopicSuggestionResponse(suggestions=[
+                {"topic": f"Einführung in {data.curriculum_topic}", "objective": "Grundlagen verstehen", "key_terms": data.subject},
+                {"topic": f"Vertiefung: {data.curriculum_topic}", "objective": "Anwendung üben", "key_terms": "Übung, Praxis"},
+                {"topic": f"Zusammenfassung {data.curriculum_topic}", "objective": "Wissen festigen", "key_terms": "Wiederholung"}
+            ])
         
         # Extract JSON from response
         json_match = re.search(r'\[.*\]', response, re.DOTALL)
         if json_match:
-            suggestions = json.loads(json_match.group())
+            try:
+                suggestions = json.loads(json_match.group())
+            except json.JSONDecodeError:
+                suggestions = [{"topic": "Vorschlag konnte nicht generiert werden", "objective": "", "key_terms": ""}]
         else:
             suggestions = [{"topic": "Vorschlag konnte nicht generiert werden", "objective": "", "key_terms": ""}]
         
         return AITopicSuggestionResponse(suggestions=suggestions[:5])
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"AI suggestion error: {e}")
-        raise HTTPException(status_code=500, detail=f"AI service error: {str(e)}")
+        # Return fallback suggestions instead of error
+        return AITopicSuggestionResponse(suggestions=[
+            {"topic": f"Thema zu {data.curriculum_topic}", "objective": "Lernziele definieren", "key_terms": data.subject}
+        ])
 
 # ============== DOCUMENT MANAGEMENT ==============
 
