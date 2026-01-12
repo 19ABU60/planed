@@ -169,7 +169,7 @@ class UserResponse(BaseModel):
     email: str
     name: str
     created_at: str
-    bundesland: Optional[str] = "bayern"
+    bundesland: Optional[str] = "rheinland-pfalz"
     theme: Optional[str] = "dark"
 
 class UserSettingsUpdate(BaseModel):
@@ -489,7 +489,7 @@ async def register(user: UserCreate):
         "email": user.email,
         "password": hash_password(user.password),
         "name": user.name,
-        "bundesland": "bayern",
+        "bundesland": "rheinland-pfalz",
         "theme": "dark",
         "created_at": now
     }
