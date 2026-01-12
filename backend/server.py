@@ -111,6 +111,13 @@ GERMAN_HOLIDAYS_2025_2026 = {
         {"name": "Pfingstferien 2026", "start": "2026-05-11", "end": "2026-05-15"},
         {"name": "Sommerferien 2026", "start": "2026-07-23", "end": "2026-09-02"},
     ],
+    "rheinland-pfalz": [
+        {"name": "Herbstferien 2025", "start": "2025-10-13", "end": "2025-10-24"},
+        {"name": "Weihnachtsferien 2025/26", "start": "2025-12-22", "end": "2026-01-06"},
+        {"name": "Osterferien 2026", "start": "2026-03-23", "end": "2026-04-06"},
+        {"name": "Pfingstferien 2026", "start": "2026-06-02", "end": "2026-06-10"},
+        {"name": "Sommerferien 2026", "start": "2026-07-06", "end": "2026-08-14"},
+    ],
 }
 
 GERMAN_PUBLIC_HOLIDAYS_2025_2026 = [
@@ -143,6 +150,7 @@ BUNDESLAENDER = [
     {"id": "sachsen", "name": "Sachsen"},
     {"id": "niedersachsen", "name": "Niedersachsen"},
     {"id": "hamburg", "name": "Hamburg"},
+    {"id": "rheinland-pfalz", "name": "Rheinland-Pfalz"},
 ]
 
 # ============== MODELS ==============
