@@ -1,6 +1,16 @@
 import { useState } from 'react';
-import { Plus, Edit2, Trash2, BookOpen, X } from 'lucide-react';
+import { Plus, Edit2, Trash2, BookOpen, X, Clock, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
+
+const WEEKDAYS = [
+  { id: 'monday', label: 'Mo' },
+  { id: 'tuesday', label: 'Di' },
+  { id: 'wednesday', label: 'Mi' },
+  { id: 'thursday', label: 'Do' },
+  { id: 'friday', label: 'Fr' }
+];
+
+const PERIODS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 const ClassesPage = ({ schoolYears, classes, onCreateClass, onUpdateClass, onDeleteClass, onCreateSchoolYear }) => {
   const [showClassModal, setShowClassModal] = useState(false);
@@ -8,13 +18,105 @@ const ClassesPage = ({ schoolYears, classes, onCreateClass, onUpdateClass, onDel
   const [editingClass, setEditingClass] = useState(null);
   const colors = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899', '#84cc16'];
 
+  // Schedule Editor Component
+  const ScheduleEditor = ({ schedule, onChange }) => {
+    const togglePeriod = (day, period) => {
+      const newSchedule = { ...schedule };
+      if (!newSchedule[day]) {
+        newSchedule[day] = [];
+      }
+      
+      if (newSchedule[day].includes(period)) {
+        newSchedule[day] = newSchedule[day].filter(p => p !== period);
+      } else {
+        newSchedule[day] = [...newSchedule[day], period].sort((a, b) => a - b);
+      }
+      
+      // Remove empty days
+      if (newSchedule[day].length === 0) {
+        delete newSchedule[day];
+      }
+      
+      onChange(newSchedule);
+    };
+
+    const isSelected = (day, period) => {
+      return schedule[day]?.includes(period) || false;
+    };
+
+    return (
+      <div style={{ marginTop: '0.5rem' }}>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: '40px repeat(5, 1fr)', 
+          gap: '4px',
+          fontSize: '0.8rem'
+        }}>
+          {/* Header */}
+          <div></div>
+          {WEEKDAYS.map(day => (
+            <div key={day.id} style={{ textAlign: 'center', fontWeight: '600', padding: '0.25rem', color: 'var(--text-muted)' }}>
+              {day.label}
+            </div>
+          ))}
+          
+          {/* Rows */}
+          {PERIODS.map(period => (
+            <>
+              <div key={`label-${period}`} style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                fontWeight: '500',
+                color: 'var(--text-muted)',
+                fontSize: '0.75rem'
+              }}>
+                {period}.
+              </div>
+              {WEEKDAYS.map(day => (
+                <div
+                  key={`${day.id}-${period}`}
+                  onClick={() => togglePeriod(day.id, period)}
+                  style={{
+                    height: '28px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    background: isSelected(day.id, period) ? 'var(--primary)' : 'var(--bg-subtle)',
+                    border: '1px solid',
+                    borderColor: isSelected(day.id, period) ? 'var(--primary)' : 'var(--border-default)',
+                    transition: 'all 0.15s ease'
+                  }}
+                />
+              ))}
+            </>
+          ))}
+        </div>
+        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+          Klicken Sie auf die Felder, um die Unterrichtsstunden festzulegen
+        </p>
+      </div>
+    );
+  };
+
+  // Format schedule for display
+  const formatSchedule = (schedule) => {
+    if (!schedule || Object.keys(schedule).length === 0) return null;
+    
+    const dayLabels = { monday: 'Mo', tuesday: 'Di', wednesday: 'Mi', thursday: 'Do', friday: 'Fr' };
+    return Object.entries(schedule)
+      .filter(([_, periods]) => periods.length > 0)
+      .map(([day, periods]) => `${dayLabels[day]}: ${periods.join('+')}.`)
+      .join(' | ');
+  };
+
   const ClassModal = ({ cls, onClose }) => {
     const [formData, setFormData] = useState({ 
       name: cls?.name || '', 
       subject: cls?.subject || '', 
       color: cls?.color || '#3b82f6', 
       hours_per_week: cls?.hours_per_week || 4, 
-      school_year_id: cls?.school_year_id || (schoolYears[0]?.id || '') 
+      school_year_id: cls?.school_year_id || (schoolYears[0]?.id || ''),
+      schedule: cls?.schedule || {}
     });
     
     const handleSubmit = async (e) => {
@@ -35,7 +137,7 @@ const ClassesPage = ({ schoolYears, classes, onCreateClass, onUpdateClass, onDel
     
     return (
       <div className="modal-overlay" onClick={onClose}>
-        <div className="modal-content" onClick={e => e.stopPropagation()}>
+        <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '550px' }}>
           <div className="modal-header">
             <h3 className="modal-title">{cls ? 'Klasse bearbeiten' : 'Neue Klasse'}</h3>
             <button className="btn btn-ghost btn-icon" onClick={onClose}><X size={20} /></button>
@@ -103,6 +205,17 @@ const ClassesPage = ({ schoolYears, classes, onCreateClass, onUpdateClass, onDel
                     />
                   ))}
                 </div>
+              </div>
+              
+              {/* Schedule Editor */}
+              <div className="form-group">
+                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Clock size={16} /> Stundenplan
+                </label>
+                <ScheduleEditor 
+                  schedule={formData.schedule} 
+                  onChange={(schedule) => setFormData({ ...formData, schedule })} 
+                />
               </div>
             </div>
             <div className="modal-footer">
@@ -224,9 +337,10 @@ const ClassesPage = ({ schoolYears, classes, onCreateClass, onUpdateClass, onDel
           </button>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
           {classes.map(cls => {
             const year = schoolYears.find(y => y.id === cls.school_year_id);
+            const scheduleText = formatSchedule(cls.schedule);
             return (
               <div key={cls.id} className="card" style={{ borderLeft: `4px solid ${cls.color}` }}>
                 <div className="card-header">
@@ -254,8 +368,21 @@ const ClassesPage = ({ schoolYears, classes, onCreateClass, onUpdateClass, onDel
                     </button>
                   </div>
                 </div>
-                <div style={{ marginTop: '1rem' }}>
+                <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   <span className="badge badge-primary">{cls.hours_per_week} Std./Woche</span>
+                  {scheduleText && (
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '0.5rem', 
+                      fontSize: '0.8rem', 
+                      color: 'var(--text-muted)',
+                      marginTop: '0.25rem'
+                    }}>
+                      <Calendar size={14} />
+                      <span>{scheduleText}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             );
