@@ -165,6 +165,16 @@ PlanEd ist eine Web-Anwendung für Lehrer zur Verwaltung von Arbeitsplänen, die
 
 ## Changelog
 
+### 12.01.2026 - Arbeitsplan-Tabelle Spaltenanpassung
+- Spaltenbreiten anpassbar mit **−** und **+** Buttons
+- Neue Standardbreiten:
+  - "Unterrichtseinheit" - schmal (120px)
+  - "Lehrplan, Standards, Hinweise" - schmal (120px)
+  - "Stundenthema, Zielsetzung, Lernziele" - groß (450px)
+- "Lernziele" zur dritten Spalte hinzugefügt
+- "↺ Reset" Button zum Zurücksetzen der Spaltenbreiten
+- Spaltenbreiten werden im Browser gespeichert
+
 ### 12.01.2026 - Kalender-Farbfehler behoben & Spalten-Resize
 - **Kalender**: Lektionen zeigen jetzt die korrekte Klassenfarbe an
 - **Arbeitsplan-Tabelle**: Spaltenbreiten können durch Ziehen angepasst werden
