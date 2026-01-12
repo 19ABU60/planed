@@ -177,6 +177,7 @@ const MainApp = () => {
 
   const pageTitle = { 
     dashboard: 'Dashboard', 
+    workplan: 'Arbeitsplan',
     calendar: 'Kalender', 
     statistics: 'Statistik', 
     classes: 'Klassen', 
