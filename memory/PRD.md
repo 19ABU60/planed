@@ -19,6 +19,7 @@ Erstelle eine App für Lehrer zur Erstellung und Verwaltung von Arbeitsplänen f
 9. ✅ Dunkles, professionelles Design
 10. ✅ Optional: KI-Vorschläge für Unterrichtsthemen (Gemini)
 11. ✅ Freigabe von Arbeitsplänen für Kollegen
+12. ✅ Push-Benachrichtigungen bei Änderungen
 
 ## Architecture
 - **Backend**: FastAPI + MongoDB
@@ -38,7 +39,8 @@ Erstelle eine App für Lehrer zur Erstellung und Verwaltung von Arbeitsplänen f
 - Export Endpoints (Excel, Word, PDF)
 - Document Upload/Download
 - AI Topic Suggestions (Gemini Integration)
-- **NEU: Sharing System für Kollegen**
+- Sharing System für Kollegen
+- **NEU: Benachrichtigungs-System**
 
 ### Frontend (App.js)
 - Login/Registration Page mit deutschem Dark Theme
@@ -46,10 +48,11 @@ Erstelle eine App für Lehrer zur Erstellung und Verwaltung von Arbeitsplänen f
 - Kalender-Ansicht (monatlich, mit Unterrichtsstunden)
 - Statistik-Seite mit Diagrammen und Export-Buttons
 - Klassen-Verwaltung
-- **NEU: Freigaben-Seite** (Arbeitspläne mit Kollegen teilen)
+- Freigaben-Seite (Arbeitspläne mit Kollegen teilen)
 - Dokumente-Seite mit Upload
 - Einstellungen-Seite
 - Sidebar Navigation
+- **NEU: Benachrichtigungs-Glocke im Header**
 - **Alle Beschriftungen auf Deutsch**
 
 ## Prioritized Backlog
@@ -59,6 +62,7 @@ Erstelle eine App für Lehrer zur Erstellung und Verwaltung von Arbeitsplänen f
 - ✅ Calendar view
 - ✅ Authentication
 - ✅ Sharing with colleagues
+- ✅ Notification system
 
 ### P1 (Important) - Next Phase
 - Drag & Drop für Unterrichtsstunden im Kalender
@@ -69,7 +73,7 @@ Erstelle eine App für Lehrer zur Erstellung und Verwaltung von Arbeitsplänen f
 - Vorlagen für häufige Lehrplanpunkte
 - Offline-Modus (PWA)
 - Mobile Optimierung
-- Benachrichtigungen bei geteilten Änderungen
+- E-Mail-Benachrichtigungen
 
 ## Next Action Items
 1. Drag & Drop für Kalendereinträge implementieren
