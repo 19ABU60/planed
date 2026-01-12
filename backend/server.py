@@ -203,6 +203,18 @@ class SharedClassResponse(BaseModel):
     owner_email: str
     can_edit: bool
 
+# Notification Models
+class NotificationResponse(BaseModel):
+    id: str
+    user_id: str
+    type: str  # "share_new", "share_edit", "share_removed"
+    title: str
+    message: str
+    class_name: str
+    from_user_name: str
+    is_read: bool
+    created_at: str
+
 # ============== AUTH HELPERS ==============
 
 def hash_password(password: str) -> str:
