@@ -176,6 +176,33 @@ class AITopicSuggestionRequest(BaseModel):
 class AITopicSuggestionResponse(BaseModel):
     suggestions: List[Dict[str, str]]
 
+# Sharing Models
+class ShareCreate(BaseModel):
+    class_subject_id: str
+    shared_with_email: EmailStr
+    can_edit: bool = False
+
+class ShareResponse(BaseModel):
+    id: str
+    class_subject_id: str
+    owner_id: str
+    owner_name: str
+    shared_with_id: str
+    shared_with_email: str
+    can_edit: bool
+    created_at: str
+
+class SharedClassResponse(BaseModel):
+    id: str
+    name: str
+    subject: str
+    color: str
+    hours_per_week: int
+    school_year_id: str
+    owner_name: str
+    owner_email: str
+    can_edit: bool
+
 # ============== AUTH HELPERS ==============
 
 def hash_password(password: str) -> str:
