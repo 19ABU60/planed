@@ -24,6 +24,7 @@ import SharingPage from './pages/SharingPage';
 import DocumentsPage from './pages/DocumentsPage';
 import HistoryPage from './pages/HistoryPage';
 import SettingsPage from './pages/SettingsPage';
+import WorkplanTablePage from './pages/WorkplanTablePage';
 
 // Main App Component
 const MainApp = () => {
