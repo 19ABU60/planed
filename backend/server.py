@@ -265,6 +265,16 @@ class LessonUpdate(BaseModel):
     date: Optional[str] = None
     period: Optional[int] = None
 
+class WorkplanEntry(BaseModel):
+    date: str
+    period: int
+    entries: List[Dict[str, str]]  # [{"topic": "...", "objective": "..."}, ...]
+    collaborators: Optional[List[str]] = None
+    class_subject_id: Optional[str] = None
+
+class WorkplanBulkSave(BaseModel):
+    entries: List[WorkplanEntry]
+
 class BatchLessonCreate(BaseModel):
     class_subject_id: str
     dates: List[str]
