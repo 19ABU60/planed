@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Save, Plus, Trash2, Users, ChevronLeft, ChevronRight } from 'lucide-react';
-import { format, addDays, startOfMonth, endOfMonth, eachDayOfInterval, getDay, parseISO } from 'date-fns';
+import { Save, ChevronLeft, ChevronRight } from 'lucide-react';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
@@ -12,7 +12,6 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
   const [selectedClass, setSelectedClass] = useState(classes[0]?.id || '');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [workplanData, setWorkplanData] = useState({});
-  const [collaborators, setCollaborators] = useState(['Lehrer 1', 'Lehrer 2']);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -69,11 +68,6 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
           dataMap[key] = item;
         });
         setWorkplanData(dataMap);
-        
-        // Load collaborators from class or use defaults
-        if (response.data.length > 0 && response.data[0].collaborators) {
-          setCollaborators(response.data[0].collaborators);
-        }
       } catch (error) {
         console.error('Error fetching workplan:', error);
       }
@@ -84,27 +78,20 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
   }, [selectedClass, currentMonth, authAxios]);
 
   // Update cell data
-  const updateCell = (dateStr, period, collaboratorIndex, field, value) => {
+  const updateCell = (dateStr, period, field, value) => {
     const key = `${dateStr}-${period}`;
     setWorkplanData(prev => {
       const existing = prev[key] || { 
         date: dateStr, 
-        period, 
-        entries: collaborators.map(() => ({ topic: '', objective: '' }))
-      };
-      
-      const newEntries = [...(existing.entries || collaborators.map(() => ({ topic: '', objective: '' })))];
-      if (!newEntries[collaboratorIndex]) {
-        newEntries[collaboratorIndex] = { topic: '', objective: '' };
-      }
-      newEntries[collaboratorIndex] = {
-        ...newEntries[collaboratorIndex],
-        [field]: value
+        period,
+        unterrichtseinheit: '',
+        lehrplan: '',
+        stundenthema: ''
       };
       
       return {
         ...prev,
-        [key]: { ...existing, entries: newEntries }
+        [key]: { ...existing, [field]: value }
       };
     });
   };
@@ -115,8 +102,7 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
     try {
       const entries = Object.values(workplanData).map(item => ({
         ...item,
-        class_subject_id: selectedClass,
-        collaborators: collaborators
+        class_subject_id: selectedClass
       }));
       
       await authAxios.post(`/workplan/${selectedClass}/bulk`, { entries });
@@ -126,35 +112,6 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
       console.error(error);
     }
     setSaving(false);
-  };
-
-  // Add collaborator column
-  const addCollaborator = () => {
-    const name = prompt('Name des neuen Bearbeiters:', `Lehrer ${collaborators.length + 1}`);
-    if (name) {
-      setCollaborators([...collaborators, name]);
-    }
-  };
-
-  // Remove collaborator column
-  const removeCollaborator = (index) => {
-    if (collaborators.length <= 1) {
-      toast.error('Mindestens ein Bearbeiter erforderlich');
-      return;
-    }
-    if (window.confirm(`"${collaborators[index]}" entfernen?`)) {
-      setCollaborators(collaborators.filter((_, i) => i !== index));
-    }
-  };
-
-  // Rename collaborator
-  const renameCollaborator = (index) => {
-    const newName = prompt('Neuer Name:', collaborators[index]);
-    if (newName) {
-      const updated = [...collaborators];
-      updated[index] = newName;
-      setCollaborators(updated);
-    }
   };
 
   const navigateMonth = (direction) => {
@@ -205,10 +162,6 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
             </button>
           </div>
           
-          <button className="btn btn-secondary" onClick={addCollaborator}>
-            <Users size={18} /> Spalte hinzufügen
-          </button>
-          
           <button className="btn btn-primary" onClick={saveWorkplan} disabled={saving}>
             {saving ? <span className="spinner" /> : <Save size={18} />} Speichern
           </button>
@@ -245,109 +198,65 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
             <thead>
               <tr style={{ background: currentClass?.color || '#3b82f6' }}>
                 <th style={{ 
-                  padding: '0.75rem', 
-                  textAlign: 'left', 
+                  padding: '0.75rem 0.5rem', 
+                  textAlign: 'center', 
                   color: 'white',
                   fontWeight: '600',
-                  minWidth: '100px',
+                  width: '75px',
                   borderBottom: '2px solid rgba(255,255,255,0.2)'
                 }}>
                   Datum
                 </th>
                 <th style={{ 
-                  padding: '0.75rem', 
+                  padding: '0.75rem 0.25rem', 
                   textAlign: 'center', 
                   color: 'white',
                   fontWeight: '600',
-                  minWidth: '50px',
+                  width: '40px',
                   borderBottom: '2px solid rgba(255,255,255,0.2)'
                 }}>
                   Tag
+                </th>
+                <th style={{ 
+                  padding: '0.75rem 0.25rem', 
+                  textAlign: 'center', 
+                  color: 'white',
+                  fontWeight: '600',
+                  width: '40px',
+                  borderBottom: '2px solid rgba(255,255,255,0.2)'
+                }}>
+                  Std.
                 </th>
                 <th style={{ 
                   padding: '0.75rem', 
                   textAlign: 'center', 
                   color: 'white',
                   fontWeight: '600',
-                  minWidth: '50px',
-                  borderBottom: '2px solid rgba(255,255,255,0.2)'
+                  borderBottom: '2px solid rgba(255,255,255,0.2)',
+                  borderLeft: '2px solid rgba(255,255,255,0.2)'
                 }}>
-                  Std.
+                  Unterrichtseinheit
                 </th>
-                {collaborators.map((collab, idx) => (
-                  <th 
-                    key={idx} 
-                    colSpan={2}
-                    style={{ 
-                      padding: '0.5rem', 
-                      textAlign: 'center', 
-                      color: 'white',
-                      fontWeight: '600',
-                      minWidth: '300px',
-                      borderBottom: '2px solid rgba(255,255,255,0.2)',
-                      borderLeft: '2px solid rgba(255,255,255,0.2)'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                      <span 
-                        onClick={() => renameCollaborator(idx)} 
-                        style={{ cursor: 'pointer' }}
-                        title="Klicken zum Umbenennen"
-                      >
-                        {collab}
-                      </span>
-                      {collaborators.length > 1 && (
-                        <button 
-                          onClick={() => removeCollaborator(idx)}
-                          style={{ 
-                            background: 'rgba(255,255,255,0.2)', 
-                            border: 'none', 
-                            borderRadius: '4px',
-                            padding: '2px 6px',
-                            cursor: 'pointer',
-                            color: 'white',
-                            fontSize: '0.7rem'
-                          }}
-                          title="Spalte entfernen"
-                        >
-                          ✕
-                        </button>
-                      )}
-                    </div>
-                  </th>
-                ))}
-              </tr>
-              <tr style={{ background: 'rgba(59, 130, 246, 0.1)' }}>
-                <th colSpan={3}></th>
-                {collaborators.map((_, idx) => (
-                  <>
-                    <th 
-                      key={`topic-${idx}`}
-                      style={{ 
-                        padding: '0.5rem', 
-                        textAlign: 'center', 
-                        fontSize: '0.75rem',
-                        fontWeight: '500',
-                        color: 'var(--text-muted)',
-                        borderLeft: idx === 0 ? 'none' : '2px solid var(--border-default)'
-                      }}
-                    >
-                      Stundenthema
-                    </th>
-                    <th 
-                      key={`obj-${idx}`}
-                      style={{ 
-                        padding: '0.5rem', 
-                        textAlign: 'center', 
-                        fontSize: '0.75rem',
-                        fontWeight: '500',
-                        color: 'var(--text-muted)'
-                      }}
-                    >
-                      Lernziele
-                    </th>
-                  </>
-                ))}
+                <th style={{ 
+                  padding: '0.75rem', 
+                  textAlign: 'center', 
+                  color: 'white',
+                  fontWeight: '600',
+                  borderBottom: '2px solid rgba(255,255,255,0.2)',
+                  borderLeft: '2px solid rgba(255,255,255,0.2)'
+                }}>
+                  Lehrplan, Bildungsstandards, Begriffe, Hinweise
+                </th>
+                <th style={{ 
+                  padding: '0.75rem', 
+                  textAlign: 'center', 
+                  color: 'white',
+                  fontWeight: '600',
+                  borderBottom: '2px solid rgba(255,255,255,0.2)',
+                  borderLeft: '2px solid rgba(255,255,255,0.2)'
+                }}>
+                  Stundenthema, Zielsetzung
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -358,7 +267,7 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
                 
                 return periods.map((period, periodIndex) => {
                   const key = `${dateStr}-${period}`;
-                  const rowData = workplanData[key] || { entries: [] };
+                  const rowData = workplanData[key] || {};
                   
                   return (
                     <tr 
@@ -373,10 +282,12 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
                         <td 
                           rowSpan={periods.length}
                           style={{ 
-                            padding: '0.5rem 0.75rem', 
+                            padding: '0.4rem 0.5rem', 
                             fontWeight: '500',
                             verticalAlign: 'top',
-                            borderRight: '1px solid var(--border-default)'
+                            borderRight: '1px solid var(--border-default)',
+                            fontSize: '0.8rem',
+                            textAlign: 'center'
                           }}
                         >
                           {format(day, 'dd.MM.yy')}
@@ -388,12 +299,13 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
                         <td 
                           rowSpan={periods.length}
                           style={{ 
-                            padding: '0.5rem', 
+                            padding: '0.4rem 0.25rem', 
                             textAlign: 'center',
                             fontWeight: '600',
                             verticalAlign: 'top',
                             color: isWeekend ? 'var(--text-muted)' : 'var(--text-default)',
-                            borderRight: '1px solid var(--border-default)'
+                            borderRight: '1px solid var(--border-default)',
+                            fontSize: '0.8rem'
                           }}
                         >
                           {WEEKDAYS[getDay(day)]}
@@ -402,79 +314,96 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
                       
                       {/* Period */}
                       <td style={{ 
-                        padding: '0.5rem', 
+                        padding: '0.4rem 0.25rem', 
                         textAlign: 'center',
                         fontWeight: '600',
                         background: 'rgba(59, 130, 246, 0.05)',
-                        borderRight: '1px solid var(--border-default)'
+                        borderRight: '1px solid var(--border-default)',
+                        fontSize: '0.8rem'
                       }}>
                         {period}.
                       </td>
                       
-                      {/* Collaborator columns */}
-                      {collaborators.map((_, collabIdx) => {
-                        const entry = rowData.entries?.[collabIdx] || { topic: '', objective: '' };
-                        return (
-                          <>
-                            <td 
-                              key={`${key}-topic-${collabIdx}`}
-                              style={{ 
-                                padding: '0.25rem',
-                                borderLeft: collabIdx > 0 ? '2px solid var(--border-default)' : 'none',
-                                minWidth: '150px'
-                              }}
-                            >
-                              <textarea
-                                value={entry.topic || ''}
-                                onChange={(e) => updateCell(dateStr, period, collabIdx, 'topic', e.target.value)}
-                                placeholder="Thema..."
-                                style={{
-                                  width: '100%',
-                                  minHeight: '50px',
-                                  padding: '0.5rem',
-                                  border: '1px solid transparent',
-                                  borderRadius: '4px',
-                                  background: 'transparent',
-                                  color: 'var(--text-default)',
-                                  fontSize: '0.85rem',
-                                  resize: 'vertical',
-                                  outline: 'none'
-                                }}
-                                onFocus={(e) => e.target.style.borderColor = 'var(--primary)'}
-                                onBlur={(e) => e.target.style.borderColor = 'transparent'}
-                              />
-                            </td>
-                            <td 
-                              key={`${key}-obj-${collabIdx}`}
-                              style={{ 
-                                padding: '0.25rem',
-                                borderRight: '1px solid var(--border-default)',
-                                minWidth: '150px'
-                              }}
-                            >
-                              <textarea
-                                value={entry.objective || ''}
-                                onChange={(e) => updateCell(dateStr, period, collabIdx, 'objective', e.target.value)}
-                                placeholder="Lernziele..."
-                                style={{
-                                  width: '100%',
-                                  minHeight: '50px',
-                                  padding: '0.5rem',
-                                  border: '1px solid transparent',
-                                  borderRadius: '4px',
-                                  background: 'transparent',
-                                  color: 'var(--text-default)',
-                                  fontSize: '0.85rem',
-                                  resize: 'vertical',
-                                  outline: 'none'
-                                }}
-                                onFocus={(e) => e.target.style.borderColor = 'var(--primary)'}
-                                onBlur={(e) => e.target.style.borderColor = 'transparent'}
-                              />
-                            </td>
-                          </>
-                        );
-                      })}
+                      {/* Unterrichtseinheit */}
+                      <td style={{ 
+                        padding: '0.25rem',
+                        borderLeft: '2px solid var(--border-default)',
+                        minWidth: '120px'
+                      }}>
+                        <textarea
+                          value={rowData.unterrichtseinheit || ''}
+                          onChange={(e) => updateCell(dateStr, period, 'unterrichtseinheit', e.target.value)}
+                          placeholder=""
+                          style={{
+                            width: '100%',
+                            minHeight: '45px',
+                            padding: '0.4rem',
+                            border: '1px solid transparent',
+                            borderRadius: '4px',
+                            background: 'transparent',
+                            color: 'var(--text-default)',
+                            fontSize: '0.85rem',
+                            resize: 'vertical',
+                            outline: 'none'
+                          }}
+                          onFocus={(e) => e.target.style.borderColor = 'var(--primary)'}
+                          onBlur={(e) => e.target.style.borderColor = 'transparent'}
+                        />
+                      </td>
+                      
+                      {/* Lehrplan, Bildungsstandards, Begriffe, Hinweise */}
+                      <td style={{ 
+                        padding: '0.25rem',
+                        borderLeft: '2px solid var(--border-default)',
+                        minWidth: '200px'
+                      }}>
+                        <textarea
+                          value={rowData.lehrplan || ''}
+                          onChange={(e) => updateCell(dateStr, period, 'lehrplan', e.target.value)}
+                          placeholder=""
+                          style={{
+                            width: '100%',
+                            minHeight: '45px',
+                            padding: '0.4rem',
+                            border: '1px solid transparent',
+                            borderRadius: '4px',
+                            background: 'transparent',
+                            color: 'var(--text-default)',
+                            fontSize: '0.85rem',
+                            resize: 'vertical',
+                            outline: 'none'
+                          }}
+                          onFocus={(e) => e.target.style.borderColor = 'var(--primary)'}
+                          onBlur={(e) => e.target.style.borderColor = 'transparent'}
+                        />
+                      </td>
+                      
+                      {/* Stundenthema, Zielsetzung */}
+                      <td style={{ 
+                        padding: '0.25rem',
+                        borderLeft: '2px solid var(--border-default)',
+                        minWidth: '200px'
+                      }}>
+                        <textarea
+                          value={rowData.stundenthema || ''}
+                          onChange={(e) => updateCell(dateStr, period, 'stundenthema', e.target.value)}
+                          placeholder=""
+                          style={{
+                            width: '100%',
+                            minHeight: '45px',
+                            padding: '0.4rem',
+                            border: '1px solid transparent',
+                            borderRadius: '4px',
+                            background: 'transparent',
+                            color: 'var(--text-default)',
+                            fontSize: '0.85rem',
+                            resize: 'vertical',
+                            outline: 'none'
+                          }}
+                          onFocus={(e) => e.target.style.borderColor = 'var(--primary)'}
+                          onBlur={(e) => e.target.style.borderColor = 'transparent'}
+                        />
+                      </td>
                     </tr>
                   );
                 });
