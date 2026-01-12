@@ -1,11 +1,12 @@
 import { 
   LayoutDashboard, Calendar, BarChart3, BookOpen, FolderOpen, 
-  Settings, LogOut, GraduationCap, FileCheck, ListTodo, Share2, History
+  Settings, LogOut, GraduationCap, FileCheck, ListTodo, Share2, History, Table
 } from 'lucide-react';
 
 const Sidebar = ({ currentPage, onNavigate, onLogout, user }) => {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'workplan', label: 'Arbeitsplan', icon: Table },
     { id: 'calendar', label: 'Kalender', icon: Calendar },
     { id: 'statistics', label: 'Statistik', icon: BarChart3 },
     { id: 'classes', label: 'Klassen', icon: BookOpen },
