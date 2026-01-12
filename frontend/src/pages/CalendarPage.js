@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
 
 // Lesson Modal Component
-const LessonModal = ({ lesson, date, onSave, onDelete, onCopy, onClose, onAISuggestion, aiLoading, mode }) => {
+const LessonModal = ({ lesson, date, onSave, onDelete, onCopy, onClose, onAISuggestion, aiLoading, mode, availablePeriods, initialPeriod }) => {
   const [formData, setFormData] = useState({
     topic: lesson?.topic || '', 
     objective: lesson?.objective || '', 
@@ -19,7 +19,8 @@ const LessonModal = ({ lesson, date, onSave, onDelete, onCopy, onClose, onAISugg
     notes: lesson?.notes || '',
     teaching_units: lesson?.teaching_units || 1, 
     is_cancelled: lesson?.is_cancelled || false, 
-    cancellation_reason: lesson?.cancellation_reason || ''
+    cancellation_reason: lesson?.cancellation_reason || '',
+    period: lesson?.period || initialPeriod || null
   });
 
   useEffect(() => {
@@ -32,9 +33,10 @@ const LessonModal = ({ lesson, date, onSave, onDelete, onCopy, onClose, onAISugg
       notes: lesson.notes || '',
       teaching_units: lesson.teaching_units || 1, 
       is_cancelled: lesson.is_cancelled || false, 
-      cancellation_reason: lesson.cancellation_reason || ''
+      cancellation_reason: lesson.cancellation_reason || '',
+      period: lesson.period || initialPeriod || null
     });
-  }, [lesson]);
+  }, [lesson, initialPeriod]);
 
   return (
     <div className="modal-overlay" onClick={onClose}>
