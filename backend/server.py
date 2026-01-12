@@ -713,6 +713,61 @@ async def create_batch_lessons(data: BatchLessonCreate, user_id: str = Depends(g
     
     return lessons
 
+# ============== WORKPLAN TABLE ROUTES ==============
+
+@api_router.get("/workplan/{class_id}")
+async def get_workplan(
+    class_id: str,
+    start: str = Query(...),
+    end: str = Query(...),
+    user_id: str = Depends(get_current_user)
+):
+    """Get workplan entries for a class in date range"""
+    query = {
+        "class_subject_id": class_id,
+        "date": {"$gte": start, "$lte": end}
+    }
+    entries = await db.workplan.find(query, {"_id": 0}).sort([("date", 1), ("period", 1)]).to_list(1000)
+    return entries
+
+@api_router.post("/workplan/{class_id}/bulk")
+async def save_workplan_bulk(
+    class_id: str,
+    data: WorkplanBulkSave,
+    user_id: str = Depends(get_current_user)
+):
+    """Save multiple workplan entries at once"""
+    now = datetime.now(timezone.utc).isoformat()
+    
+    for entry in data.entries:
+        # Upsert each entry
+        filter_query = {
+            "class_subject_id": class_id,
+            "date": entry.date,
+            "period": entry.period
+        }
+        
+        update_doc = {
+            "$set": {
+                "class_subject_id": class_id,
+                "date": entry.date,
+                "period": entry.period,
+                "entries": entry.entries,
+                "collaborators": entry.collaborators,
+                "updated_at": now,
+                "updated_by": user_id
+            },
+            "$setOnInsert": {
+                "id": str(uuid.uuid4()),
+                "created_at": now,
+                "created_by": user_id
+            }
+        }
+        
+        await db.workplan.update_one(filter_query, update_doc, upsert=True)
+    
+    return {"status": "success", "count": len(data.entries)}
+
 @api_router.get("/lessons", response_model=List[LessonResponse])
 async def get_lessons(
     class_subject_id: Optional[str] = None,
