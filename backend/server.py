@@ -207,6 +207,7 @@ class ClassSubjectCreate(BaseModel):
     color: str = "#3b82f6"
     hours_per_week: int = 4
     school_year_id: str
+    schedule: Optional[Dict[str, List[int]]] = None  # e.g. {"monday": [3, 4], "wednesday": [1]}
 
 class ClassSubjectResponse(BaseModel):
     id: str
@@ -217,6 +218,7 @@ class ClassSubjectResponse(BaseModel):
     hours_per_week: int
     school_year_id: str
     created_at: str
+    schedule: Optional[Dict[str, List[int]]] = None
 
 class LessonCreate(BaseModel):
     class_subject_id: str
