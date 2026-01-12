@@ -436,9 +436,14 @@ const CalendarPage = ({ classes, lessons, holidays, schoolHolidays, publicHolida
                       {/* Show period indicators if schedule exists */}
                       {periodsForDay.length > 0 && dayLessons.length === 0 && !holidayType && (
                         <div style={{ 
-                          fontSize: '0.7rem', 
-                          color: 'var(--text-disabled)', 
-                          marginBottom: '0.25rem' 
+                          fontSize: '0.75rem', 
+                          color: '#60a5fa',
+                          fontWeight: '600',
+                          marginBottom: '0.25rem',
+                          padding: '2px 6px',
+                          background: 'rgba(59, 130, 246, 0.15)',
+                          borderRadius: '4px',
+                          display: 'inline-block'
                         }}>
                           {periodsForDay.map(p => `${p}.`).join(' ')} Std.
                         </div>
