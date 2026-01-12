@@ -79,24 +79,6 @@ const MainApp = () => {
     navigate('/login'); 
   };
 
-  // Tour steps
-  const tourSteps = [
-    { target: '[data-testid="nav-dashboard"]', content: 'Willkommen bei PlanEd! Hier ist Ihr Dashboard mit einer Übersicht aller wichtigen Informationen.', placement: 'right' },
-    { target: '[data-testid="nav-calendar"]', content: 'Im Kalender planen Sie Ihre Unterrichtsstunden. Ziehen Sie Stunden per Drag & Drop auf andere Tage.', placement: 'right' },
-    { target: '[data-testid="nav-classes"]', content: 'Legen Sie hier Ihre Klassen und Fächer an.', placement: 'right' },
-    { target: '[data-testid="nav-templates"]', content: 'Speichern Sie Vorlagen für wiederkehrende Unterrichtsinhalte.', placement: 'right' },
-    { target: '[data-testid="nav-sharing"]', content: 'Teilen Sie Arbeitspläne mit Kollegen.', placement: 'right' },
-    { target: '[data-testid="notification-bell"]', content: 'Hier sehen Sie Benachrichtigungen, wenn Kollegen geteilte Pläne bearbeiten.', placement: 'bottom' },
-  ];
-
-  const handleTourCallback = (data) => {
-    const { status } = data;
-    if ([STATUS.FINISHED, STATUS.SKIPPED].includes(status)) {
-      localStorage.setItem('planed_tour_completed', 'true');
-      setRunTour(false);
-    }
-  };
-
   // CRUD operations
   const createSchoolYear = async (data) => { 
     const res = await authAxios.post('/school-years', data); 
