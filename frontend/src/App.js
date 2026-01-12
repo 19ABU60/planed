@@ -10,6 +10,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Sidebar from './components/Sidebar';
 import NotificationBell from './components/NotificationBell';
 import GlobalSearch from './components/GlobalSearch';
+import PWAInstallBanner from './components/PWAInstallBanner';
 
 // Pages
 import LoginPage from './pages/LoginPage';
@@ -197,6 +198,7 @@ const MainApp = () => {
         </header>
         {renderPage()}
       </main>
+      <PWAInstallBanner />
     </div>
   );
 };
