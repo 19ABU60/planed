@@ -162,6 +162,7 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     name: str
+    invitation_code: str
 
 class UserLogin(BaseModel):
     email: EmailStr
