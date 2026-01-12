@@ -1799,6 +1799,8 @@ const MainApp = () => {
         return <StatisticsPage classes={classes} lessons={lessons} />;
       case 'classes':
         return <ClassesPage schoolYears={schoolYears} classes={classes} onCreateClass={createClass} onUpdateClass={updateClass} onDeleteClass={deleteClass} onCreateSchoolYear={createSchoolYear} />;
+      case 'sharing':
+        return <SharingPage classes={classes} />;
       case 'documents':
         return <DocumentsPage classes={classes} />;
       case 'settings':
@@ -1818,6 +1820,7 @@ const MainApp = () => {
             {currentPage === 'calendar' && 'Kalender'}
             {currentPage === 'statistics' && 'Statistik'}
             {currentPage === 'classes' && 'Klassen'}
+            {currentPage === 'sharing' && 'Freigaben'}
             {currentPage === 'documents' && 'Dokumente'}
             {currentPage === 'settings' && 'Einstellungen'}
           </h1>
