@@ -188,6 +188,7 @@ const Sidebar = ({ currentPage, onNavigate, onLogout, user }) => {
     { id: 'calendar', label: 'Kalender', icon: Calendar },
     { id: 'statistics', label: 'Statistik', icon: BarChart3 },
     { id: 'classes', label: 'Klassen', icon: BookOpen },
+    { id: 'sharing', label: 'Freigaben', icon: Share2 },
     { id: 'documents', label: 'Dokumente', icon: FolderOpen },
     { id: 'settings', label: 'Einstellungen', icon: Settings },
   ];
