@@ -10,7 +10,7 @@ const WEEKDAYS = [
   { id: 'friday', label: 'Fr' }
 ];
 
-const PERIODS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+const PERIODS = [1, 2, 3, 4, 5, 6];
 
 const ClassesPage = ({ schoolYears, classes, onCreateClass, onUpdateClass, onDeleteClass, onCreateSchoolYear }) => {
   const [showClassModal, setShowClassModal] = useState(false);
