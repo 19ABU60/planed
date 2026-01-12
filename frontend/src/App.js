@@ -1707,6 +1707,202 @@ const SettingsPage = () => {
   );
 };
 
+// Notification Bell Component
+const NotificationBell = () => {
+  const { authAxios } = useAuth();
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  useEffect(() => {
+    fetchNotifications();
+    // Poll for new notifications every 30 seconds
+    const interval = setInterval(fetchUnreadCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      const response = await authAxios.get('/notifications');
+      setNotifications(response.data);
+      setUnreadCount(response.data.filter(n => !n.is_read).length);
+    } catch (error) {
+      console.error('Fehler beim Laden der Benachrichtigungen:', error);
+    }
+  };
+
+  const fetchUnreadCount = async () => {
+    try {
+      const response = await authAxios.get('/notifications/unread-count');
+      setUnreadCount(response.data.count);
+    } catch (error) {
+      console.error('Fehler beim Laden:', error);
+    }
+  };
+
+  const markAsRead = async (notificationId) => {
+    try {
+      await authAxios.put(`/notifications/${notificationId}/read`);
+      setNotifications(notifications.map(n => 
+        n.id === notificationId ? { ...n, is_read: true } : n
+      ));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error('Fehler:', error);
+    }
+  };
+
+  const markAllAsRead = async () => {
+    try {
+      await authAxios.put('/notifications/read-all');
+      setNotifications(notifications.map(n => ({ ...n, is_read: true })));
+      setUnreadCount(0);
+      toast.success('Alle als gelesen markiert');
+    } catch (error) {
+      toast.error('Fehler beim Markieren');
+    }
+  };
+
+  const deleteNotification = async (notificationId) => {
+    try {
+      await authAxios.delete(`/notifications/${notificationId}`);
+      const removed = notifications.find(n => n.id === notificationId);
+      setNotifications(notifications.filter(n => n.id !== notificationId));
+      if (removed && !removed.is_read) {
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
+    } catch (error) {
+      console.error('Fehler:', error);
+    }
+  };
+
+  const getNotificationIcon = (type) => {
+    switch (type) {
+      case 'share_new': return <Share2 size={16} style={{ color: 'var(--primary)' }} />;
+      case 'share_edit': return <Pencil size={16} style={{ color: 'var(--warning)' }} />;
+      case 'share_removed': return <X size={16} style={{ color: 'var(--error)' }} />;
+      default: return <Bell size={16} />;
+    }
+  };
+
+  return (
+    <div className="dropdown" style={{ position: 'relative' }}>
+      <button
+        className="btn btn-ghost btn-icon"
+        onClick={() => setShowDropdown(!showDropdown)}
+        style={{ position: 'relative' }}
+        data-testid="notification-bell"
+      >
+        <Bell size={20} />
+        {unreadCount > 0 && (
+          <span style={{
+            position: 'absolute',
+            top: '4px',
+            right: '4px',
+            width: '18px',
+            height: '18px',
+            background: 'var(--error)',
+            borderRadius: '50%',
+            fontSize: '0.7rem',
+            fontWeight: '600',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'white'
+          }}>
+            {unreadCount > 9 ? '9+' : unreadCount}
+          </span>
+        )}
+      </button>
+
+      {showDropdown && (
+        <>
+          <div 
+            style={{ position: 'fixed', inset: 0, zIndex: 29 }} 
+            onClick={() => setShowDropdown(false)} 
+          />
+          <div className="dropdown-menu" style={{ 
+            width: '360px', 
+            maxHeight: '400px', 
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between',
+              padding: '0.75rem 1rem',
+              borderBottom: '1px solid var(--border-default)'
+            }}>
+              <span style={{ fontWeight: '600' }}>Benachrichtigungen</span>
+              {unreadCount > 0 && (
+                <button 
+                  className="btn btn-ghost" 
+                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                  onClick={markAllAsRead}
+                  data-testid="mark-all-read-btn"
+                >
+                  <CheckCheck size={14} /> Alle gelesen
+                </button>
+              )}
+            </div>
+            
+            <div style={{ overflowY: 'auto', flex: 1 }}>
+              {notifications.length === 0 ? (
+                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <Bell size={32} style={{ opacity: 0.3, marginBottom: '0.5rem' }} />
+                  <p>Keine Benachrichtigungen</p>
+                </div>
+              ) : (
+                notifications.map(notification => (
+                  <div
+                    key={notification.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '0.75rem',
+                      padding: '0.75rem 1rem',
+                      background: notification.is_read ? 'transparent' : 'rgba(59, 130, 246, 0.1)',
+                      borderBottom: '1px solid var(--border-default)',
+                      cursor: 'pointer'
+                    }}
+                    onClick={() => !notification.is_read && markAsRead(notification.id)}
+                    data-testid={`notification-${notification.id}`}
+                  >
+                    <div style={{ marginTop: '2px' }}>
+                      {getNotificationIcon(notification.type)}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: '500', fontSize: '0.85rem' }}>
+                        {notification.title}
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                        {notification.message}
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-disabled)', marginTop: '0.25rem' }}>
+                        {formatDistanceToNow(parseISO(notification.created_at), { addSuffix: true, locale: de })}
+                      </div>
+                    </div>
+                    <button
+                      className="btn btn-ghost btn-icon"
+                      style={{ padding: '0.25rem', opacity: 0.5 }}
+                      onClick={(e) => { e.stopPropagation(); deleteNotification(notification.id); }}
+                      data-testid={`delete-notification-${notification.id}`}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
 // Main App Component
 const MainApp = () => {
   const { user, logout, authAxios } = useAuth();
