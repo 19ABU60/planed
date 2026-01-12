@@ -197,53 +197,63 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
   };
 
   // Column header with resize handle
-  const ColumnHeader = ({ columnKey, label }) => (
-    <th 
-      style={{ 
-        padding: '0.75rem 0.5rem', 
-        textAlign: 'center', 
-        color: 'white',
-        fontWeight: '600',
-        borderBottom: '2px solid rgba(255,255,255,0.2)',
-        borderLeft: '2px solid rgba(255,255,255,0.2)',
-        width: `${columnWidths[columnKey]}px`,
-        minWidth: `${columnWidths[columnKey]}px`,
-        maxWidth: `${columnWidths[columnKey]}px`,
-        position: 'relative',
-        userSelect: 'none'
-      }}
-    >
-      <span style={{ fontSize: '0.8rem', paddingRight: '16px' }}>{label}</span>
-      {/* Resize Handle - visible bar on right edge */}
-      <div
-        onMouseDown={(e) => startResize(columnKey, e)}
-        style={{
-          position: 'absolute',
-          right: '0px',
-          top: '0px',
-          bottom: '0px',
-          width: '12px',
-          background: 'transparent',
-          cursor: 'col-resize',
-          zIndex: 10,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
+  const ColumnHeader = ({ columnKey, label }) => {
+    const [isHovered, setIsHovered] = useState(false);
+    
+    return (
+      <th 
+        style={{ 
+          padding: '0.75rem 0.5rem', 
+          textAlign: 'center', 
+          color: 'white',
+          fontWeight: '600',
+          borderBottom: '2px solid rgba(255,255,255,0.2)',
+          borderLeft: '2px solid rgba(255,255,255,0.2)',
+          width: `${columnWidths[columnKey]}px`,
+          minWidth: `${columnWidths[columnKey]}px`,
+          maxWidth: `${columnWidths[columnKey]}px`,
+          position: 'relative',
+          userSelect: 'none'
         }}
-        title="Spaltenbreite anpassen (ziehen)"
       >
-        {/* Visual indicator */}
-        <div style={{
-          width: '4px',
-          height: '24px',
-          background: resizingColumn === columnKey ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.5)',
-          borderRadius: '2px',
-          transition: 'background 0.15s, transform 0.15s',
-          transform: resizingColumn === columnKey ? 'scaleY(1.2)' : 'scaleY(1)'
-        }} />
-      </div>
-    </th>
-  );
+        <span style={{ fontSize: '0.8rem', paddingRight: '20px' }}>{label}</span>
+        {/* Resize Handle - larger clickable area */}
+        <div
+          onMouseDown={(e) => startResize(columnKey, e)}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+          style={{
+            position: 'absolute',
+            right: '-8px',
+            top: '0px',
+            bottom: '0px',
+            width: '16px',
+            background: 'transparent',
+            cursor: 'col-resize',
+            zIndex: 20,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+          title="← → Ziehen zum Anpassen"
+        >
+          {/* Visual indicator - wider and more visible */}
+          <div style={{
+            width: '6px',
+            height: '100%',
+            background: (resizingColumn === columnKey || isHovered) 
+              ? 'rgba(255,255,255,0.8)' 
+              : 'rgba(255,255,255,0.4)',
+            borderRadius: '3px',
+            transition: 'background 0.15s, width 0.15s',
+            boxShadow: (resizingColumn === columnKey || isHovered) 
+              ? '0 0 8px rgba(255,255,255,0.5)' 
+              : 'none'
+          }} />
+        </div>
+      </th>
+    );
+  };
 
   return (
     <div className="page-content" style={{ padding: '1rem' }}>
