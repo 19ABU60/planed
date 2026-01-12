@@ -208,7 +208,15 @@ const CalendarPage = ({ classes, lessons, holidays, schoolHolidays, publicHolida
   const filteredLessons = lessons.filter(l => l.class_subject_id === selectedClass);
   const currentClass = classes.find(c => c.id === selectedClass);
 
-  const getLessonsForDay = (date) => filteredLessons.filter(l => l.date === format(date, 'yyyy-MM-dd'));
+  const getLessonsForDay = (date) => filteredLessons.filter(l => l.date === format(date, 'yyyy-MM-dd')).sort((a, b) => (a.period || 99) - (b.period || 99));
+
+  // Get available periods for a specific day based on class schedule
+  const getPeriodsForDay = (date) => {
+    if (!currentClass?.schedule) return [];
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayName = dayNames[date.getDay()];
+    return currentClass.schedule[dayName] || [];
+  };
 
   const isHolidayDay = (date) => {
     const dateStr = format(date, 'yyyy-MM-dd');
@@ -226,9 +234,10 @@ const CalendarPage = ({ classes, lessons, holidays, schoolHolidays, publicHolida
     return null;
   };
 
-  const openCreateModal = (date) => { 
+  const openCreateModal = (date, period = null) => { 
     setSelectedDate(date); 
     setSelectedLesson(null); 
+    setSelectedPeriod(period);
     setModalMode('create'); 
     setShowModal(true); 
   };
@@ -237,6 +246,7 @@ const CalendarPage = ({ classes, lessons, holidays, schoolHolidays, publicHolida
     e.stopPropagation(); 
     setSelectedLesson(lesson); 
     setSelectedDate(parseISO(lesson.date)); 
+    setSelectedPeriod(lesson.period);
     setModalMode('edit'); 
     setShowModal(true); 
   };
