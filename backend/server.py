@@ -263,6 +263,7 @@ class LessonUpdate(BaseModel):
     is_cancelled: Optional[bool] = None
     cancellation_reason: Optional[str] = None
     date: Optional[str] = None
+    period: Optional[int] = None
 
 class BatchLessonCreate(BaseModel):
     class_subject_id: str
