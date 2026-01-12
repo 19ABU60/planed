@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import '@/App.css';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
-import { HelpCircle } from 'lucide-react';
 
 // Context
 import { AuthProvider, useAuth } from './context/AuthContext';
