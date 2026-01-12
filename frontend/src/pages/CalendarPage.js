@@ -410,6 +410,7 @@ const CalendarPage = ({ classes, lessons, holidays, schoolHolidays, publicHolida
               const isWeekendDay = isWeekend(day);
               const holidayType = isHolidayDay(day);
               const holidayName = getHolidayName(day);
+              const periodsForDay = getPeriodsForDay(day);
 
               return (
                 <Droppable droppableId={dayStr} key={dayStr}>
@@ -432,6 +433,16 @@ const CalendarPage = ({ classes, lessons, holidays, schoolHolidays, publicHolida
                           {holidayName}
                         </div>
                       )}
+                      {/* Show period indicators if schedule exists */}
+                      {periodsForDay.length > 0 && dayLessons.length === 0 && !holidayType && (
+                        <div style={{ 
+                          fontSize: '0.7rem', 
+                          color: 'var(--text-disabled)', 
+                          marginBottom: '0.25rem' 
+                        }}>
+                          {periodsForDay.map(p => `${p}.`).join(' ')} Std.
+                        </div>
+                      )}
                       {dayLessons.map((lesson, index) => (
                         <Draggable key={lesson.id} draggableId={lesson.id} index={index}>
                           {(provided, snapshot) => (
@@ -444,6 +455,18 @@ const CalendarPage = ({ classes, lessons, holidays, schoolHolidays, publicHolida
                               style={{ borderLeftColor: currentClass?.color, ...provided.draggableProps.style }}
                               data-testid={`lesson-${lesson.id}`}
                             >
+                              {lesson.period && (
+                                <span style={{ 
+                                  fontWeight: '700', 
+                                  fontSize: '0.7rem', 
+                                  background: 'rgba(255,255,255,0.15)', 
+                                  padding: '0 4px', 
+                                  borderRadius: '3px',
+                                  marginRight: '4px'
+                                }}>
+                                  {lesson.period}.
+                                </span>
+                              )}
                               <span className="lesson-item-title">{lesson.topic || 'Kein Thema'}</span>
                             </div>
                           )}
