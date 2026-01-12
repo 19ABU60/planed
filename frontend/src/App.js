@@ -37,7 +37,6 @@ const MainApp = () => {
   const [schoolHolidays, setSchoolHolidays] = useState([]);
   const [publicHolidays, setPublicHolidays] = useState([]);
   const [selectedClassId, setSelectedClassId] = useState(null);
-  const [runTour, setRunTour] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -62,11 +61,6 @@ const MainApp = () => {
         if (user?.bundesland) {
           const schHolRes = await authAxios.get(`/holidays/school-holidays/${user.bundesland}`);
           setSchoolHolidays(schHolRes.data);
-        }
-        
-        // Show tour for new users
-        if (!localStorage.getItem('planed_tour_completed')) {
-          setRunTour(true);
         }
       } catch (error) { 
         console.error('Error:', error); 
