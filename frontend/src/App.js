@@ -7,10 +7,11 @@ import {
   LayoutDashboard, Calendar, BarChart3, BookOpen, FolderOpen, 
   Settings, LogOut, Plus, ChevronLeft, ChevronRight, Edit2, 
   Trash2, Download, Sparkles, X, Menu, GraduationCap,
-  FileText, FileSpreadsheet, File, Upload, Clock, Users, Share2, UserPlus, Eye, Pencil
+  FileText, FileSpreadsheet, File, Upload, Clock, Users, Share2, UserPlus, Eye, Pencil,
+  Bell, Check, CheckCheck
 } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, 
-  addMonths, subMonths, isWeekend, startOfWeek, endOfWeek, parseISO } from 'date-fns';
+  addMonths, subMonths, isWeekend, startOfWeek, endOfWeek, parseISO, formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
