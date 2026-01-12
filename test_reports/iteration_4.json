@@ -3,13 +3,7 @@
   
   "backend_issues": {
     "critical": [],
-    "minor": [
-      {
-        "endpoint": "/api/auth/register",
-        "issue": "Returns 'bayern' as bundesland in response but stores 'rheinland-pfalz' in database (line 501 vs 492 in server.py)",
-        "priority": "LOW"
-      }
-    ]
+    "minor": []
   },
   
   "frontend_issues": {
