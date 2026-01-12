@@ -43,6 +43,13 @@ PlanEd ist eine Web-Anwendung für Lehrer zur Verwaltung von Arbeitsplänen, die
 
 ## Implementierte Features ✅
 
+### Arbeitsplan-Tabelle (NEU - 12.01.2026)
+- Excel-ähnliche Tabelle für kollaborative Unterrichtsplanung
+- Spalten: Datum, Tag, Stunde, Unterrichtseinheit, Lehrplan/Standards, Stundenthema/Zielsetzung
+- Automatische Generierung basierend auf Stundenplan
+- Monatsnavigation
+- Speichern/Laden von Einträgen
+
 ### Authentifizierung
 - Registrierung mit E-Mail/Passwort
 - JWT-basierte Login
