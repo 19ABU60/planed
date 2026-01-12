@@ -213,26 +213,35 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
         userSelect: 'none'
       }}
     >
-      <span style={{ fontSize: '0.8rem', paddingRight: '12px' }}>{label}</span>
+      <span style={{ fontSize: '0.8rem', paddingRight: '16px' }}>{label}</span>
       {/* Resize Handle - visible bar on right edge */}
       <div
         onMouseDown={(e) => startResize(columnKey, e)}
         style={{
           position: 'absolute',
-          right: '-2px',
-          top: '8px',
-          bottom: '8px',
-          width: '4px',
-          background: resizingColumn === columnKey ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.3)',
-          borderRadius: '2px',
+          right: '0px',
+          top: '0px',
+          bottom: '0px',
+          width: '12px',
+          background: 'transparent',
           cursor: 'col-resize',
-          transition: 'background 0.15s',
-          zIndex: 10
+          zIndex: 10,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
         }}
-        onMouseEnter={(e) => { if (!resizingColumn) e.currentTarget.style.background = 'rgba(255,255,255,0.6)'; }}
-        onMouseLeave={(e) => { if (!resizingColumn) e.currentTarget.style.background = 'rgba(255,255,255,0.3)'; }}
-        title="Spaltenbreite anpassen"
-      />
+        title="Spaltenbreite anpassen (ziehen)"
+      >
+        {/* Visual indicator */}
+        <div style={{
+          width: '4px',
+          height: '24px',
+          background: resizingColumn === columnKey ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.5)',
+          borderRadius: '2px',
+          transition: 'background 0.15s, transform 0.15s',
+          transform: resizingColumn === columnKey ? 'scaleY(1.2)' : 'scaleY(1)'
+        }} />
+      </div>
     </th>
   );
 
