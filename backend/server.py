@@ -778,6 +778,96 @@ async def delete_document(doc_id: str, user_id: str = Depends(get_current_user))
         raise HTTPException(status_code=404, detail="Document not found")
     return {"status": "deleted"}
 
+# ============== SHARING ROUTES ==============
+
+@api_router.post("/shares", response_model=ShareResponse)
+async def share_class(data: ShareCreate, user_id: str = Depends(get_current_user)):
+    # Check if class exists and user owns it
+    class_info = await db.class_subjects.find_one({"id": data.class_subject_id, "user_id": user_id}, {"_id": 0})
+    if not class_info:
+        raise HTTPException(status_code=404, detail="Klasse nicht gefunden")
+    
+    # Find target user by email
+    target_user = await db.users.find_one({"email": data.shared_with_email}, {"_id": 0, "password": 0})
+    if not target_user:
+        raise HTTPException(status_code=404, detail="Benutzer mit dieser E-Mail nicht gefunden")
+    
+    if target_user["id"] == user_id:
+        raise HTTPException(status_code=400, detail="Sie können nicht mit sich selbst teilen")
+    
+    # Check if already shared
+    existing = await db.shares.find_one({
+        "class_subject_id": data.class_subject_id,
+        "shared_with_id": target_user["id"]
+    })
+    if existing:
+        raise HTTPException(status_code=400, detail="Bereits mit diesem Benutzer geteilt")
+    
+    # Get owner info
+    owner = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
+    
+    share_doc = {
+        "id": str(uuid.uuid4()),
+        "class_subject_id": data.class_subject_id,
+        "owner_id": user_id,
+        "owner_name": owner["name"],
+        "shared_with_id": target_user["id"],
+        "shared_with_email": data.shared_with_email,
+        "can_edit": data.can_edit,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.shares.insert_one(share_doc)
+    
+    return ShareResponse(**share_doc)
+
+@api_router.get("/shares/my-shares", response_model=List[ShareResponse])
+async def get_my_shares(user_id: str = Depends(get_current_user)):
+    """Get classes I have shared with others"""
+    shares = await db.shares.find({"owner_id": user_id}, {"_id": 0}).to_list(100)
+    return [ShareResponse(**s) for s in shares]
+
+@api_router.get("/shares/shared-with-me", response_model=List[SharedClassResponse])
+async def get_shared_with_me(user_id: str = Depends(get_current_user)):
+    """Get classes others have shared with me"""
+    shares = await db.shares.find({"shared_with_id": user_id}, {"_id": 0}).to_list(100)
+    
+    shared_classes = []
+    for share in shares:
+        class_info = await db.class_subjects.find_one({"id": share["class_subject_id"]}, {"_id": 0})
+        if class_info:
+            owner = await db.users.find_one({"id": share["owner_id"]}, {"_id": 0, "password": 0})
+            shared_classes.append(SharedClassResponse(
+                id=class_info["id"],
+                name=class_info["name"],
+                subject=class_info["subject"],
+                color=class_info["color"],
+                hours_per_week=class_info["hours_per_week"],
+                school_year_id=class_info["school_year_id"],
+                owner_name=owner["name"] if owner else "Unbekannt",
+                owner_email=owner["email"] if owner else "",
+                can_edit=share["can_edit"]
+            ))
+    
+    return shared_classes
+
+@api_router.delete("/shares/{share_id}")
+async def remove_share(share_id: str, user_id: str = Depends(get_current_user)):
+    result = await db.shares.delete_one({"id": share_id, "owner_id": user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Freigabe nicht gefunden")
+    return {"status": "deleted"}
+
+@api_router.get("/shares/class/{class_subject_id}", response_model=List[ShareResponse])
+async def get_class_shares(class_subject_id: str, user_id: str = Depends(get_current_user)):
+    """Get all shares for a specific class"""
+    # Check ownership
+    class_info = await db.class_subjects.find_one({"id": class_subject_id, "user_id": user_id}, {"_id": 0})
+    if not class_info:
+        raise HTTPException(status_code=404, detail="Klasse nicht gefunden")
+    
+    shares = await db.shares.find({"class_subject_id": class_subject_id}, {"_id": 0}).to_list(100)
+    return [ShareResponse(**s) for s in shares]
+
 # ============== ROOT ==============
 
 @api_router.get("/")
