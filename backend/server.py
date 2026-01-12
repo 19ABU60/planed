@@ -606,6 +606,7 @@ async def create_class(data: ClassSubjectCreate, user_id: str = Depends(get_curr
         "color": data.color,
         "hours_per_week": data.hours_per_week,
         "school_year_id": data.school_year_id,
+        "schedule": data.schedule or {},
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.class_subjects.insert_one(doc)
