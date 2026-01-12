@@ -223,6 +223,7 @@ class ClassSubjectResponse(BaseModel):
 class LessonCreate(BaseModel):
     class_subject_id: str
     date: str
+    period: Optional[int] = None  # Stundennummer (1-10)
     topic: str = ""
     objective: str = ""
     curriculum_reference: str = ""
