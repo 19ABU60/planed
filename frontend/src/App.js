@@ -1239,7 +1239,7 @@ const ClassesPage = ({ schoolYears, classes, onCreateClass, onUpdateClass, onDel
                     </button>
                   </div>
                 </div>
-                <div style={{ marginTop: '1rem' }}>
+                <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                   <span className="badge badge-primary">{cls.hours_per_week} Std./Woche</span>
                 </div>
               </div>
@@ -1250,6 +1250,266 @@ const ClassesPage = ({ schoolYears, classes, onCreateClass, onUpdateClass, onDel
 
       {showClassModal && <ClassModal cls={editingClass} onClose={() => setShowClassModal(false)} />}
       {showYearModal && <SchoolYearModal onClose={() => setShowYearModal(false)} />}
+    </div>
+  );
+};
+
+// Sharing Page
+const SharingPage = ({ classes }) => {
+  const { authAxios } = useAuth();
+  const [myShares, setMyShares] = useState([]);
+  const [sharedWithMe, setSharedWithMe] = useState([]);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [selectedClassToShare, setSelectedClassToShare] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchShares();
+  }, []);
+
+  const fetchShares = async () => {
+    setLoading(true);
+    try {
+      const [mySharesRes, sharedWithMeRes] = await Promise.all([
+        authAxios.get('/shares/my-shares'),
+        authAxios.get('/shares/shared-with-me')
+      ]);
+      setMyShares(mySharesRes.data);
+      setSharedWithMe(sharedWithMeRes.data);
+    } catch (error) {
+      console.error('Fehler beim Laden der Freigaben:', error);
+    }
+    setLoading(false);
+  };
+
+  const handleRemoveShare = async (shareId) => {
+    if (!window.confirm('Freigabe wirklich entfernen?')) return;
+    try {
+      await authAxios.delete(`/shares/${shareId}`);
+      toast.success('Freigabe entfernt');
+      fetchShares();
+    } catch (error) {
+      toast.error('Fehler beim Entfernen');
+    }
+  };
+
+  const ShareModal = ({ cls, onClose }) => {
+    const [email, setEmail] = useState('');
+    const [canEdit, setCanEdit] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+
+    const handleShare = async (e) => {
+      e.preventDefault();
+      setSubmitting(true);
+      try {
+        await authAxios.post('/shares', {
+          class_subject_id: cls.id,
+          shared_with_email: email,
+          can_edit: canEdit
+        });
+        toast.success('Klasse erfolgreich freigegeben');
+        onClose();
+        fetchShares();
+      } catch (error) {
+        toast.error(error.response?.data?.detail || 'Fehler beim Freigeben');
+      }
+      setSubmitting(false);
+    };
+
+    return (
+      <div className="modal-overlay" onClick={onClose}>
+        <div className="modal-content" onClick={e => e.stopPropagation()}>
+          <div className="modal-header">
+            <h3 className="modal-title">Klasse freigeben</h3>
+            <button className="btn btn-ghost btn-icon" onClick={onClose}>
+              <X size={20} />
+            </button>
+          </div>
+          <form onSubmit={handleShare}>
+            <div className="modal-body">
+              <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                Geben Sie <strong>{cls.name} - {cls.subject}</strong> für einen Kollegen frei
+              </p>
+              
+              <div className="form-group">
+                <label className="form-label">E-Mail des Kollegen</label>
+                <input
+                  type="email"
+                  className="form-input"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="kollege@schule.de"
+                  required
+                  data-testid="share-email-input"
+                />
+              </div>
+
+              <div className="form-group">
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={canEdit}
+                    onChange={e => setCanEdit(e.target.checked)}
+                    data-testid="share-can-edit-checkbox"
+                  />
+                  <span>Bearbeitung erlauben</span>
+                </label>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                  {canEdit ? 'Kollege kann Unterrichtsstunden hinzufügen und bearbeiten' : 'Kollege kann nur ansehen'}
+                </p>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" onClick={onClose}>Abbrechen</button>
+              <button type="submit" className="btn btn-primary" disabled={submitting} data-testid="confirm-share-btn">
+                {submitting ? <span className="spinner" /> : <><Share2 size={18} /> Freigeben</>}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  };
+
+  if (loading) {
+    return (
+      <div className="page-content">
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>
+          <span className="spinner" style={{ width: '40px', height: '40px' }} />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="page-content">
+      <h2 style={{ fontSize: '1.75rem', fontWeight: '700', marginBottom: '2rem', fontFamily: 'Manrope, sans-serif' }}>
+        Freigaben
+      </h2>
+
+      {/* My Classes to Share */}
+      <div className="card" style={{ marginBottom: '2rem' }}>
+        <div className="card-header">
+          <h3 className="card-title">Meine Klassen freigeben</h3>
+        </div>
+        
+        {classes.length === 0 ? (
+          <p style={{ color: 'var(--text-muted)', padding: '1rem 0' }}>Keine Klassen vorhanden</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem' }}>
+            {classes.map(cls => {
+              const classShares = myShares.filter(s => s.class_subject_id === cls.id);
+              return (
+                <div key={cls.id} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '0.75rem',
+                  background: 'rgba(255,255,255,0.02)',
+                  borderRadius: '8px',
+                  borderLeft: `4px solid ${cls.color}`
+                }}>
+                  <div>
+                    <div style={{ fontWeight: '500' }}>{cls.name} - {cls.subject}</div>
+                    {classShares.length > 0 && (
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                        Freigegeben für: {classShares.map(s => s.shared_with_email).join(', ')}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => { setSelectedClassToShare(cls); setShowShareModal(true); }}
+                    data-testid={`share-class-${cls.id}`}
+                  >
+                    <UserPlus size={16} /> Freigeben
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* My Active Shares */}
+      {myShares.length > 0 && (
+        <div className="card" style={{ marginBottom: '2rem' }}>
+          <div className="card-header">
+            <h3 className="card-title">Aktive Freigaben</h3>
+          </div>
+          <table className="data-table" style={{ marginTop: '0.5rem' }}>
+            <thead>
+              <tr>
+                <th>Klasse</th>
+                <th>Freigegeben für</th>
+                <th>Berechtigung</th>
+                <th>Aktion</th>
+              </tr>
+            </thead>
+            <tbody>
+              {myShares.map(share => {
+                const cls = classes.find(c => c.id === share.class_subject_id);
+                return (
+                  <tr key={share.id}>
+                    <td>{cls?.name} - {cls?.subject}</td>
+                    <td>{share.shared_with_email}</td>
+                    <td>
+                      <span className={`badge ${share.can_edit ? 'badge-success' : 'badge-primary'}`}>
+                        {share.can_edit ? <><Pencil size={12} /> Bearbeiten</> : <><Eye size={12} /> Nur Ansicht</>}
+                      </span>
+                    </td>
+                    <td>
+                      <button
+                        className="btn btn-ghost btn-icon"
+                        onClick={() => handleRemoveShare(share.id)}
+                        data-testid={`remove-share-${share.id}`}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Shared With Me */}
+      <div className="card">
+        <div className="card-header">
+          <h3 className="card-title">Mit mir geteilt</h3>
+        </div>
+        
+        {sharedWithMe.length === 0 ? (
+          <p style={{ color: 'var(--text-muted)', padding: '1rem 0' }}>
+            Noch keine Klassen mit Ihnen geteilt
+          </p>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
+            {sharedWithMe.map(cls => (
+              <div key={cls.id} className="card" style={{ borderLeft: `4px solid ${cls.color}`, background: 'rgba(139, 92, 246, 0.05)' }}>
+                <div className="card-header">
+                  <div>
+                    <h3 className="card-title">{cls.name} - {cls.subject}</h3>
+                    <span className="card-subtitle">Von: {cls.owner_name}</span>
+                  </div>
+                </div>
+                <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
+                  <span className="badge badge-secondary">{cls.hours_per_week} Std./Woche</span>
+                  <span className={`badge ${cls.can_edit ? 'badge-success' : 'badge-primary'}`}>
+                    {cls.can_edit ? 'Bearbeiten' : 'Nur Ansicht'}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {showShareModal && selectedClassToShare && (
+        <ShareModal cls={selectedClassToShare} onClose={() => { setShowShareModal(false); setSelectedClassToShare(null); }} />
+      )}
     </div>
   );
 };
