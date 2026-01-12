@@ -1,15 +1,28 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, UploadFile, File, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
+from fastapi.responses import StreamingResponse
 import os
 import logging
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict
-from typing import List
+from pydantic import BaseModel, Field, EmailStr
+from typing import List, Optional, Dict, Any
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+import jwt
+import bcrypt
+from io import BytesIO
 
+# Document exports
+from docx import Document
+from docx.shared import Inches, Pt
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from reportlab.lib.units import cm
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -19,52 +32,715 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-# Create the main app without a prefix
-app = FastAPI()
+# JWT Configuration
+JWT_SECRET = os.environ.get('JWT_SECRET', 'planed-secret-key-2025')
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRATION_HOURS = 24
+
+# Create the main app
+app = FastAPI(title="PlanEd API", version="1.0.0")
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
+# Security
+security = HTTPBearer()
 
-# Define Models
-class StatusCheck(BaseModel):
-    model_config = ConfigDict(extra="ignore")  # Ignore MongoDB's _id field
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+# ============== MODELS ==============
+
+class UserCreate(BaseModel):
+    email: EmailStr
+    password: str
+    name: str
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+class UserResponse(BaseModel):
+    id: str
+    email: str
+    name: str
+    created_at: str
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserResponse
+
+class SchoolYearCreate(BaseModel):
+    name: str  # e.g., "2025/2026"
+    semester: str  # "1. Halbjahr" or "2. Halbjahr"
+    start_date: str  # ISO date
+    end_date: str  # ISO date
+
+class SchoolYearResponse(BaseModel):
+    id: str
+    user_id: str
+    name: str
+    semester: str
+    start_date: str
+    end_date: str
+    created_at: str
+
+class ClassSubjectCreate(BaseModel):
+    name: str  # e.g., "6a"
+    subject: str  # e.g., "Deutsch"
+    color: str = "#3b82f6"  # Default blue
+    hours_per_week: int = 4
+    school_year_id: str
+
+class ClassSubjectResponse(BaseModel):
+    id: str
+    user_id: str
+    name: str
+    subject: str
+    color: str
+    hours_per_week: int
+    school_year_id: str
+    created_at: str
+
+class LessonCreate(BaseModel):
+    class_subject_id: str
+    date: str  # ISO date
+    topic: str = ""
+    objective: str = ""
+    curriculum_reference: str = ""
+    educational_standards: str = ""
+    key_terms: str = ""
+    notes: str = ""
+    teaching_units: int = 1
+    is_cancelled: bool = False
+    cancellation_reason: str = ""
+
+class LessonResponse(BaseModel):
+    id: str
+    user_id: str
+    class_subject_id: str
+    date: str
+    topic: str
+    objective: str
+    curriculum_reference: str
+    educational_standards: str
+    key_terms: str
+    notes: str
+    teaching_units: int
+    is_cancelled: bool
+    cancellation_reason: str
+    created_at: str
+    updated_at: str
+
+class LessonUpdate(BaseModel):
+    topic: Optional[str] = None
+    objective: Optional[str] = None
+    curriculum_reference: Optional[str] = None
+    educational_standards: Optional[str] = None
+    key_terms: Optional[str] = None
+    notes: Optional[str] = None
+    teaching_units: Optional[int] = None
+    is_cancelled: Optional[bool] = None
+    cancellation_reason: Optional[str] = None
+    date: Optional[str] = None
+
+class HolidayCreate(BaseModel):
+    school_year_id: str
+    start_date: str
+    end_date: str
+    name: str  # e.g., "Herbstferien"
+
+class HolidayResponse(BaseModel):
+    id: str
+    user_id: str
+    school_year_id: str
+    start_date: str
+    end_date: str
+    name: str
+
+class StatisticsResponse(BaseModel):
+    total_available_hours: int
+    used_hours: int
+    remaining_hours: int
+    hours_by_weekday: Dict[str, int]
+    cancelled_hours: int
+
+class AITopicSuggestionRequest(BaseModel):
+    subject: str
+    grade: str
+    curriculum_topic: str
+    previous_topics: List[str] = []
+
+class AITopicSuggestionResponse(BaseModel):
+    suggestions: List[Dict[str, str]]
+
+# ============== AUTH HELPERS ==============
+
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+def verify_password(password: str, hashed: str) -> bool:
+    return bcrypt.checkpw(password.encode(), hashed.encode())
+
+def create_token(user_id: str, email: str) -> str:
+    payload = {
+        "user_id": user_id,
+        "email": email,
+        "exp": datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRATION_HOURS)
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    try:
+        payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        user_id = payload.get("user_id")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        return user_id
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+# ============== AUTH ROUTES ==============
+
+@api_router.post("/auth/register", response_model=TokenResponse)
+async def register(user: UserCreate):
+    existing = await db.users.find_one({"email": user.email})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
     
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    user_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    
+    user_doc = {
+        "id": user_id,
+        "email": user.email,
+        "password": hash_password(user.password),
+        "name": user.name,
+        "created_at": now
+    }
+    await db.users.insert_one(user_doc)
+    
+    token = create_token(user_id, user.email)
+    return TokenResponse(
+        access_token=token,
+        user=UserResponse(id=user_id, email=user.email, name=user.name, created_at=now)
+    )
 
-class StatusCheckCreate(BaseModel):
-    client_name: str
+@api_router.post("/auth/login", response_model=TokenResponse)
+async def login(credentials: UserLogin):
+    user = await db.users.find_one({"email": credentials.email}, {"_id": 0})
+    if not user or not verify_password(credentials.password, user["password"]):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    token = create_token(user["id"], user["email"])
+    return TokenResponse(
+        access_token=token,
+        user=UserResponse(id=user["id"], email=user["email"], name=user["name"], created_at=user["created_at"])
+    )
 
-# Add your routes to the router instead of directly to app
+@api_router.get("/auth/me", response_model=UserResponse)
+async def get_me(user_id: str = Depends(get_current_user)):
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return UserResponse(**user)
+
+# ============== SCHOOL YEAR ROUTES ==============
+
+@api_router.post("/school-years", response_model=SchoolYearResponse)
+async def create_school_year(data: SchoolYearCreate, user_id: str = Depends(get_current_user)):
+    doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "name": data.name,
+        "semester": data.semester,
+        "start_date": data.start_date,
+        "end_date": data.end_date,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.school_years.insert_one(doc)
+    return SchoolYearResponse(**doc)
+
+@api_router.get("/school-years", response_model=List[SchoolYearResponse])
+async def get_school_years(user_id: str = Depends(get_current_user)):
+    years = await db.school_years.find({"user_id": user_id}, {"_id": 0}).to_list(100)
+    return [SchoolYearResponse(**y) for y in years]
+
+@api_router.delete("/school-years/{year_id}")
+async def delete_school_year(year_id: str, user_id: str = Depends(get_current_user)):
+    result = await db.school_years.delete_one({"id": year_id, "user_id": user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="School year not found")
+    # Also delete related classes and lessons
+    await db.class_subjects.delete_many({"school_year_id": year_id, "user_id": user_id})
+    return {"status": "deleted"}
+
+# ============== CLASS/SUBJECT ROUTES ==============
+
+@api_router.post("/classes", response_model=ClassSubjectResponse)
+async def create_class(data: ClassSubjectCreate, user_id: str = Depends(get_current_user)):
+    doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "name": data.name,
+        "subject": data.subject,
+        "color": data.color,
+        "hours_per_week": data.hours_per_week,
+        "school_year_id": data.school_year_id,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.class_subjects.insert_one(doc)
+    return ClassSubjectResponse(**doc)
+
+@api_router.get("/classes", response_model=List[ClassSubjectResponse])
+async def get_classes(school_year_id: Optional[str] = None, user_id: str = Depends(get_current_user)):
+    query = {"user_id": user_id}
+    if school_year_id:
+        query["school_year_id"] = school_year_id
+    classes = await db.class_subjects.find(query, {"_id": 0}).to_list(100)
+    return [ClassSubjectResponse(**c) for c in classes]
+
+@api_router.put("/classes/{class_id}", response_model=ClassSubjectResponse)
+async def update_class(class_id: str, data: ClassSubjectCreate, user_id: str = Depends(get_current_user)):
+    update_data = data.model_dump()
+    result = await db.class_subjects.update_one(
+        {"id": class_id, "user_id": user_id},
+        {"$set": update_data}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Class not found")
+    updated = await db.class_subjects.find_one({"id": class_id}, {"_id": 0})
+    return ClassSubjectResponse(**updated)
+
+@api_router.delete("/classes/{class_id}")
+async def delete_class(class_id: str, user_id: str = Depends(get_current_user)):
+    result = await db.class_subjects.delete_one({"id": class_id, "user_id": user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Class not found")
+    await db.lessons.delete_many({"class_subject_id": class_id, "user_id": user_id})
+    return {"status": "deleted"}
+
+# ============== LESSON ROUTES ==============
+
+@api_router.post("/lessons", response_model=LessonResponse)
+async def create_lesson(data: LessonCreate, user_id: str = Depends(get_current_user)):
+    now = datetime.now(timezone.utc).isoformat()
+    doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "class_subject_id": data.class_subject_id,
+        "date": data.date,
+        "topic": data.topic,
+        "objective": data.objective,
+        "curriculum_reference": data.curriculum_reference,
+        "educational_standards": data.educational_standards,
+        "key_terms": data.key_terms,
+        "notes": data.notes,
+        "teaching_units": data.teaching_units,
+        "is_cancelled": data.is_cancelled,
+        "cancellation_reason": data.cancellation_reason,
+        "created_at": now,
+        "updated_at": now
+    }
+    await db.lessons.insert_one(doc)
+    return LessonResponse(**doc)
+
+@api_router.get("/lessons", response_model=List[LessonResponse])
+async def get_lessons(
+    class_subject_id: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    user_id: str = Depends(get_current_user)
+):
+    query = {"user_id": user_id}
+    if class_subject_id:
+        query["class_subject_id"] = class_subject_id
+    if start_date:
+        query["date"] = {"$gte": start_date}
+    if end_date:
+        if "date" in query:
+            query["date"]["$lte"] = end_date
+        else:
+            query["date"] = {"$lte": end_date}
+    lessons = await db.lessons.find(query, {"_id": 0}).sort("date", 1).to_list(1000)
+    return [LessonResponse(**l) for l in lessons]
+
+@api_router.put("/lessons/{lesson_id}", response_model=LessonResponse)
+async def update_lesson(lesson_id: str, data: LessonUpdate, user_id: str = Depends(get_current_user)):
+    update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    result = await db.lessons.update_one(
+        {"id": lesson_id, "user_id": user_id},
+        {"$set": update_data}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+    updated = await db.lessons.find_one({"id": lesson_id}, {"_id": 0})
+    return LessonResponse(**updated)
+
+@api_router.delete("/lessons/{lesson_id}")
+async def delete_lesson(lesson_id: str, user_id: str = Depends(get_current_user)):
+    result = await db.lessons.delete_one({"id": lesson_id, "user_id": user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+    return {"status": "deleted"}
+
+# ============== HOLIDAY ROUTES ==============
+
+@api_router.post("/holidays", response_model=HolidayResponse)
+async def create_holiday(data: HolidayCreate, user_id: str = Depends(get_current_user)):
+    doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "school_year_id": data.school_year_id,
+        "start_date": data.start_date,
+        "end_date": data.end_date,
+        "name": data.name
+    }
+    await db.holidays.insert_one(doc)
+    return HolidayResponse(**doc)
+
+@api_router.get("/holidays", response_model=List[HolidayResponse])
+async def get_holidays(school_year_id: Optional[str] = None, user_id: str = Depends(get_current_user)):
+    query = {"user_id": user_id}
+    if school_year_id:
+        query["school_year_id"] = school_year_id
+    holidays = await db.holidays.find(query, {"_id": 0}).to_list(100)
+    return [HolidayResponse(**h) for h in holidays]
+
+@api_router.delete("/holidays/{holiday_id}")
+async def delete_holiday(holiday_id: str, user_id: str = Depends(get_current_user)):
+    result = await db.holidays.delete_one({"id": holiday_id, "user_id": user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Holiday not found")
+    return {"status": "deleted"}
+
+# ============== STATISTICS ROUTES ==============
+
+@api_router.get("/statistics/{class_subject_id}", response_model=StatisticsResponse)
+async def get_statistics(class_subject_id: str, user_id: str = Depends(get_current_user)):
+    # Get class info
+    class_info = await db.class_subjects.find_one({"id": class_subject_id, "user_id": user_id}, {"_id": 0})
+    if not class_info:
+        raise HTTPException(status_code=404, detail="Class not found")
+    
+    # Get school year
+    school_year = await db.school_years.find_one({"id": class_info["school_year_id"]}, {"_id": 0})
+    if not school_year:
+        raise HTTPException(status_code=404, detail="School year not found")
+    
+    # Calculate weeks in semester
+    start = datetime.fromisoformat(school_year["start_date"])
+    end = datetime.fromisoformat(school_year["end_date"])
+    weeks = (end - start).days // 7
+    total_available = weeks * class_info["hours_per_week"]
+    
+    # Get lessons
+    lessons = await db.lessons.find({"class_subject_id": class_subject_id, "user_id": user_id}, {"_id": 0}).to_list(1000)
+    
+    used_hours = sum(l["teaching_units"] for l in lessons if not l["is_cancelled"])
+    cancelled_hours = sum(l["teaching_units"] for l in lessons if l["is_cancelled"])
+    
+    # Hours by weekday
+    weekday_names = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
+    hours_by_weekday = {day: 0 for day in weekday_names}
+    
+    for lesson in lessons:
+        if not lesson["is_cancelled"]:
+            date = datetime.fromisoformat(lesson["date"])
+            weekday = weekday_names[date.weekday()]
+            hours_by_weekday[weekday] += lesson["teaching_units"]
+    
+    return StatisticsResponse(
+        total_available_hours=total_available,
+        used_hours=used_hours,
+        remaining_hours=total_available - used_hours,
+        hours_by_weekday=hours_by_weekday,
+        cancelled_hours=cancelled_hours
+    )
+
+# ============== EXPORT ROUTES ==============
+
+@api_router.get("/export/excel/{class_subject_id}")
+async def export_excel(class_subject_id: str, user_id: str = Depends(get_current_user)):
+    class_info = await db.class_subjects.find_one({"id": class_subject_id, "user_id": user_id}, {"_id": 0})
+    if not class_info:
+        raise HTTPException(status_code=404, detail="Class not found")
+    
+    lessons = await db.lessons.find({"class_subject_id": class_subject_id, "user_id": user_id}, {"_id": 0}).sort("date", 1).to_list(1000)
+    
+    wb = Workbook()
+    ws = wb.active
+    ws.title = f"{class_info['name']} - {class_info['subject']}"
+    
+    # Header styling
+    header_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF")
+    
+    headers = ["Datum", "Tag", "Ausfall", "Stundenthema", "Zielsetzung", "Lehrplan", "Begriffe", "UE"]
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+    
+    weekday_names = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+    for row, lesson in enumerate(lessons, 2):
+        date = datetime.fromisoformat(lesson["date"])
+        ws.cell(row=row, column=1, value=date.strftime("%d.%m.%Y"))
+        ws.cell(row=row, column=2, value=weekday_names[date.weekday()])
+        ws.cell(row=row, column=3, value="x" if lesson["is_cancelled"] else "")
+        ws.cell(row=row, column=4, value=lesson["topic"])
+        ws.cell(row=row, column=5, value=lesson["objective"])
+        ws.cell(row=row, column=6, value=lesson["curriculum_reference"])
+        ws.cell(row=row, column=7, value=lesson["key_terms"])
+        ws.cell(row=row, column=8, value=lesson["teaching_units"])
+    
+    # Auto-width columns
+    for col in ws.columns:
+        max_length = max(len(str(cell.value or "")) for cell in col)
+        ws.column_dimensions[col[0].column_letter].width = min(max_length + 2, 50)
+    
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    filename = f"Arbeitsplan_{class_info['name']}_{class_info['subject']}.xlsx"
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+@api_router.get("/export/word/{class_subject_id}")
+async def export_word(class_subject_id: str, user_id: str = Depends(get_current_user)):
+    class_info = await db.class_subjects.find_one({"id": class_subject_id, "user_id": user_id}, {"_id": 0})
+    if not class_info:
+        raise HTTPException(status_code=404, detail="Class not found")
+    
+    school_year = await db.school_years.find_one({"id": class_info["school_year_id"]}, {"_id": 0})
+    lessons = await db.lessons.find({"class_subject_id": class_subject_id, "user_id": user_id}, {"_id": 0}).sort("date", 1).to_list(1000)
+    
+    doc = Document()
+    
+    # Title
+    title = doc.add_heading(f"Arbeitsplan: {class_info['name']} - {class_info['subject']}", 0)
+    if school_year:
+        doc.add_paragraph(f"Schuljahr: {school_year['name']} ({school_year['semester']})")
+    
+    doc.add_paragraph("")
+    
+    # Table
+    table = doc.add_table(rows=1, cols=6)
+    table.style = 'Table Grid'
+    
+    headers = ["Datum", "Thema", "Zielsetzung", "Lehrplan", "Begriffe", "UE"]
+    header_cells = table.rows[0].cells
+    for i, header in enumerate(headers):
+        header_cells[i].text = header
+        header_cells[i].paragraphs[0].runs[0].bold = True
+    
+    weekday_names = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+    for lesson in lessons:
+        row_cells = table.add_row().cells
+        date = datetime.fromisoformat(lesson["date"])
+        row_cells[0].text = f"{date.strftime('%d.%m')} ({weekday_names[date.weekday()]})"
+        row_cells[1].text = lesson["topic"] + (" [AUSFALL]" if lesson["is_cancelled"] else "")
+        row_cells[2].text = lesson["objective"]
+        row_cells[3].text = lesson["curriculum_reference"]
+        row_cells[4].text = lesson["key_terms"]
+        row_cells[5].text = str(lesson["teaching_units"])
+    
+    output = BytesIO()
+    doc.save(output)
+    output.seek(0)
+    
+    filename = f"Arbeitsplan_{class_info['name']}_{class_info['subject']}.docx"
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+@api_router.get("/export/pdf/{class_subject_id}")
+async def export_pdf(class_subject_id: str, user_id: str = Depends(get_current_user)):
+    class_info = await db.class_subjects.find_one({"id": class_subject_id, "user_id": user_id}, {"_id": 0})
+    if not class_info:
+        raise HTTPException(status_code=404, detail="Class not found")
+    
+    lessons = await db.lessons.find({"class_subject_id": class_subject_id, "user_id": user_id}, {"_id": 0}).sort("date", 1).to_list(1000)
+    
+    output = BytesIO()
+    c = canvas.Canvas(output, pagesize=A4)
+    width, height = A4
+    
+    # Title
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(2*cm, height - 2*cm, f"Arbeitsplan: {class_info['name']} - {class_info['subject']}")
+    
+    y = height - 4*cm
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(2*cm, y, "Datum")
+    c.drawString(4*cm, y, "Thema")
+    c.drawString(12*cm, y, "UE")
+    
+    c.setFont("Helvetica", 9)
+    y -= 0.7*cm
+    
+    weekday_names = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+    for lesson in lessons:
+        if y < 2*cm:
+            c.showPage()
+            y = height - 2*cm
+            c.setFont("Helvetica", 9)
+        
+        date = datetime.fromisoformat(lesson["date"])
+        date_str = f"{date.strftime('%d.%m')} ({weekday_names[date.weekday()]})"
+        topic = lesson["topic"][:50] + "..." if len(lesson["topic"]) > 50 else lesson["topic"]
+        if lesson["is_cancelled"]:
+            topic = "[AUSFALL] " + topic
+        
+        c.drawString(2*cm, y, date_str)
+        c.drawString(4*cm, y, topic)
+        c.drawString(12*cm, y, str(lesson["teaching_units"]))
+        y -= 0.5*cm
+    
+    c.save()
+    output.seek(0)
+    
+    filename = f"Arbeitsplan_{class_info['name']}_{class_info['subject']}.pdf"
+    return StreamingResponse(
+        output,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+# ============== AI SUGGESTIONS ROUTE ==============
+
+@api_router.post("/ai/suggestions", response_model=AITopicSuggestionResponse)
+async def get_ai_suggestions(data: AITopicSuggestionRequest, user_id: str = Depends(get_current_user)):
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        
+        api_key = os.environ.get('EMERGENT_LLM_KEY')
+        if not api_key:
+            raise HTTPException(status_code=500, detail="AI service not configured")
+        
+        chat = LlmChat(
+            api_key=api_key,
+            session_id=f"planed-{user_id}-{uuid.uuid4()}",
+            system_message="""Du bist ein erfahrener Lehrer und Lehrplanexperte. 
+            Erstelle konkrete, praxisnahe Unterrichtsvorschläge basierend auf dem deutschen Lehrplan.
+            Antworte immer auf Deutsch und strukturiere deine Vorschläge klar."""
+        ).with_model("gemini", "gemini-3-flash-preview")
+        
+        prompt = f"""Erstelle 5 Unterrichtsthemen-Vorschläge für:
+        Fach: {data.subject}
+        Klassenstufe: {data.grade}
+        Lehrplanthema: {data.curriculum_topic}
+        {"Bereits behandelte Themen: " + ", ".join(data.previous_topics) if data.previous_topics else ""}
+        
+        Für jedes Thema gib an:
+        1. Stundenthema (kurz und prägnant)
+        2. Lernziel/Zielsetzung
+        3. Schlüsselbegriffe
+        
+        Formatiere als JSON-Array mit Objekten: {{"topic": "...", "objective": "...", "key_terms": "..."}}"""
+        
+        response = await chat.send_message(UserMessage(text=prompt))
+        
+        # Parse response
+        import json
+        import re
+        
+        # Extract JSON from response
+        json_match = re.search(r'\[.*\]', response, re.DOTALL)
+        if json_match:
+            suggestions = json.loads(json_match.group())
+        else:
+            suggestions = [{"topic": "Vorschlag konnte nicht generiert werden", "objective": "", "key_terms": ""}]
+        
+        return AITopicSuggestionResponse(suggestions=suggestions[:5])
+    except Exception as e:
+        logger.error(f"AI suggestion error: {e}")
+        raise HTTPException(status_code=500, detail=f"AI service error: {str(e)}")
+
+# ============== DOCUMENT MANAGEMENT ==============
+
+@api_router.post("/documents/upload")
+async def upload_document(
+    class_subject_id: str,
+    lesson_id: Optional[str] = None,
+    file: UploadFile = File(...),
+    user_id: str = Depends(get_current_user)
+):
+    # Validate file type
+    allowed_types = [".docx", ".doc", ".pdf", ".jpg", ".jpeg", ".png"]
+    file_ext = Path(file.filename).suffix.lower()
+    if file_ext not in allowed_types:
+        raise HTTPException(status_code=400, detail=f"File type not allowed. Allowed: {allowed_types}")
+    
+    # Read and store file content in MongoDB (GridFS alternative - store as binary)
+    content = await file.read()
+    
+    doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "class_subject_id": class_subject_id,
+        "lesson_id": lesson_id,
+        "filename": file.filename,
+        "content_type": file.content_type,
+        "size": len(content),
+        "content": content,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.documents.insert_one(doc)
+    
+    return {"id": doc["id"], "filename": file.filename, "size": len(content)}
+
+@api_router.get("/documents")
+async def get_documents(
+    class_subject_id: Optional[str] = None,
+    lesson_id: Optional[str] = None,
+    user_id: str = Depends(get_current_user)
+):
+    query = {"user_id": user_id}
+    if class_subject_id:
+        query["class_subject_id"] = class_subject_id
+    if lesson_id:
+        query["lesson_id"] = lesson_id
+    
+    docs = await db.documents.find(query, {"_id": 0, "content": 0}).to_list(100)
+    return docs
+
+@api_router.get("/documents/{doc_id}/download")
+async def download_document(doc_id: str, user_id: str = Depends(get_current_user)):
+    doc = await db.documents.find_one({"id": doc_id, "user_id": user_id})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    return StreamingResponse(
+        BytesIO(doc["content"]),
+        media_type=doc["content_type"],
+        headers={"Content-Disposition": f"attachment; filename={doc['filename']}"}
+    )
+
+@api_router.delete("/documents/{doc_id}")
+async def delete_document(doc_id: str, user_id: str = Depends(get_current_user)):
+    result = await db.documents.delete_one({"id": doc_id, "user_id": user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return {"status": "deleted"}
+
+# ============== ROOT ==============
+
 @api_router.get("/")
 async def root():
-    return {"message": "Hello World"}
-
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.model_dump()
-    status_obj = StatusCheck(**status_dict)
-    
-    # Convert to dict and serialize datetime to ISO string for MongoDB
-    doc = status_obj.model_dump()
-    doc['timestamp'] = doc['timestamp'].isoformat()
-    
-    _ = await db.status_checks.insert_one(doc)
-    return status_obj
-
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    # Exclude MongoDB's _id field from the query results
-    status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
-    
-    # Convert ISO string timestamps back to datetime objects
-    for check in status_checks:
-        if isinstance(check['timestamp'], str):
-            check['timestamp'] = datetime.fromisoformat(check['timestamp'])
-    
-    return status_checks
+    return {"message": "PlanEd API v1.0.0", "status": "running"}
 
 # Include the router in the main app
 app.include_router(api_router)
@@ -76,13 +752,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
