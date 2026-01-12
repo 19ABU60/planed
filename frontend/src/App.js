@@ -571,61 +571,96 @@ const CalendarPage = ({ classes, lessons, holidays, onCreateLesson, onUpdateLess
         </div>
       </div>
 
-      <div className="calendar-container">
-        <div className="calendar-header">
-          <div className="calendar-nav">
-            <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} data-testid="prev-month-btn">
-              <ChevronLeft size={18} />
-            </button>
+      {selectedClass && (
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '0.5rem', 
+          marginBottom: '1rem',
+          padding: '0.5rem 1rem',
+          background: 'rgba(59, 130, 246, 0.1)',
+          borderRadius: '8px',
+          fontSize: '0.85rem',
+          color: 'var(--text-muted)'
+        }}>
+          <GripVertical size={16} />
+          <span>Tipp: Unterrichtsstunden per Drag & Drop auf einen anderen Tag verschieben</span>
+        </div>
+      )}
+
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <div className="calendar-container">
+          <div className="calendar-header">
+            <div className="calendar-nav">
+              <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} data-testid="prev-month-btn">
+                <ChevronLeft size={18} />
+              </button>
+            </div>
+            <h3 className="calendar-title">
+              {format(currentDate, 'MMMM yyyy', { locale: de })}
+            </h3>
+            <div className="calendar-nav">
+              <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} data-testid="next-month-btn">
+                <ChevronRight size={18} />
+              </button>
+            </div>
           </div>
-          <h3 className="calendar-title">
-            {format(currentDate, 'MMMM yyyy', { locale: de })}
-          </h3>
-          <div className="calendar-nav">
-            <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} data-testid="next-month-btn">
-              <ChevronRight size={18} />
-            </button>
+
+          <div className="calendar-grid">
+            {['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map(day => (
+              <div key={day} className="calendar-weekday">{day}</div>
+            ))}
+            
+            {days.map(day => {
+              const dayStr = format(day, 'yyyy-MM-dd');
+              const dayLessons = getLessonsForDay(day);
+              const isToday = isSameDay(day, new Date());
+              const isCurrentMonth = isSameMonth(day, currentDate);
+              const isWeekendDay = isWeekend(day);
+              const isHolidayDay = isHoliday(day);
+
+              return (
+                <Droppable droppableId={dayStr} key={dayStr}>
+                  {(provided, snapshot) => (
+                    <div
+                      ref={provided.innerRef}
+                      {...provided.droppableProps}
+                      className={`calendar-day ${!isCurrentMonth ? 'other-month' : ''} ${isToday ? 'today' : ''} ${isWeekendDay ? 'weekend' : ''} ${isHolidayDay ? 'holiday' : ''} ${snapshot.isDraggingOver ? 'drag-over' : ''}`}
+                      onClick={() => selectedClass && openCreateModal(day)}
+                      data-testid={`calendar-day-${dayStr}`}
+                    >
+                      <span className="calendar-day-number">{format(day, 'd')}</span>
+                      {dayLessons.map((lesson, index) => (
+                        <Draggable key={lesson.id} draggableId={lesson.id} index={index}>
+                          {(provided, snapshot) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                              className={`lesson-item ${lesson.is_cancelled ? 'cancelled' : ''} ${snapshot.isDragging ? 'dragging' : ''}`}
+                              onClick={(e) => openEditModal(lesson, e)}
+                              style={{ 
+                                borderLeftColor: currentClass?.color,
+                                ...provided.draggableProps.style
+                              }}
+                              data-testid={`lesson-${lesson.id}`}
+                            >
+                              <span className="lesson-item-title">
+                                {lesson.topic || 'Kein Thema'}
+                              </span>
+                            </div>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
+              );
+            })}
           </div>
         </div>
-
-        <div className="calendar-grid">
-          {['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map(day => (
-            <div key={day} className="calendar-weekday">{day}</div>
-          ))}
-          
-          {days.map(day => {
-            const dayLessons = getLessonsForDay(day);
-            const isToday = isSameDay(day, new Date());
-            const isCurrentMonth = isSameMonth(day, currentDate);
-            const isWeekendDay = isWeekend(day);
-            const isHolidayDay = isHoliday(day);
-
-            return (
-              <div
-                key={day.toISOString()}
-                className={`calendar-day ${!isCurrentMonth ? 'other-month' : ''} ${isToday ? 'today' : ''} ${isWeekendDay ? 'weekend' : ''} ${isHolidayDay ? 'holiday' : ''}`}
-                onClick={() => selectedClass && openCreateModal(day)}
-                data-testid={`calendar-day-${format(day, 'yyyy-MM-dd')}`}
-              >
-                <span className="calendar-day-number">{format(day, 'd')}</span>
-                {dayLessons.map(lesson => (
-                  <div
-                    key={lesson.id}
-                    className={`lesson-item ${lesson.is_cancelled ? 'cancelled' : ''}`}
-                    onClick={(e) => openEditModal(lesson, e)}
-                    style={{ borderLeftColor: currentClass?.color }}
-                    data-testid={`lesson-${lesson.id}`}
-                  >
-                    <span className="lesson-item-title">
-                      {lesson.topic || 'Kein Thema'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      </DragDropContext>
 
       {/* Lesson Modal */}
       {showModal && (
