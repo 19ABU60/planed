@@ -410,12 +410,12 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Lesson Items */
 .lesson-item {
-  background: rgba(59, 130, 246, 0.15);
-  border-left: 3px solid var(--primary);
-  border-radius: 4px;
-  padding: 0.4rem 0.5rem;
-  margin-bottom: 0.25rem;
-  font-size: 0.75rem;
+  background: var(--lesson-bg, rgba(59, 130, 246, 0.2));
+  border-left: 4px solid var(--lesson-color, var(--primary));
+  border-radius: 6px;
+  padding: 0.5rem 0.6rem;
+  margin-bottom: 0.3rem;
+  font-size: 0.8rem;
   cursor: grab;
   transition: transform 0.15s, box-shadow 0.15s, background-color 0.15s;
   user-select: none;
@@ -424,7 +424,7 @@ h1, h2, h3, h4, h5, h6 {
 .lesson-item:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  background: rgba(59, 130, 246, 0.25);
+  filter: brightness(1.1);
 }
 
 .lesson-item.dragging {
@@ -436,18 +436,19 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .lesson-item.cancelled {
-  background: rgba(239, 68, 68, 0.15);
-  border-left-color: var(--error);
+  background: rgba(239, 68, 68, 0.2) !important;
+  border-left-color: var(--error) !important;
   text-decoration: line-through;
   opacity: 0.7;
 }
 
 .lesson-item-title {
-  font-weight: 500;
-  color: var(--text-default);
+  font-weight: 600;
+  color: white;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
 }
 
 /* Login Page */
