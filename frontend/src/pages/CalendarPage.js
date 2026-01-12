@@ -452,17 +452,23 @@ const CalendarPage = ({ classes, lessons, holidays, schoolHolidays, publicHolida
                               {...provided.dragHandleProps}
                               className={`lesson-item ${lesson.is_cancelled ? 'cancelled' : ''} ${snapshot.isDragging ? 'dragging' : ''}`}
                               onClick={(e) => openEditModal(lesson, e)} 
-                              style={{ borderLeftColor: currentClass?.color, ...provided.draggableProps.style }}
+                              style={{ 
+                                '--lesson-color': currentClass?.color || '#3b82f6',
+                                '--lesson-bg': `${currentClass?.color || '#3b82f6'}cc`,
+                                background: `${currentClass?.color || '#3b82f6'}cc`,
+                                borderLeftColor: currentClass?.color || '#3b82f6',
+                                ...provided.draggableProps.style 
+                              }}
                               data-testid={`lesson-${lesson.id}`}
                             >
                               {lesson.period && (
                                 <span style={{ 
                                   fontWeight: '700', 
-                                  fontSize: '0.7rem', 
-                                  background: 'rgba(255,255,255,0.15)', 
-                                  padding: '0 4px', 
-                                  borderRadius: '3px',
-                                  marginRight: '4px'
+                                  fontSize: '0.75rem', 
+                                  background: 'rgba(255,255,255,0.25)', 
+                                  padding: '2px 6px', 
+                                  borderRadius: '4px',
+                                  marginRight: '6px'
                                 }}>
                                   {lesson.period}.
                                 </span>
