@@ -651,6 +651,7 @@ async def create_lesson(data: LessonCreate, user_id: str = Depends(get_current_u
         "user_id": user_id,
         "class_subject_id": data.class_subject_id,
         "date": data.date,
+        "period": data.period,
         "topic": data.topic,
         "objective": data.objective,
         "curriculum_reference": data.curriculum_reference,
@@ -668,7 +669,8 @@ async def create_lesson(data: LessonCreate, user_id: str = Depends(get_current_u
     # Log history
     class_info = await db.class_subjects.find_one({"id": data.class_subject_id}, {"_id": 0})
     if class_info:
-        await log_history(user_id, "create", "lesson", doc["id"], f"Stunde am {data.date} für {class_info['name']} erstellt")
+        period_str = f" ({data.period}. Std.)" if data.period else ""
+        await log_history(user_id, "create", "lesson", doc["id"], f"Stunde am {data.date}{period_str} für {class_info['name']} erstellt")
     
     return LessonResponse(**doc)
 
