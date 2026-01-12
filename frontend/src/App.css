@@ -402,6 +402,12 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 700;
 }
 
+/* Drag & Drop States */
+.calendar-day.drag-over {
+  background: rgba(59, 130, 246, 0.15) !important;
+  border: 2px dashed var(--primary) !important;
+}
+
 /* Lesson Items */
 .lesson-item {
   background: rgba(59, 130, 246, 0.15);
@@ -411,17 +417,22 @@ h1, h2, h3, h4, h5, h6 {
   margin-bottom: 0.25rem;
   font-size: 0.75rem;
   cursor: grab;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: transform 0.15s, box-shadow 0.15s, background-color 0.15s;
+  user-select: none;
 }
 
 .lesson-item:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  background: rgba(59, 130, 246, 0.25);
 }
 
 .lesson-item.dragging {
   cursor: grabbing;
-  opacity: 0.8;
+  opacity: 0.9;
+  transform: rotate(2deg) scale(1.02);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 100;
 }
 
 .lesson-item.cancelled {
