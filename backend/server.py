@@ -880,6 +880,67 @@ async def get_class_shares(class_subject_id: str, user_id: str = Depends(get_cur
     shares = await db.shares.find({"class_subject_id": class_subject_id}, {"_id": 0}).to_list(100)
     return [ShareResponse(**s) for s in shares]
 
+# ============== NOTIFICATION ROUTES ==============
+
+async def create_notification(user_id: str, notification_type: str, title: str, message: str, class_name: str, from_user_name: str):
+    """Helper function to create notifications"""
+    doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "type": notification_type,
+        "title": title,
+        "message": message,
+        "class_name": class_name,
+        "from_user_name": from_user_name,
+        "is_read": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.notifications.insert_one(doc)
+    return doc
+
+@api_router.get("/notifications", response_model=List[NotificationResponse])
+async def get_notifications(user_id: str = Depends(get_current_user)):
+    """Get all notifications for current user"""
+    notifications = await db.notifications.find(
+        {"user_id": user_id}, 
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(50)
+    return [NotificationResponse(**n) for n in notifications]
+
+@api_router.get("/notifications/unread-count")
+async def get_unread_count(user_id: str = Depends(get_current_user)):
+    """Get count of unread notifications"""
+    count = await db.notifications.count_documents({"user_id": user_id, "is_read": False})
+    return {"count": count}
+
+@api_router.put("/notifications/{notification_id}/read")
+async def mark_as_read(notification_id: str, user_id: str = Depends(get_current_user)):
+    """Mark a notification as read"""
+    result = await db.notifications.update_one(
+        {"id": notification_id, "user_id": user_id},
+        {"$set": {"is_read": True}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Benachrichtigung nicht gefunden")
+    return {"status": "read"}
+
+@api_router.put("/notifications/read-all")
+async def mark_all_as_read(user_id: str = Depends(get_current_user)):
+    """Mark all notifications as read"""
+    await db.notifications.update_many(
+        {"user_id": user_id, "is_read": False},
+        {"$set": {"is_read": True}}
+    )
+    return {"status": "all_read"}
+
+@api_router.delete("/notifications/{notification_id}")
+async def delete_notification(notification_id: str, user_id: str = Depends(get_current_user)):
+    """Delete a notification"""
+    result = await db.notifications.delete_one({"id": notification_id, "user_id": user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Benachrichtigung nicht gefunden")
+    return {"status": "deleted"}
+
 # ============== ROOT ==============
 
 @api_router.get("/")
