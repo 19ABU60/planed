@@ -1,11 +1,18 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Save, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Save, ChevronLeft, ChevronRight, GripVertical } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
 
 const WEEKDAYS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+
+// Default column widths
+const DEFAULT_WIDTHS = {
+  unterrichtseinheit: 150,
+  lehrplan: 280,
+  stundenthema: 250
+};
 
 const WorkplanTablePage = ({ classes, schoolYears }) => {
   const { authAxios } = useAuth();
@@ -14,6 +21,14 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
   const [workplanData, setWorkplanData] = useState({});
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  
+  // Column resize state
+  const [columnWidths, setColumnWidths] = useState(() => {
+    const saved = localStorage.getItem('workplanColumnWidths');
+    return saved ? JSON.parse(saved) : DEFAULT_WIDTHS;
+  });
+  const [resizing, setResizing] = useState(null);
+  const tableRef = useRef(null);
 
   const currentClass = classes.find(c => c.id === selectedClass);
   
@@ -77,6 +92,38 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
     fetchWorkplan();
   }, [selectedClass, currentMonth, authAxios]);
 
+  // Save column widths to localStorage
+  useEffect(() => {
+    localStorage.setItem('workplanColumnWidths', JSON.stringify(columnWidths));
+  }, [columnWidths]);
+
+  // Handle column resize
+  const startResize = (columnKey, e) => {
+    e.preventDefault();
+    setResizing({ columnKey, startX: e.clientX, startWidth: columnWidths[columnKey] });
+  };
+
+  useEffect(() => {
+    if (!resizing) return;
+
+    const handleMouseMove = (e) => {
+      const diff = e.clientX - resizing.startX;
+      const newWidth = Math.max(80, Math.min(500, resizing.startWidth + diff));
+      setColumnWidths(prev => ({ ...prev, [resizing.columnKey]: newWidth }));
+    };
+
+    const handleMouseUp = () => {
+      setResizing(null);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [resizing]);
+
   // Update cell data
   const updateCell = (dateStr, period, field, value) => {
     const key = `${dateStr}-${period}`;
@@ -122,6 +169,53 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
     });
   };
 
+  // Reset column widths
+  const resetColumnWidths = () => {
+    setColumnWidths(DEFAULT_WIDTHS);
+    toast.success('Spaltenbreiten zurückgesetzt');
+  };
+
+  // Resizable column header component
+  const ResizableHeader = ({ columnKey, label, color }) => (
+    <th style={{ 
+      padding: '0.75rem 0.5rem', 
+      textAlign: 'center', 
+      color: 'white',
+      fontWeight: '600',
+      borderBottom: '2px solid rgba(255,255,255,0.2)',
+      borderLeft: '2px solid rgba(255,255,255,0.2)',
+      width: `${columnWidths[columnKey]}px`,
+      minWidth: `${columnWidths[columnKey]}px`,
+      position: 'relative',
+      userSelect: 'none'
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+        <span style={{ fontSize: '0.8rem' }}>{label}</span>
+      </div>
+      {/* Resize handle */}
+      <div
+        onMouseDown={(e) => startResize(columnKey, e)}
+        style={{
+          position: 'absolute',
+          right: 0,
+          top: 0,
+          bottom: 0,
+          width: '8px',
+          cursor: 'col-resize',
+          background: resizing?.columnKey === columnKey ? 'rgba(255,255,255,0.3)' : 'transparent',
+          transition: 'background 0.15s',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}
+        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
+        onMouseLeave={(e) => { if (resizing?.columnKey !== columnKey) e.currentTarget.style.background = 'transparent'; }}
+      >
+        <GripVertical size={12} style={{ opacity: 0.5 }} />
+      </div>
+    </th>
+  );
+
   return (
     <div className="page-content" style={{ padding: '1rem' }}>
       {/* Header */}
@@ -143,6 +237,7 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
             style={{ width: '220px' }} 
             value={selectedClass} 
             onChange={(e) => setSelectedClass(e.target.value)}
+            data-testid="workplan-class-select"
           >
             <option value="">Klasse wählen...</option>
             {classes.map(cls => (
@@ -151,22 +246,50 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
           </select>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <button className="btn btn-ghost btn-icon" onClick={() => navigateMonth(-1)}>
+            <button className="btn btn-ghost btn-icon" onClick={() => navigateMonth(-1)} data-testid="prev-month-btn">
               <ChevronLeft size={20} />
             </button>
             <span style={{ fontWeight: '600', minWidth: '140px', textAlign: 'center' }}>
               {format(currentMonth, 'MMMM yyyy', { locale: de })}
             </span>
-            <button className="btn btn-ghost btn-icon" onClick={() => navigateMonth(1)}>
+            <button className="btn btn-ghost btn-icon" onClick={() => navigateMonth(1)} data-testid="next-month-btn">
               <ChevronRight size={20} />
             </button>
           </div>
           
-          <button className="btn btn-primary" onClick={saveWorkplan} disabled={saving}>
+          <button className="btn btn-primary" onClick={saveWorkplan} disabled={saving} data-testid="save-workplan-btn">
             {saving ? <span className="spinner" /> : <Save size={18} />} Speichern
           </button>
         </div>
       </div>
+
+      {/* Resize hint */}
+      {selectedClass && scheduledDays.length > 0 && (
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between',
+          gap: '0.5rem', 
+          marginBottom: '0.75rem', 
+          padding: '0.5rem 1rem',
+          background: 'rgba(59, 130, 246, 0.1)', 
+          borderRadius: '8px', 
+          fontSize: '0.85rem', 
+          color: 'var(--text-muted)' 
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <GripVertical size={16} />
+            <span>Tipp: Spaltenbreiten durch Ziehen der Trennlinien anpassen</span>
+          </div>
+          <button 
+            className="btn btn-ghost" 
+            style={{ fontSize: '0.8rem', padding: '0.25rem 0.5rem' }}
+            onClick={resetColumnWidths}
+          >
+            Zurücksetzen
+          </button>
+        </div>
+      )}
 
       {!selectedClass ? (
         <div className="empty-state">
@@ -190,10 +313,11 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
           borderRadius: '12px',
           background: 'var(--bg-paper)'
         }}>
-          <table style={{ 
+          <table ref={tableRef} style={{ 
             width: '100%', 
             borderCollapse: 'collapse',
-            fontSize: '0.85rem'
+            fontSize: '0.85rem',
+            tableLayout: 'fixed'
           }}>
             <thead>
               <tr style={{ background: currentClass?.color || '#3b82f6' }}>
@@ -227,36 +351,21 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
                 }}>
                   Std.
                 </th>
-                <th style={{ 
-                  padding: '0.75rem', 
-                  textAlign: 'center', 
-                  color: 'white',
-                  fontWeight: '600',
-                  borderBottom: '2px solid rgba(255,255,255,0.2)',
-                  borderLeft: '2px solid rgba(255,255,255,0.2)'
-                }}>
-                  Unterrichtseinheit
-                </th>
-                <th style={{ 
-                  padding: '0.75rem', 
-                  textAlign: 'center', 
-                  color: 'white',
-                  fontWeight: '600',
-                  borderBottom: '2px solid rgba(255,255,255,0.2)',
-                  borderLeft: '2px solid rgba(255,255,255,0.2)'
-                }}>
-                  Lehrplan, Bildungsstandards, Begriffe, Hinweise
-                </th>
-                <th style={{ 
-                  padding: '0.75rem', 
-                  textAlign: 'center', 
-                  color: 'white',
-                  fontWeight: '600',
-                  borderBottom: '2px solid rgba(255,255,255,0.2)',
-                  borderLeft: '2px solid rgba(255,255,255,0.2)'
-                }}>
-                  Stundenthema, Zielsetzung
-                </th>
+                <ResizableHeader 
+                  columnKey="unterrichtseinheit" 
+                  label="Unterrichtseinheit" 
+                  color={currentClass?.color}
+                />
+                <ResizableHeader 
+                  columnKey="lehrplan" 
+                  label="Lehrplan, Bildungsstandards, Begriffe, Hinweise" 
+                  color={currentClass?.color}
+                />
+                <ResizableHeader 
+                  columnKey="stundenthema" 
+                  label="Stundenthema, Zielsetzung" 
+                  color={currentClass?.color}
+                />
               </tr>
             </thead>
             <tbody>
@@ -328,12 +437,13 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
                       <td style={{ 
                         padding: '0.25rem',
                         borderLeft: '2px solid var(--border-default)',
-                        minWidth: '120px'
+                        width: `${columnWidths.unterrichtseinheit}px`
                       }}>
                         <textarea
                           value={rowData.unterrichtseinheit || ''}
                           onChange={(e) => updateCell(dateStr, period, 'unterrichtseinheit', e.target.value)}
                           placeholder=""
+                          data-testid={`cell-unterrichtseinheit-${dateStr}-${period}`}
                           style={{
                             width: '100%',
                             minHeight: '45px',
@@ -355,12 +465,13 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
                       <td style={{ 
                         padding: '0.25rem',
                         borderLeft: '2px solid var(--border-default)',
-                        minWidth: '200px'
+                        width: `${columnWidths.lehrplan}px`
                       }}>
                         <textarea
                           value={rowData.lehrplan || ''}
                           onChange={(e) => updateCell(dateStr, period, 'lehrplan', e.target.value)}
                           placeholder=""
+                          data-testid={`cell-lehrplan-${dateStr}-${period}`}
                           style={{
                             width: '100%',
                             minHeight: '45px',
@@ -382,12 +493,13 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
                       <td style={{ 
                         padding: '0.25rem',
                         borderLeft: '2px solid var(--border-default)',
-                        minWidth: '200px'
+                        width: `${columnWidths.stundenthema}px`
                       }}>
                         <textarea
                           value={rowData.stundenthema || ''}
                           onChange={(e) => updateCell(dateStr, period, 'stundenthema', e.target.value)}
                           placeholder=""
+                          data-testid={`cell-stundenthema-${dateStr}-${period}`}
                           style={{
                             width: '100%',
                             minHeight: '45px',
