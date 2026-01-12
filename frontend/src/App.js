@@ -8,11 +8,12 @@ import {
   Settings, LogOut, Plus, ChevronLeft, ChevronRight, Edit2, 
   Trash2, Download, Sparkles, X, Menu, GraduationCap,
   FileText, FileSpreadsheet, File, Upload, Clock, Users, Share2, UserPlus, Eye, Pencil,
-  Bell, Check, CheckCheck
+  Bell, Check, CheckCheck, GripVertical
 } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, 
   addMonths, subMonths, isWeekend, startOfWeek, endOfWeek, parseISO, formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
