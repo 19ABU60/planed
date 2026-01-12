@@ -59,6 +59,36 @@ const LessonModal = ({ lesson, date, onSave, onDelete, onCopy, onClose, onAISugg
                 </button>
               )}
             </div>
+            
+            {/* Period Selection */}
+            {availablePeriods && availablePeriods.length > 0 && (
+              <div className="form-group">
+                <label className="form-label">Unterrichtsstunde</label>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  {availablePeriods.map(period => (
+                    <button
+                      key={period}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, period })}
+                      style={{
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '8px',
+                        border: formData.period === period ? '2px solid var(--primary)' : '1px solid var(--border-default)',
+                        background: formData.period === period ? 'var(--primary)' : 'var(--bg-subtle)',
+                        color: formData.period === period ? 'white' : 'var(--text-default)',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      {period}.
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            
             <div className="form-group">
               <label className="form-label">Stundenthema</label>
               <input 
