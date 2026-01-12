@@ -205,39 +205,12 @@ const MainApp = () => {
 
   return (
     <div className="app-container">
-      <Joyride 
-        steps={tourSteps} 
-        run={runTour} 
-        continuous 
-        showSkipButton 
-        showProgress 
-        callback={handleTourCallback}
-        styles={{ 
-          options: { 
-            primaryColor: '#3b82f6', 
-            backgroundColor: '#18181b', 
-            textColor: '#fafafa', 
-            arrowColor: '#18181b' 
-          },
-          tooltip: { borderRadius: '12px' }, 
-          buttonNext: { borderRadius: '8px' }, 
-          buttonBack: { marginRight: 10 } 
-        }} 
-      />
-      
       <Sidebar currentPage={currentPage} onNavigate={handleNavigate} onLogout={handleLogout} user={user} />
       <main className="main-content">
         <header className="main-header">
           <h1 className="main-header-title">{pageTitle[currentPage]}</h1>
           <div className="main-header-actions">
             <GlobalSearch onNavigate={handleNavigate} />
-            <button 
-              className="btn btn-ghost btn-icon" 
-              onClick={() => setRunTour(true)} 
-              title="Hilfe"
-            >
-              <HelpCircle size={20} />
-            </button>
             <NotificationBell />
           </div>
         </header>
