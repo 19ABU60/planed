@@ -529,6 +529,25 @@ const CalendarPage = ({ classes, lessons, holidays, onCreateLesson, onUpdateLess
     setAiLoading(false);
   };
 
+  // Drag & Drop Handler
+  const handleDragEnd = async (result) => {
+    if (!result.destination) return;
+    
+    const { draggableId, destination } = result;
+    const newDate = destination.droppableId; // Format: yyyy-MM-dd
+    
+    // Find the lesson being dragged
+    const lesson = filteredLessons.find(l => l.id === draggableId);
+    if (!lesson || lesson.date === newDate) return;
+    
+    try {
+      await onUpdateLesson(lesson.id, { date: newDate });
+      toast.success(`Stunde verschoben auf ${format(parseISO(newDate), 'dd.MM.yyyy', { locale: de })}`);
+    } catch (error) {
+      toast.error('Fehler beim Verschieben');
+    }
+  };
+
   return (
     <div className="page-content">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
