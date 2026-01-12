@@ -9,9 +9,9 @@ const WEEKDAYS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 
 // Default column widths
 const DEFAULT_WIDTHS = {
-  unterrichtseinheit: 180,
-  lehrplan: 320,
-  stundenthema: 280
+  unterrichtseinheit: 120,
+  lehrplan: 120,
+  stundenthema: 450
 };
 
 const MIN_WIDTH = 100;
@@ -382,7 +382,7 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
                 </th>
                 <ColumnHeader columnKey="unterrichtseinheit" label="Unterrichtseinheit" />
                 <ColumnHeader columnKey="lehrplan" label="Lehrplan, Standards, Hinweise" />
-                <ColumnHeader columnKey="stundenthema" label="Stundenthema, Zielsetzung" />
+                <ColumnHeader columnKey="stundenthema" label="Stundenthema, Zielsetzung, Lernziele" />
               </tr>
             </thead>
             <tbody>
