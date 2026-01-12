@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Calendar, BarChart3, BookOpen, FolderOpen, 
   Settings, LogOut, Plus, ChevronLeft, ChevronRight, Edit2, 
   Trash2, Download, Sparkles, X, Menu, GraduationCap,
-  FileText, FileSpreadsheet, File, Upload, Clock, Users
+  FileText, FileSpreadsheet, File, Upload, Clock, Users, Share2, UserPlus, Eye, Pencil
 } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, 
   addMonths, subMonths, isWeekend, startOfWeek, endOfWeek, parseISO } from 'date-fns';
