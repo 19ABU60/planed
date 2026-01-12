@@ -753,8 +753,9 @@ async def save_workplan_bulk(
                 "class_subject_id": class_id,
                 "date": entry.date,
                 "period": entry.period,
-                "entries": entry.entries,
-                "collaborators": entry.collaborators,
+                "unterrichtseinheit": entry.unterrichtseinheit or "",
+                "lehrplan": entry.lehrplan or "",
+                "stundenthema": entry.stundenthema or "",
                 "updated_at": now,
                 "updated_by": user_id
             },
