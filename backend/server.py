@@ -37,6 +37,9 @@ JWT_SECRET = os.environ.get('JWT_SECRET', 'planed-secret-key-2025')
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24
 
+# Invitation Code for Registration
+INVITATION_CODE = os.environ.get('INVITATION_CODE', 'LASP2026')
+
 # Create the main app
 app = FastAPI(title="PlanEd API", version="2.0.0")
 
