@@ -193,6 +193,21 @@ const CalendarPage = ({ classes, lessons, holidays, schoolHolidays, publicHolida
   const { authAxios } = useAuth();
   const [aiLoading, setAiLoading] = useState(false);
   const [workplanData, setWorkplanData] = useState({});
+  
+  // Cell height state - saved to localStorage
+  const [cellHeight, setCellHeight] = useState(() => {
+    const saved = localStorage.getItem('calendarCellHeight');
+    return saved ? parseInt(saved) : 120;
+  });
+
+  // Save cell height to localStorage
+  useEffect(() => {
+    localStorage.setItem('calendarCellHeight', cellHeight.toString());
+  }, [cellHeight]);
+
+  const adjustCellHeight = (delta) => {
+    setCellHeight(prev => Math.max(80, Math.min(300, prev + delta)));
+  };
 
   useEffect(() => { 
     if (selectedClassId) setSelectedClass(selectedClassId); 
