@@ -202,17 +202,39 @@ const ResearchPage = () => {
             }}>
               {results.map(image => (
                 <div key={image.id} className="card" style={{ overflow: 'hidden', padding: 0 }}>
-                  <img 
-                    src={image.thumb || image.url} 
-                    alt={image.description}
-                    style={{ 
-                      width: '100%', 
-                      height: '180px', 
-                      objectFit: 'cover',
-                      background: 'var(--bg-subtle)'
-                    }}
-                    loading="lazy"
-                  />
+                  {image.is_link ? (
+                    // Link to external image search
+                    <a href={image.url} target="_blank" rel="noopener noreferrer" style={{ display: 'block' }}>
+                      <div style={{ 
+                        width: '100%', 
+                        height: '180px', 
+                        background: 'linear-gradient(135deg, var(--primary) 0%, var(--bg-subtle) 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontSize: '3rem'
+                      }}>
+                        🔍
+                      </div>
+                    </a>
+                  ) : (
+                    <img 
+                      src={image.thumb || image.url} 
+                      alt={image.description}
+                      style={{ 
+                        width: '100%', 
+                        height: '180px', 
+                        objectFit: 'cover',
+                        background: 'var(--bg-subtle)'
+                      }}
+                      loading="lazy"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                      }}
+                    />
+                  )}
                   <div style={{ padding: '1rem' }}>
                     <p style={{ 
                       fontSize: '0.85rem', 
@@ -226,26 +248,29 @@ const ResearchPage = () => {
                       {image.description || 'Kein Titel'}
                     </p>
                     <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
-                      Foto: {image.author} • {image.source}
+                      {image.author} • {image.source}
                     </p>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       <a 
                         href={image.url} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="btn btn-secondary btn-sm"
+                        className="btn btn-primary btn-sm"
                         style={{ flex: 1 }}
                       >
-                        <ExternalLink size={14} /> Ansehen
+                        <ExternalLink size={14} /> {image.is_link ? 'Suchen' : 'Ansehen'}
                       </a>
-                      <a 
-                        href={image.download_url} 
-                        download
-                        className="btn btn-secondary btn-sm"
-                        style={{ flex: 1 }}
-                      >
-                        <Download size={14} /> Download
-                      </a>
+                      {!image.is_link && (
+                        <a 
+                          href={image.download_url} 
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn btn-secondary btn-sm"
+                          style={{ flex: 1 }}
+                        >
+                          <Download size={14} /> Download
+                        </a>
+                      )}
                     </div>
                   </div>
                 </div>
