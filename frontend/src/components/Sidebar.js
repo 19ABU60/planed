@@ -14,7 +14,7 @@ const Sidebar = ({ currentPage, onNavigate, onLogout, user }) => {
     { id: 'todos', label: 'Aufgaben', icon: ListTodo },
     { id: 'sharing', label: 'Freigaben', icon: Share2 },
     { id: 'documents', label: 'Dokumente', icon: FolderOpen },
-    { id: 'history', label: 'Verlauf', icon: History },
+    // { id: 'history', label: 'Verlauf', icon: History }, // Ausgeblendet - bei Bedarf wieder aktivieren
     { id: 'settings', label: 'Einstellungen', icon: Settings },
   ];
 
