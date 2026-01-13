@@ -179,24 +179,20 @@ const ResearchPage = () => {
         ))}
       </div>
 
-      {/* Search Bar */}
-      <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+      {/* Search Bar - Compact for iPad */}
+      <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
         <input
           type="text"
           className="form-input"
-          placeholder={
-            activeTab === 'images' ? 'Suchbegriff...' : 
-            activeTab === 'papers' ? 'Search term...' : 
-            'Suchbegriff...'
-          }
+          placeholder="Suche..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
           style={{ 
-            width: '180px', 
-            padding: '0.35rem 0.6rem', 
-            fontSize: '0.85rem',
-            height: '32px'
+            width: '140px', 
+            padding: '0.25rem 0.5rem', 
+            fontSize: '0.8rem',
+            height: '28px'
           }}
         />
         <button 
@@ -204,16 +200,15 @@ const ResearchPage = () => {
           onClick={handleSearch}
           disabled={loading}
           style={{ 
-            padding: '0.35rem 0.75rem', 
-            fontSize: '0.85rem',
-            height: '32px',
+            padding: '0.25rem 0.5rem', 
+            fontSize: '0.8rem',
+            height: '28px',
             display: 'flex',
             alignItems: 'center',
-            gap: '0.3rem'
+            gap: '0.25rem'
           }}
         >
-          {loading ? <RefreshCw size={14} className="spin" /> : <Search size={14} />}
-          Suchen
+          {loading ? <RefreshCw size={12} className="spin" /> : <Search size={12} />}
         </button>
 
         {/* Academic source selector */}
@@ -223,10 +218,10 @@ const ResearchPage = () => {
             value={academicSource}
             onChange={(e) => setAcademicSource(e.target.value)}
             style={{ 
-              padding: '0.35rem 0.5rem', 
-              fontSize: '0.85rem',
-              height: '32px',
-              width: '140px'
+              padding: '0.25rem 0.4rem', 
+              fontSize: '0.8rem',
+              height: '28px',
+              width: '110px'
             }}
           >
             <option value="openalex">OpenAlex</option>
