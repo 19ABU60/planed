@@ -256,7 +256,7 @@ const ResearchPage = () => {
           {/* Video Results */}
           {activeTab === 'videos' && (
             <>
-              {results.length > 0 ? (
+              {results.length > 0 && !results[0]?.type ? (
                 <div style={{ 
                   display: 'grid', 
                   gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', 
@@ -305,15 +305,15 @@ const ResearchPage = () => {
                     </div>
                   ))}
                 </div>
-              ) : searchQuery && (
+              ) : (
                 <div className="card" style={{ textAlign: 'center', padding: '2rem' }}>
                   <Video size={48} style={{ opacity: 0.3, marginBottom: '1rem' }} />
                   <h3 style={{ marginBottom: '1rem' }}>YouTube-Suche</h3>
                   <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
-                    Klicken Sie den Button, um direkt auf YouTube nach "{searchQuery}" zu suchen:
+                    Klicken Sie den Button, um direkt auf YouTube nach "{searchQuery || 'Ihrem Thema'}" zu suchen:
                   </p>
                   <a 
-                    href={`https://www.youtube.com/results?search_query=${encodeURIComponent(searchQuery + ' Unterricht Schule')}`}
+                    href={`https://www.youtube.com/results?search_query=${encodeURIComponent((searchQuery || '') + ' Unterricht Schule')}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="btn btn-primary"
