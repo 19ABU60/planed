@@ -75,7 +75,9 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
       try {
         const startDate = format(monthStart, 'yyyy-MM-dd');
         const endDate = format(monthEnd, 'yyyy-MM-dd');
+        console.log('Fetching workplan:', { selectedClass, startDate, endDate });
         const response = await authAxios.get(`/workplan/${selectedClass}?start=${startDate}&end=${endDate}`);
+        console.log('Fetched workplan data:', response.data);
         
         // Convert array to object keyed by date-period
         const dataMap = {};
@@ -86,6 +88,7 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
         setWorkplanData(dataMap);
       } catch (error) {
         console.error('Error fetching workplan:', error);
+        toast.error('Fehler beim Laden der Daten');
       }
       setLoading(false);
     };
