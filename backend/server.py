@@ -1665,50 +1665,25 @@ async def delete_notification(notification_id: str, user_id: str = Depends(get_c
 
 @api_router.get("/research/images")
 async def search_images(query: str, user_id: str = Depends(get_current_user)):
-    """Search for educational images using free sources"""
+    """Search for educational images using free Unsplash Source"""
     try:
-        async with httpx.AsyncClient() as client:
-            results = []
-            
-            # Use Pexels API (free, no key needed for limited use)
-            try:
-                response = await client.get(
-                    "https://api.pexels.com/v1/search",
-                    params={"query": query, "per_page": 12, "orientation": "landscape"},
-                    headers={"Authorization": os.environ.get("PEXELS_API_KEY", "")},
-                    timeout=10.0
-                )
-                if response.status_code == 200:
-                    data = response.json()
-                    for photo in data.get("photos", []):
-                        results.append({
-                            "id": str(photo["id"]),
-                            "url": photo["src"]["large"],
-                            "thumb": photo["src"]["medium"],
-                            "description": photo.get("alt", query),
-                            "author": photo["photographer"],
-                            "download_url": photo["src"]["original"],
-                            "source": "Pexels"
-                        })
-            except Exception as e:
-                logger.warning(f"Pexels search failed: {e}")
-            
-            # If no results, use Unsplash Source (no API key needed)
-            if not results:
-                # Generate placeholder results with Unsplash Source URLs
-                search_terms = query.replace(" ", ",")
-                for i in range(8):
-                    results.append({
-                        "id": f"unsplash-{i}",
-                        "url": f"https://source.unsplash.com/800x600/?{search_terms}&sig={i}",
-                        "thumb": f"https://source.unsplash.com/400x300/?{search_terms}&sig={i}",
-                        "description": f"{query} - Bild {i+1}",
-                        "author": "Unsplash Community",
-                        "download_url": f"https://source.unsplash.com/1600x1200/?{search_terms}&sig={i}",
-                        "source": "Unsplash"
-                    })
-            
-            return {"results": results, "total": len(results)}
+        results = []
+        search_terms = query.replace(" ", ",")
+        
+        # Use Unsplash Source (no API key needed) - generates random images by query
+        for i in range(8):
+            # Each request gets a different image with the sig parameter
+            results.append({
+                "id": f"unsplash-{i}-{query[:10]}",
+                "url": f"https://source.unsplash.com/800x600/?{search_terms}&sig={i}{hash(query) % 1000}",
+                "thumb": f"https://source.unsplash.com/400x300/?{search_terms}&sig={i}{hash(query) % 1000}",
+                "description": f"{query}",
+                "author": "Unsplash Community",
+                "download_url": f"https://source.unsplash.com/1600x1200/?{search_terms}&sig={i}{hash(query) % 1000}",
+                "source": "Unsplash"
+            })
+        
+        return {"results": results, "total": len(results)}
     except Exception as e:
         logger.error(f"Image search error: {e}")
         return {"results": [], "total": 0, "error": str(e)}
