@@ -1669,7 +1669,12 @@ async def search_images(query: str, user_id: str = Depends(get_current_user)):
     try:
         results = []
         
-        async with httpx.AsyncClient() as http_client:
+        # Wikimedia requires a User-Agent header
+        headers = {
+            "User-Agent": "PlanEd/2.0 (Educational Teacher Planning Tool; contact@planed.app)"
+        }
+        
+        async with httpx.AsyncClient(headers=headers) as http_client:
             # Use Wikimedia Commons API - completely free, no API key needed
             response = await http_client.get(
                 "https://commons.wikimedia.org/w/api.php",
