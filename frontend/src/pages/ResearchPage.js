@@ -201,10 +201,10 @@ const ResearchPage = () => {
               gap: '1rem' 
             }}>
               {results.map(image => (
-                <div key={image.id} className="card" style={{ overflow: 'hidden', padding: 0 }}>
+                <div key={image.id} className="card" style={{ overflow: 'hidden', padding: 0 }} data-testid={`image-card-${image.id}`}>
                   {image.is_link ? (
                     // Link to external image search
-                    <a href={image.url} target="_blank" rel="noopener noreferrer" style={{ display: 'block' }}>
+                    <a href={image.url} target="_blank" rel="noopener noreferrer" style={{ display: 'block' }} data-testid="image-search-link">
                       <div style={{ 
                         width: '100%', 
                         height: '180px', 
@@ -212,27 +212,20 @@ const ResearchPage = () => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: 'white',
-                        fontSize: '3rem'
+                        flexDirection: 'column',
+                        gap: '0.5rem'
                       }}>
-                        🔍
+                        <Search size={48} style={{ color: 'white', opacity: 0.9 }} />
+                        <span style={{ color: 'white', fontSize: '0.9rem', fontWeight: 500 }}>
+                          {image.source}
+                        </span>
                       </div>
                     </a>
                   ) : (
-                    <img 
+                    <ImageWithFallback 
                       src={image.thumb || image.url} 
-                      alt={image.description}
-                      style={{ 
-                        width: '100%', 
-                        height: '180px', 
-                        objectFit: 'cover',
-                        background: 'var(--bg-subtle)'
-                      }}
-                      loading="lazy"
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                        e.target.nextSibling.style.display = 'flex';
-                      }}
+                      alt={image.description || 'Bild'}
+                      source={image.source}
                     />
                   )}
                   <div style={{ padding: '1rem' }}>
@@ -257,16 +250,18 @@ const ResearchPage = () => {
                         rel="noopener noreferrer"
                         className="btn btn-primary btn-sm"
                         style={{ flex: 1 }}
+                        data-testid="view-image-btn"
                       >
                         <ExternalLink size={14} /> {image.is_link ? 'Suchen' : 'Ansehen'}
                       </a>
-                      {!image.is_link && (
+                      {!image.is_link && image.download_url && (
                         <a 
                           href={image.download_url} 
                           target="_blank"
                           rel="noopener noreferrer"
                           className="btn btn-secondary btn-sm"
                           style={{ flex: 1 }}
+                          data-testid="download-image-btn"
                         >
                           <Download size={14} /> Download
                         </a>
