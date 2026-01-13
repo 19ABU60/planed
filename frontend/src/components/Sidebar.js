@@ -1,6 +1,6 @@
 import { 
   LayoutDashboard, Calendar, BarChart3, BookOpen, FolderOpen, 
-  Settings, LogOut, GraduationCap, FileCheck, ListTodo, Share2, History, Table
+  Settings, LogOut, GraduationCap, FileCheck, ListTodo, Share2, History, Table, Search
 } from 'lucide-react';
 
 const Sidebar = ({ currentPage, onNavigate, onLogout, user }) => {
