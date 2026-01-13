@@ -1665,23 +1665,87 @@ async def delete_notification(notification_id: str, user_id: str = Depends(get_c
 
 @api_router.get("/research/images")
 async def search_images(query: str, user_id: str = Depends(get_current_user)):
-    """Search for educational images using free Unsplash Source"""
+    """Search for educational images using Pixabay (free, no API key for limited use)"""
     try:
         results = []
-        search_terms = query.replace(" ", ",")
         
-        # Use Unsplash Source (no API key needed) - generates random images by query
-        for i in range(8):
-            # Each request gets a different image with the sig parameter
-            results.append({
-                "id": f"unsplash-{i}-{query[:10]}",
-                "url": f"https://source.unsplash.com/800x600/?{search_terms}&sig={i}{hash(query) % 1000}",
-                "thumb": f"https://source.unsplash.com/400x300/?{search_terms}&sig={i}{hash(query) % 1000}",
-                "description": f"{query}",
-                "author": "Unsplash Community",
-                "download_url": f"https://source.unsplash.com/1600x1200/?{search_terms}&sig={i}{hash(query) % 1000}",
-                "source": "Unsplash"
-            })
+        async with httpx.AsyncClient() as client:
+            # Pixabay has a limited free tier without API key
+            pixabay_key = os.environ.get("PIXABAY_API_KEY", "")
+            
+            if pixabay_key:
+                response = await client.get(
+                    "https://pixabay.com/api/",
+                    params={
+                        "key": pixabay_key,
+                        "q": query,
+                        "image_type": "photo",
+                        "per_page": 12,
+                        "safesearch": "true",
+                        "lang": "de"
+                    },
+                    timeout=10.0
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    for hit in data.get("hits", []):
+                        results.append({
+                            "id": str(hit["id"]),
+                            "url": hit["webformatURL"],
+                            "thumb": hit["previewURL"],
+                            "description": hit.get("tags", query),
+                            "author": hit.get("user", "Pixabay"),
+                            "download_url": hit["largeImageURL"],
+                            "source": "Pixabay"
+                        })
+            
+            # Fallback: Generate helpful search links
+            if not results:
+                # Provide direct links to image searches
+                encoded_query = query.replace(" ", "+")
+                results = [
+                    {
+                        "id": "search-unsplash",
+                        "url": f"https://unsplash.com/s/photos/{encoded_query}",
+                        "thumb": "https://images.unsplash.com/photo-1516321497487-e288fb19713f?w=400",
+                        "description": f"Auf Unsplash nach '{query}' suchen",
+                        "author": "Unsplash",
+                        "download_url": f"https://unsplash.com/s/photos/{encoded_query}",
+                        "source": "Unsplash",
+                        "is_link": True
+                    },
+                    {
+                        "id": "search-pixabay",
+                        "url": f"https://pixabay.com/images/search/{encoded_query}/",
+                        "thumb": "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400",
+                        "description": f"Auf Pixabay nach '{query}' suchen",
+                        "author": "Pixabay",
+                        "download_url": f"https://pixabay.com/images/search/{encoded_query}/",
+                        "source": "Pixabay",
+                        "is_link": True
+                    },
+                    {
+                        "id": "search-pexels",
+                        "url": f"https://www.pexels.com/search/{encoded_query}/",
+                        "thumb": "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=400",
+                        "description": f"Auf Pexels nach '{query}' suchen",
+                        "author": "Pexels",
+                        "download_url": f"https://www.pexels.com/search/{encoded_query}/",
+                        "source": "Pexels",
+                        "is_link": True
+                    },
+                    {
+                        "id": "search-wikimedia",
+                        "url": f"https://commons.wikimedia.org/w/index.php?search={encoded_query}&ns0=1&ns6=1",
+                        "thumb": "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400",
+                        "description": f"Auf Wikimedia Commons nach '{query}' suchen",
+                        "author": "Wikimedia",
+                        "download_url": f"https://commons.wikimedia.org/w/index.php?search={encoded_query}&ns0=1&ns6=1",
+                        "source": "Wikimedia",
+                        "is_link": True
+                    }
+                ]
         
         return {"results": results, "total": len(results)}
     except Exception as e:
