@@ -306,6 +306,12 @@ class StatisticsResponse(BaseModel):
     cancelled_hours: int
     completion_percentage: float
     topics_covered: int
+    hours_per_week: int
+    school_weeks: int
+    holiday_weeks: int
+    semester_name: str
+    upcoming_lessons: List[Dict[str, Any]] = []
+    workplan_entries_count: int = 0
 
 class AITopicSuggestionRequest(BaseModel):
     subject: str
