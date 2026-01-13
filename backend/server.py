@@ -1821,28 +1821,24 @@ async def translate_text(text: str = "", target_lang: str = "de", user_id: str =
         return {"translated": "", "error": "No text provided"}
     
     try:
-        from emergentintegrations.llm.chat import Chat, UserMessage
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
         
         # Use Emergent LLM key for translation
-        emergent_key = os.environ.get("EMERGENT_MODEL_API_KEY", "")
+        emergent_key = os.environ.get("EMERGENT_MODEL_API_KEY", "") or os.environ.get("EMERGENT_LLM_KEY", "")
         if not emergent_key:
             return {"translated": text, "error": "Translation service not configured"}
         
-        chat = Chat(
+        chat = LlmChat(
             api_key=emergent_key,
-            model="gemini-2.0-flash",
-            temperature=0.3
-        )
+            session_id=f"translate-{user_id}",
+            system_message="Du bist ein professioneller Übersetzer für wissenschaftliche Texte. Übersetze Texte präzise ins Deutsche. Behalte Fachbegriffe bei, wenn sie im Deutschen üblich sind. Antworte NUR mit der Übersetzung, ohne Erklärungen oder zusätzliche Kommentare."
+        ).with_model("gemini", "gemini-2.0-flash")
         
-        prompt = f"""Übersetze den folgenden wissenschaftlichen Text ins Deutsche. 
-Behalte Fachbegriffe bei, wenn sie im Deutschen üblich sind.
-Antworte NUR mit der Übersetzung, ohne Erklärungen.
-
-Text: {text[:2000]}"""
+        prompt = f"Übersetze folgenden wissenschaftlichen Abstract ins Deutsche:\n\n{text[:2000]}"
         
         response = await asyncio.wait_for(
             chat.send_message(UserMessage(text=prompt)),
-            timeout=20.0
+            timeout=30.0
         )
         
         return {"translated": response, "original": text[:500]}
