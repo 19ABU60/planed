@@ -1,7 +1,65 @@
 import { useState } from 'react';
-import { Search, Image, Video, BookOpen, ExternalLink, Download, RefreshCw, Languages, GraduationCap, Copy, Check } from 'lucide-react';
+import { Search, Image, Video, BookOpen, ExternalLink, Download, RefreshCw, Languages, GraduationCap, Copy, Check, ImageOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
+
+// Image component with error fallback
+const ImageWithFallback = ({ src, alt, source }) => {
+  const [hasError, setHasError] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  if (hasError || !src) {
+    return (
+      <div style={{ 
+        width: '100%', 
+        height: '180px', 
+        background: 'var(--bg-subtle)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexDirection: 'column',
+        gap: '0.5rem',
+        color: 'var(--text-muted)'
+      }}>
+        <ImageOff size={32} />
+        <span style={{ fontSize: '0.8rem' }}>{source || 'Bild nicht verfügbar'}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '180px', background: 'var(--bg-subtle)' }}>
+      {isLoading && (
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <RefreshCw size={24} className="spin" style={{ color: 'var(--text-muted)' }} />
+        </div>
+      )}
+      <img 
+        src={src} 
+        alt={alt}
+        style={{ 
+          width: '100%', 
+          height: '180px', 
+          objectFit: 'cover',
+          opacity: isLoading ? 0 : 1,
+          transition: 'opacity 0.3s ease'
+        }}
+        loading="lazy"
+        onLoad={() => setIsLoading(false)}
+        onError={() => {
+          setIsLoading(false);
+          setHasError(true);
+        }}
+      />
+    </div>
+  );
+};
 
 const ResearchPage = () => {
   const { authAxios } = useAuth();
