@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, X, Sparkles, Copy, Trash2, GripVertical } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Sparkles, Copy, Trash2, GripVertical, BookOpen } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, 
   addMonths, subMonths, isWeekend, startOfWeek, endOfWeek, parseISO,
   startOfWeek as getStartOfWeek, endOfWeek as getEndOfWeek, addWeeks, subWeeks, addDays } from 'date-fns';
@@ -192,6 +192,7 @@ const CalendarPage = ({ classes, lessons, holidays, schoolHolidays, publicHolida
   const [viewMode, setViewMode] = useState('month');
   const { authAxios } = useAuth();
   const [aiLoading, setAiLoading] = useState(false);
+  const [workplanData, setWorkplanData] = useState({});
 
   useEffect(() => { 
     if (selectedClassId) setSelectedClass(selectedClassId); 
@@ -208,7 +209,41 @@ const CalendarPage = ({ classes, lessons, holidays, schoolHolidays, publicHolida
   const filteredLessons = lessons.filter(l => l.class_subject_id === selectedClass);
   const currentClass = classes.find(c => c.id === selectedClass);
 
+  // Fetch workplan data for the current month
+  useEffect(() => {
+    if (!selectedClass) return;
+    
+    const fetchWorkplan = async () => {
+      try {
+        const startDate = format(calendarStart, 'yyyy-MM-dd');
+        const endDate = format(calendarEnd, 'yyyy-MM-dd');
+        const response = await authAxios.get(`/workplan/${selectedClass}?start=${startDate}&end=${endDate}`);
+        
+        const dataMap = {};
+        response.data.forEach(item => {
+          const key = `${item.date}-${item.period}`;
+          dataMap[key] = item;
+        });
+        setWorkplanData(dataMap);
+      } catch (error) {
+        console.error('Error fetching workplan:', error);
+      }
+    };
+    
+    fetchWorkplan();
+  }, [selectedClass, currentDate, authAxios, calendarStart, calendarEnd]);
+
   const getLessonsForDay = (date) => filteredLessons.filter(l => l.date === format(date, 'yyyy-MM-dd')).sort((a, b) => (a.period || 99) - (b.period || 99));
+
+  // Get workplan entries for a specific day
+  const getWorkplanForDay = (date) => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    const periods = getPeriodsForDay(date);
+    return periods.map(period => {
+      const key = `${dateStr}-${period}`;
+      return workplanData[key] ? { ...workplanData[key], period } : null;
+    }).filter(Boolean);
+  };
 
   // Get available periods for a specific day based on class schedule
   const getPeriodsForDay = (date) => {
@@ -337,9 +372,9 @@ const CalendarPage = ({ classes, lessons, holidays, schoolHolidays, publicHolida
 
   return (
     <div className="page-content">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <h2 style={{ fontSize: '1.75rem', fontWeight: '700', fontFamily: 'Manrope, sans-serif' }}>Kalender</h2>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <div className="tabs">
             <button className={`tab ${viewMode === 'month' ? 'active' : ''}`} onClick={() => setViewMode('month')}>Monat</button>
             <button className={`tab ${viewMode === 'week' ? 'active' : ''}`} onClick={() => setViewMode('week')}>Woche</button>
@@ -359,20 +394,29 @@ const CalendarPage = ({ classes, lessons, holidays, schoolHolidays, publicHolida
         </div>
       </div>
 
-      {selectedClass && (
+      {/* Class info banner */}
+      {currentClass && (
         <div style={{ 
           display: 'flex', 
           alignItems: 'center', 
-          gap: '0.5rem', 
+          gap: '1rem', 
           marginBottom: '1rem', 
-          padding: '0.5rem 1rem',
-          background: 'rgba(59, 130, 246, 0.1)', 
-          borderRadius: '8px', 
-          fontSize: '0.85rem', 
-          color: 'var(--text-muted)' 
+          padding: '0.75rem 1rem',
+          background: `${currentClass.color || '#3b82f6'}22`,
+          borderLeft: `4px solid ${currentClass.color || '#3b82f6'}`,
+          borderRadius: '8px'
         }}>
-          <GripVertical size={16} />
-          <span>Tipp: Unterrichtsstunden per Drag & Drop verschieben</span>
+          <div style={{ 
+            fontSize: '1.25rem', 
+            fontWeight: '700', 
+            color: currentClass.color || '#3b82f6'
+          }}>
+            {currentClass.name} - {currentClass.subject}
+          </div>
+          <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+            <GripVertical size={16} style={{ display: 'inline', marginRight: '4px' }} />
+            Stunden per Drag & Drop verschieben
+          </div>
         </div>
       )}
 
@@ -405,12 +449,20 @@ const CalendarPage = ({ classes, lessons, holidays, schoolHolidays, publicHolida
             {days.map(day => {
               const dayStr = format(day, 'yyyy-MM-dd');
               const dayLessons = getLessonsForDay(day);
+              const workplanEntries = getWorkplanForDay(day);
               const isToday = isSameDay(day, new Date());
               const isCurrentMonth = isSameMonth(day, currentDate);
               const isWeekendDay = isWeekend(day);
               const holidayType = isHolidayDay(day);
               const holidayName = getHolidayName(day);
               const periodsForDay = getPeriodsForDay(day);
+
+              // Merge lessons and workplan - prefer lessons, fallback to workplan
+              const displayItems = periodsForDay.map(period => {
+                const lesson = dayLessons.find(l => l.period === period);
+                const workplan = workplanEntries.find(w => w.period === period);
+                return { period, lesson, workplan };
+              });
 
               return (
                 <Droppable droppableId={dayStr} key={dayStr}>
@@ -433,23 +485,132 @@ const CalendarPage = ({ classes, lessons, holidays, schoolHolidays, publicHolida
                           {holidayName}
                         </div>
                       )}
-                      {/* Show period indicators if schedule exists */}
-                      {periodsForDay.length > 0 && dayLessons.length === 0 && !holidayType && (
-                        <div style={{ 
-                          fontSize: '0.75rem', 
-                          color: '#60a5fa',
-                          fontWeight: '600',
-                          marginBottom: '0.25rem',
-                          padding: '2px 6px',
-                          background: 'rgba(59, 130, 246, 0.15)',
-                          borderRadius: '4px',
-                          display: 'inline-block'
-                        }}>
-                          {periodsForDay.map(p => `${p}.`).join(' ')} Std.
-                        </div>
-                      )}
-                      {dayLessons.map((lesson, index) => (
-                        <Draggable key={lesson.id} draggableId={lesson.id} index={index}>
+                      
+                      {/* Display lessons or workplan entries */}
+                      {displayItems.map(({ period, lesson, workplan }, index) => {
+                        if (lesson) {
+                          // Show lesson (draggable)
+                          return (
+                            <Draggable key={lesson.id} draggableId={lesson.id} index={index}>
+                              {(provided, snapshot) => (
+                                <div 
+                                  ref={provided.innerRef} 
+                                  {...provided.draggableProps} 
+                                  {...provided.dragHandleProps}
+                                  className={`lesson-item ${lesson.is_cancelled ? 'cancelled' : ''} ${snapshot.isDragging ? 'dragging' : ''}`}
+                                  onClick={(e) => openEditModal(lesson, e)} 
+                                  style={{ 
+                                    background: `${currentClass?.color || '#3b82f6'}cc`,
+                                    borderLeftColor: currentClass?.color || '#3b82f6',
+                                    ...provided.draggableProps.style 
+                                  }}
+                                  data-testid={`lesson-${lesson.id}`}
+                                >
+                                  <div style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: '6px',
+                                    flexWrap: 'wrap'
+                                  }}>
+                                    <span style={{ 
+                                      fontWeight: '800', 
+                                      fontSize: '1rem', 
+                                      background: 'rgba(255,255,255,0.3)', 
+                                      padding: '2px 8px', 
+                                      borderRadius: '4px'
+                                    }}>
+                                      {period}.
+                                    </span>
+                                    <span style={{ 
+                                      fontWeight: '700', 
+                                      fontSize: '0.95rem',
+                                      color: 'white',
+                                      textShadow: '0 1px 2px rgba(0,0,0,0.3)'
+                                    }}>
+                                      {lesson.topic || 'Kein Thema'}
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+                            </Draggable>
+                          );
+                        } else if (workplan && workplan.unterrichtseinheit) {
+                          // Show workplan entry (not draggable, from Arbeitsplan)
+                          return (
+                            <div 
+                              key={`wp-${period}`}
+                              style={{ 
+                                background: `${currentClass?.color || '#3b82f6'}99`,
+                                borderLeft: `4px solid ${currentClass?.color || '#3b82f6'}`,
+                                borderRadius: '6px',
+                                padding: '0.5rem 0.6rem',
+                                marginBottom: '0.3rem',
+                                cursor: 'pointer'
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openCreateModal(day, period);
+                              }}
+                              title="Aus Arbeitsplan - Klicken zum Bearbeiten"
+                            >
+                              <div style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '6px',
+                                flexWrap: 'wrap'
+                              }}>
+                                <span style={{ 
+                                  fontWeight: '800', 
+                                  fontSize: '1rem', 
+                                  background: 'rgba(255,255,255,0.3)', 
+                                  padding: '2px 8px', 
+                                  borderRadius: '4px',
+                                  color: 'white'
+                                }}>
+                                  {period}.
+                                </span>
+                                <BookOpen size={14} style={{ color: 'white', opacity: 0.8 }} />
+                                <span style={{ 
+                                  fontWeight: '700', 
+                                  fontSize: '0.95rem',
+                                  color: 'white',
+                                  textShadow: '0 1px 2px rgba(0,0,0,0.3)'
+                                }}>
+                                  {workplan.unterrichtseinheit}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        } else if (!holidayType) {
+                          // Show empty period slot
+                          return (
+                            <div 
+                              key={`empty-${period}`}
+                              style={{ 
+                                background: 'rgba(59, 130, 246, 0.1)',
+                                border: '1px dashed rgba(59, 130, 246, 0.3)',
+                                borderRadius: '6px',
+                                padding: '0.4rem 0.5rem',
+                                marginBottom: '0.3rem',
+                                cursor: 'pointer',
+                                fontSize: '0.9rem',
+                                color: 'var(--text-muted)'
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openCreateModal(day, period);
+                              }}
+                            >
+                              <span style={{ fontWeight: '700' }}>{period}.</span> Std.
+                            </div>
+                          );
+                        }
+                        return null;
+                      })}
+                      
+                      {/* Show lessons without period */}
+                      {dayLessons.filter(l => !l.period).map((lesson, index) => (
+                        <Draggable key={lesson.id} draggableId={lesson.id} index={periodsForDay.length + index}>
                           {(provided, snapshot) => (
                             <div 
                               ref={provided.innerRef} 
@@ -458,27 +619,20 @@ const CalendarPage = ({ classes, lessons, holidays, schoolHolidays, publicHolida
                               className={`lesson-item ${lesson.is_cancelled ? 'cancelled' : ''} ${snapshot.isDragging ? 'dragging' : ''}`}
                               onClick={(e) => openEditModal(lesson, e)} 
                               style={{ 
-                                '--lesson-color': currentClass?.color || '#3b82f6',
-                                '--lesson-bg': `${currentClass?.color || '#3b82f6'}cc`,
                                 background: `${currentClass?.color || '#3b82f6'}cc`,
                                 borderLeftColor: currentClass?.color || '#3b82f6',
                                 ...provided.draggableProps.style 
                               }}
                               data-testid={`lesson-${lesson.id}`}
                             >
-                              {lesson.period && (
-                                <span style={{ 
-                                  fontWeight: '700', 
-                                  fontSize: '0.75rem', 
-                                  background: 'rgba(255,255,255,0.25)', 
-                                  padding: '2px 6px', 
-                                  borderRadius: '4px',
-                                  marginRight: '6px'
-                                }}>
-                                  {lesson.period}.
-                                </span>
-                              )}
-                              <span className="lesson-item-title">{lesson.topic || 'Kein Thema'}</span>
+                              <span style={{ 
+                                fontWeight: '700', 
+                                fontSize: '0.95rem',
+                                color: 'white',
+                                textShadow: '0 1px 2px rgba(0,0,0,0.3)'
+                              }}>
+                                {lesson.topic || 'Kein Thema'}
+                              </span>
                             </div>
                           )}
                         </Draggable>
