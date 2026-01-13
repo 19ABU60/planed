@@ -250,54 +250,97 @@ const ResearchPage = () => {
 
           {/* Video Results */}
           {activeTab === 'videos' && (
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', 
-              gap: '1rem' 
-            }}>
-              {results.map(video => (
-                <div key={video.id} className="card" style={{ overflow: 'hidden', padding: 0 }}>
-                  <a href={video.url} target="_blank" rel="noopener noreferrer">
-                    <img 
-                      src={video.thumbnail}
-                      alt={video.title}
-                      style={{ 
-                        width: '100%', 
-                        height: '180px', 
-                        objectFit: 'cover',
-                        background: 'var(--bg-subtle)'
-                      }}
-                      loading="lazy"
-                    />
+            <>
+              {results.length > 0 ? (
+                <div style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', 
+                  gap: '1rem' 
+                }}>
+                  {results.map(video => (
+                    <div key={video.id} className="card" style={{ overflow: 'hidden', padding: 0 }}>
+                      <a href={video.url} target="_blank" rel="noopener noreferrer">
+                        <img 
+                          src={video.thumbnail}
+                          alt={video.title}
+                          style={{ 
+                            width: '100%', 
+                            height: '180px', 
+                            objectFit: 'cover',
+                            background: 'var(--bg-subtle)'
+                          }}
+                          loading="lazy"
+                        />
+                      </a>
+                      <div style={{ padding: '1rem' }}>
+                        <h4 style={{ 
+                          fontSize: '0.95rem', 
+                          fontWeight: '600',
+                          marginBottom: '0.5rem',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden'
+                        }}>
+                          {video.title}
+                        </h4>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+                          {video.channel}
+                        </p>
+                        <a 
+                          href={video.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="btn btn-primary btn-sm"
+                          style={{ width: '100%' }}
+                        >
+                          <Video size={14} /> Auf YouTube ansehen
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : searchQuery && (
+                <div className="card" style={{ textAlign: 'center', padding: '2rem' }}>
+                  <Video size={48} style={{ opacity: 0.3, marginBottom: '1rem' }} />
+                  <h3 style={{ marginBottom: '1rem' }}>YouTube-Suche</h3>
+                  <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+                    Klicken Sie den Button, um direkt auf YouTube nach "{searchQuery}" zu suchen:
+                  </p>
+                  <a 
+                    href={`https://www.youtube.com/results?search_query=${encodeURIComponent(searchQuery + ' Unterricht Schule')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-primary"
+                  >
+                    <ExternalLink size={18} /> Auf YouTube suchen
                   </a>
-                  <div style={{ padding: '1rem' }}>
-                    <h4 style={{ 
-                      fontSize: '0.95rem', 
-                      fontWeight: '600',
-                      marginBottom: '0.5rem',
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden'
-                    }}>
-                      {video.title}
+                  <div style={{ marginTop: '2rem', textAlign: 'left' }}>
+                    <h4 style={{ fontSize: '0.9rem', marginBottom: '0.75rem', color: 'var(--text-muted)' }}>
+                      Empfohlene Bildungskanäle:
                     </h4>
-                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
-                      {video.channel}
-                    </p>
-                    <a 
-                      href={video.url} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="btn btn-primary btn-sm"
-                      style={{ width: '100%' }}
-                    >
-                      <Video size={14} /> Auf YouTube ansehen
-                    </a>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      {[
+                        { name: 'simpleclub', topic: 'MINT' },
+                        { name: 'MrWissen2go', topic: 'Geschichte' },
+                        { name: 'Duden Learnattack', topic: 'Alle Fächer' },
+                        { name: 'musstewissen', topic: 'Deutsch/Mathe' }
+                      ].map(channel => (
+                        <a 
+                          key={channel.name}
+                          href={`https://www.youtube.com/results?search_query=${channel.name}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn btn-secondary btn-sm"
+                        >
+                          {channel.name} ({channel.topic})
+                        </a>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
 
           {/* Academic Paper Results */}
