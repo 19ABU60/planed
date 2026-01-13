@@ -1665,60 +1665,81 @@ async def delete_notification(notification_id: str, user_id: str = Depends(get_c
 
 @api_router.get("/research/images")
 async def search_images(query: str, user_id: str = Depends(get_current_user)):
-    """Search for educational images using Pixabay (free, no API key for limited use)"""
+    """Search for educational images using Wikimedia Commons API (free, no API key required)"""
     try:
         results = []
         
-        async with httpx.AsyncClient() as client:
-            # Pixabay has a limited free tier without API key
-            pixabay_key = os.environ.get("PIXABAY_API_KEY", "")
+        async with httpx.AsyncClient() as http_client:
+            # Use Wikimedia Commons API - completely free, no API key needed
+            response = await http_client.get(
+                "https://commons.wikimedia.org/w/api.php",
+                params={
+                    "action": "query",
+                    "format": "json",
+                    "generator": "search",
+                    "gsrsearch": f"filetype:bitmap {query}",
+                    "gsrlimit": 15,
+                    "gsrnamespace": 6,
+                    "prop": "imageinfo",
+                    "iiprop": "url|extmetadata|size",
+                    "iiurlwidth": 400
+                },
+                timeout=15.0
+            )
             
-            if pixabay_key:
-                response = await client.get(
-                    "https://pixabay.com/api/",
-                    params={
-                        "key": pixabay_key,
-                        "q": query,
-                        "image_type": "photo",
-                        "per_page": 12,
-                        "safesearch": "true",
-                        "lang": "de"
-                    },
-                    timeout=10.0
-                )
+            if response.status_code == 200:
+                data = response.json()
+                pages = data.get("query", {}).get("pages", {})
                 
-                if response.status_code == 200:
-                    data = response.json()
-                    for hit in data.get("hits", []):
+                for page_id, page in pages.items():
+                    if "imageinfo" in page and page.get("imageinfo"):
+                        info = page["imageinfo"][0]
+                        extmeta = info.get("extmetadata", {})
+                        
+                        # Get description
+                        desc = extmeta.get("ImageDescription", {}).get("value", "")
+                        if desc:
+                            # Strip HTML tags
+                            import re
+                            desc = re.sub('<[^<]+?>', '', desc)[:100]
+                        else:
+                            desc = page.get("title", "").replace("File:", "").replace("_", " ")
+                        
+                        # Get author
+                        author = extmeta.get("Artist", {}).get("value", "")
+                        if author:
+                            author = re.sub('<[^<]+?>', '', author)[:50]
+                        else:
+                            author = "Wikimedia Commons"
+                        
                         results.append({
-                            "id": str(hit["id"]),
-                            "url": hit["webformatURL"],
-                            "thumb": hit["previewURL"],
-                            "description": hit.get("tags", query),
-                            "author": hit.get("user", "Pixabay"),
-                            "download_url": hit["largeImageURL"],
-                            "source": "Pixabay"
+                            "id": str(page_id),
+                            "url": info.get("descriptionurl", info.get("url", "")),
+                            "thumb": info.get("thumburl", info.get("url", "")),
+                            "description": desc,
+                            "author": author,
+                            "download_url": info.get("url", ""),
+                            "source": "Wikimedia Commons"
                         })
             
-            # Fallback: Generate helpful search links
+            # Fallback if no results: provide direct search links
             if not results:
-                # Provide direct links to image searches
                 encoded_query = query.replace(" ", "+")
                 results = [
                     {
-                        "id": "search-unsplash",
-                        "url": f"https://unsplash.com/s/photos/{encoded_query}",
-                        "thumb": "https://images.unsplash.com/photo-1516321497487-e288fb19713f?w=400",
-                        "description": f"Auf Unsplash nach '{query}' suchen",
-                        "author": "Unsplash",
-                        "download_url": f"https://unsplash.com/s/photos/{encoded_query}",
-                        "source": "Unsplash",
+                        "id": "search-wikimedia",
+                        "url": f"https://commons.wikimedia.org/w/index.php?search={encoded_query}&title=Special:MediaSearch&type=image",
+                        "thumb": None,
+                        "description": f"Auf Wikimedia Commons nach '{query}' suchen",
+                        "author": "Wikimedia Commons",
+                        "download_url": f"https://commons.wikimedia.org/w/index.php?search={encoded_query}&title=Special:MediaSearch&type=image",
+                        "source": "Wikimedia Commons",
                         "is_link": True
                     },
                     {
                         "id": "search-pixabay",
                         "url": f"https://pixabay.com/images/search/{encoded_query}/",
-                        "thumb": "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400",
+                        "thumb": None,
                         "description": f"Auf Pixabay nach '{query}' suchen",
                         "author": "Pixabay",
                         "download_url": f"https://pixabay.com/images/search/{encoded_query}/",
@@ -1726,23 +1747,13 @@ async def search_images(query: str, user_id: str = Depends(get_current_user)):
                         "is_link": True
                     },
                     {
-                        "id": "search-pexels",
-                        "url": f"https://www.pexels.com/search/{encoded_query}/",
-                        "thumb": "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=400",
-                        "description": f"Auf Pexels nach '{query}' suchen",
-                        "author": "Pexels",
-                        "download_url": f"https://www.pexels.com/search/{encoded_query}/",
-                        "source": "Pexels",
-                        "is_link": True
-                    },
-                    {
-                        "id": "search-wikimedia",
-                        "url": f"https://commons.wikimedia.org/w/index.php?search={encoded_query}&ns0=1&ns6=1",
-                        "thumb": "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400",
-                        "description": f"Auf Wikimedia Commons nach '{query}' suchen",
-                        "author": "Wikimedia",
-                        "download_url": f"https://commons.wikimedia.org/w/index.php?search={encoded_query}&ns0=1&ns6=1",
-                        "source": "Wikimedia",
+                        "id": "search-unsplash",
+                        "url": f"https://unsplash.com/s/photos/{encoded_query}",
+                        "thumb": None,
+                        "description": f"Auf Unsplash nach '{query}' suchen",
+                        "author": "Unsplash",
+                        "download_url": f"https://unsplash.com/s/photos/{encoded_query}",
+                        "source": "Unsplash",
                         "is_link": True
                     }
                 ]
