@@ -534,7 +534,7 @@ const CalendarPage = ({ classes, lessons, holidays, schoolHolidays, publicHolida
                       ref={provided.innerRef} 
                       {...provided.droppableProps}
                       className={`calendar-day ${!isCurrentMonth && viewMode === 'month' ? 'other-month' : ''} ${isToday ? 'today' : ''} ${isWeekendDay ? 'weekend' : ''} ${holidayType ? 'holiday' : ''} ${snapshot.isDraggingOver ? 'drag-over' : ''}`}
-                      style={{ minHeight: viewMode === 'week' ? '300px' : '120px' }}
+                      style={{ minHeight: viewMode === 'week' ? '300px' : `${cellHeight}px` }}
                       onClick={() => selectedClass && openCreateModal(day)} 
                       data-testid={`calendar-day-${dayStr}`}
                     >
