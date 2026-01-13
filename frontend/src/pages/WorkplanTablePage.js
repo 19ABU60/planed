@@ -318,6 +318,54 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
             </button>
           </div>
           
+          {/* Row height controls */}
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '0.5rem',
+            padding: '0.25rem 0.5rem',
+            background: 'var(--bg-subtle)',
+            borderRadius: '8px',
+            fontSize: '0.85rem'
+          }}>
+            <span style={{ color: 'var(--text-muted)' }}>Höhe:</span>
+            <button 
+              onClick={() => adjustRowHeight(-10)}
+              style={{
+                width: '26px',
+                height: '26px',
+                borderRadius: '6px',
+                border: '1px solid var(--border-default)',
+                background: 'var(--bg-paper)',
+                color: 'var(--text-default)',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                fontSize: '1rem'
+              }}
+              title="Zeilen kleiner"
+            >
+              −
+            </button>
+            <span style={{ minWidth: '35px', textAlign: 'center', fontWeight: '600' }}>{rowHeight}px</span>
+            <button 
+              onClick={() => adjustRowHeight(10)}
+              style={{
+                width: '26px',
+                height: '26px',
+                borderRadius: '6px',
+                border: '1px solid var(--border-default)',
+                background: 'var(--bg-paper)',
+                color: 'var(--text-default)',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                fontSize: '1rem'
+              }}
+              title="Zeilen größer"
+            >
+              +
+            </button>
+          </div>
+          
           <button 
             className="btn btn-secondary" 
             onClick={resetColumnWidths}
