@@ -41,6 +41,14 @@ PlanEd ist eine Web-Anwendung für Lehrer zur Verwaltung von Arbeitsplänen, die
 └── server.py (Alle API-Endpunkte)
 ```
 
+## Recherche-Funktion (NEU - 12.01.2026)
+- **Bilder-Tab:** Suche über Wikimedia Commons API (kostenlos)
+  - `ImageWithFallback`-Komponente für robuste Anzeige
+  - Download und Ansehen von Bildern
+  - Fallback-Links zu Pixabay, Unsplash wenn keine Ergebnisse
+- **Videos-Tab:** Links zu YouTube-Suche mit Bildungskanal-Empfehlungen
+- **Fachtexte-Tab:** OpenAlex-Suche mit KI-Übersetzung (Gemini)
+
 ## Implementierte Features ✅
 
 ### Arbeitsplan-Tabelle (NEU - 12.01.2026)
