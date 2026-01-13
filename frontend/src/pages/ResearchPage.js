@@ -35,13 +35,18 @@ const ResearchPage = () => {
 
       const response = await authAxios.get(endpoint);
       
-      if (response.data.error) {
+      if (response.data.error && !response.data.search_url) {
         toast.error(response.data.error);
       }
       
       setResults(response.data.results || []);
       
-      if (response.data.results?.length === 0) {
+      // Store search URL for videos fallback
+      if (response.data.search_url) {
+        setResults([{ type: 'youtube_fallback', search_url: response.data.search_url }]);
+      }
+      
+      if (response.data.results?.length === 0 && !response.data.search_url) {
         toast.info('Keine Ergebnisse gefunden');
       }
     } catch (error) {
