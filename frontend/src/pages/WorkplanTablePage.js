@@ -121,16 +121,30 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
   const saveWorkplan = async () => {
     setSaving(true);
     try {
-      const entries = Object.values(workplanData).map(item => ({
-        ...item,
+      const entries = Object.values(workplanData).filter(item => 
+        item.unterrichtseinheit || item.lehrplan || item.stundenthema
+      ).map(item => ({
+        date: item.date,
+        period: item.period,
+        unterrichtseinheit: item.unterrichtseinheit || '',
+        lehrplan: item.lehrplan || '',
+        stundenthema: item.stundenthema || '',
         class_subject_id: selectedClass
       }));
       
-      await authAxios.post(`/workplan/${selectedClass}/bulk`, { entries });
-      toast.success('Arbeitsplan gespeichert!');
+      if (entries.length === 0) {
+        toast.info('Keine Daten zum Speichern');
+        setSaving(false);
+        return;
+      }
+      
+      console.log('Saving entries:', entries);
+      const response = await authAxios.post(`/workplan/${selectedClass}/bulk`, { entries });
+      console.log('Save response:', response.data);
+      toast.success(`${entries.length} Einträge gespeichert!`);
     } catch (error) {
-      toast.error('Fehler beim Speichern');
-      console.error(error);
+      toast.error('Fehler beim Speichern: ' + (error.response?.data?.detail || error.message));
+      console.error('Save error:', error);
     }
     setSaving(false);
   };
