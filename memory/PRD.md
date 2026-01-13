@@ -165,6 +165,16 @@ PlanEd ist eine Web-Anwendung für Lehrer zur Verwaltung von Arbeitsplänen, die
 
 ## Changelog
 
+### 13.01.2026 - Bildersuche-Bug behoben
+- **Problem:** Bildersuche auf "Recherche"-Seite zeigte nur ? Platzhalter, Download stürzte ab
+- **Ursache:** Pixabay API benötigt API-Key, fehlende User-Agent Header bei Wikimedia
+- **Lösung:** 
+  - Backend auf Wikimedia Commons API umgestellt (kostenlos, kein API-Key)
+  - User-Agent Header hinzugefügt (erforderlich für Wikimedia)
+  - Frontend: `ImageWithFallback`-Komponente für bessere Fehlerbehandlung
+- **Neue Endpunkte:** `GET /api/research/images` (jetzt mit Wikimedia Commons)
+- **Test-Status:** ✅ Alle Tests bestanden (15 Bilder, Download funktioniert)
+
 ### 12.01.2026 - Arbeitsplan-Tabelle Spaltenanpassung
 - Spaltenbreiten anpassbar mit **−** und **+** Buttons
 - Neue Standardbreiten:
