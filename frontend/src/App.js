@@ -167,6 +167,8 @@ const MainApp = () => {
         return <SharingPage classes={classes} />;
       case 'documents': 
         return <DocumentsPage classes={classes} />;
+      case 'research':
+        return <ResearchPage />;
       case 'history': 
         return <HistoryPage />;
       case 'settings': 
