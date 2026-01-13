@@ -595,7 +595,7 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
                           data-testid={`cell-stundenthema-${dateStr}-${period}`}
                           style={{
                             width: '100%',
-                            minHeight: '45px',
+                            minHeight: `${rowHeight}px`,
                             padding: '0.4rem',
                             border: '1px solid transparent',
                             borderRadius: '4px',
