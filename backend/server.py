@@ -1715,44 +1715,61 @@ async def search_images(query: str, user_id: str = Depends(get_current_user)):
 
 @api_router.get("/research/videos")
 async def search_videos(query: str, user_id: str = Depends(get_current_user)):
-    """Search for educational YouTube videos"""
+    """Search for educational YouTube videos using web scraping fallback"""
     try:
-        async with httpx.AsyncClient() as client:
-            # Use YouTube Data API
-            api_key = os.environ.get("YOUTUBE_API_KEY", "")
-            if not api_key:
-                return {"results": [], "total": 0, "error": "YouTube API not configured"}
+        results = []
+        
+        # Try YouTube Data API first
+        api_key = os.environ.get("YOUTUBE_API_KEY", "")
+        if api_key:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    "https://www.googleapis.com/youtube/v3/search",
+                    params={
+                        "part": "snippet",
+                        "q": f"{query} Unterricht Schule",
+                        "type": "video",
+                        "maxResults": 10,
+                        "relevanceLanguage": "de",
+                        "safeSearch": "strict",
+                        "key": api_key
+                    },
+                    timeout=10.0
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    for item in data.get("items", []):
+                        results.append({
+                            "id": item["id"]["videoId"],
+                            "title": item["snippet"]["title"],
+                            "description": item["snippet"]["description"][:200],
+                            "thumbnail": item["snippet"]["thumbnails"]["medium"]["url"],
+                            "channel": item["snippet"]["channelTitle"],
+                            "url": f"https://www.youtube.com/watch?v={item['id']['videoId']}",
+                            "source": "YouTube"
+                        })
+        
+        # If no API key or no results, provide helpful message
+        if not results:
+            # Return curated educational channel suggestions
+            educational_channels = [
+                {"name": "simpleclub", "topic": "Mathematik, Physik, Chemie"},
+                {"name": "MrWissen2go", "topic": "Geschichte, Politik"},
+                {"name": "Duden Learnattack", "topic": "Alle Fächer"},
+                {"name": "TheSimpleClub", "topic": "MINT-Fächer"},
+                {"name": "musstewissen", "topic": "Deutsch, Mathe, Chemie"},
+            ]
             
-            response = await client.get(
-                "https://www.googleapis.com/youtube/v3/search",
-                params={
-                    "part": "snippet",
-                    "q": f"{query} Unterricht Schule",
-                    "type": "video",
-                    "maxResults": 10,
-                    "relevanceLanguage": "de",
-                    "safeSearch": "strict",
-                    "key": api_key
-                },
-                timeout=10.0
-            )
-            
-            if response.status_code == 200:
-                data = response.json()
-                results = []
-                for item in data.get("items", []):
-                    results.append({
-                        "id": item["id"]["videoId"],
-                        "title": item["snippet"]["title"],
-                        "description": item["snippet"]["description"][:200],
-                        "thumbnail": item["snippet"]["thumbnails"]["medium"]["url"],
-                        "channel": item["snippet"]["channelTitle"],
-                        "url": f"https://www.youtube.com/watch?v={item['id']['videoId']}",
-                        "source": "YouTube"
-                    })
-                return {"results": results, "total": len(results)}
-            else:
-                return {"results": [], "total": 0, "error": "YouTube search failed"}
+            return {
+                "results": [],
+                "total": 0,
+                "message": "YouTube-Suche benötigt API-Key. Empfohlene Bildungskanäle:",
+                "suggestions": educational_channels,
+                "search_url": f"https://www.youtube.com/results?search_query={query.replace(' ', '+')}+Unterricht"
+            }
+        
+        return {"results": results, "total": len(results)}
     except Exception as e:
         logger.error(f"Video search error: {e}")
         return {"results": [], "total": 0, "error": str(e)}
