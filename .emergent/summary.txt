@@ -4,151 +4,140 @@ The user, speaking German, requested an application named PlanEd to replace thei
 **User's preferred language**: German. The next agent MUST respond in German.
 
 **what currently exists?**
-A stable, full-stack application (FastAPI, React, MongoDB) that has undergone a major refactoring. The previously monolithic frontend () is now a well-structured, component-based application (, ). The backend logic remains in a single  file.
+A full-stack application (React, FastAPI, MongoDB) featuring a component-based frontend and a monolithic backend. The application is a Progressive Web App (PWA) with invitation-only registration.
 
-Key features implemented:
--   **Core Functionality:** User authentication (register/login), and CRUD operations for School Years, Classes, and Lessons.
--   **Refactored & Stable:** The application was stabilized and refactored from a broken, monolithic state.
--   **PWA:** The application is a Progressive Web App, installable on desktop (Mac/Windows) and mobile (iPad/iPhone).
--   **Invitation-Only Registration:** New users must provide a secret code () to register.
--   **Timetable (Stundenplan):** Users can define a weekly schedule for each class (e.g., Mon: 3rd/4th period), which is then used to structure the calendar view.
--   **Workplan Table View:** A new, Excel-like table view has been created for collaborative lesson planning, which is the user's current focus.
--   **Documentation:** A downloadable PDF user guide () is available.
+Key Implemented Features:
+-   **Core Functionality:** User authentication and CRUD for School Years, Classes, and Lessons.
+-   **Workplan & Calendar:** A collaborative, Excel-like Arbeitsplan (Workplan) table and a Kalender (Calendar) view.
+-   **Feature-Rich UI:**
+    -   The Workplan and Calendar are now synchronized; entries in the workplan automatically appear in the calendar.
+    -   Both views feature user-configurable row heights (using / buttons), which are saved to the browser's .
+    -   The workplan table columns are resizable using / buttons.
+-   **Statistics:** A completely revamped statistics page that provides meaningful data (e.g., total planned hours, progress percentage) based on the actual class schedule and workplan entries.
+-   **AI-Powered Research:** A new Recherche page with three tabs:
+    -   **Bilder (Images):** Searches for images using the Pixabay API.
+    -   **Videos:** Links to YouTube search and suggests relevant educational channels.
+    -   **Fachtexte (Academic Papers):** Searches the OpenAlex database and offers AI-powered translation of abstracts into German using Gemini (via Emergent LLM Key).
+-   **Navigation:** The Verlauf (History) link has been removed from the sidebar at the user's request to simplify the UI.
 
 **Last working item**:
--   **Last item agent was working:** The user provided specific feedback to change the layout and headers of the new Workplan Table feature. The requested changes were:
-    1.  Make the Datum, Tag, and Stunde columns narrower.
-    2.  Replace the dynamic Lehrer 1, Lehrer 2 columns with three static, specific columns:
-        -   Unterrichtseinheit
-        -   Lehrplan, Bildungsstandards, Begriffe, Hinweise
-        -   Stundenthema, Zielsetzung
-    3.  Remove the old input fields that were below the table.
+-   **Last item agent was working:** The user reported an Application error where the new Recherche page's image search showed broken images () and the app crashed when trying to download an image. The agent diagnosed that the previously used Pexels/Unsplash APIs were failing due to authorization issues and updated the backend () to use the key-free Pixabay API instead.
 -   **Status:** IN PROGRESS
 -   **Agent Testing Done:** N
--   **Which testing method agent to use?** both. The frontend  needs visual verification via screenshot, and the backend needs testing (e.g., via ) to ensure the new data model for work plan entries is saved and retrieved correctly.
+-   **Which testing method agent to use?** frontend testing agent. The agent should instruct the testing agent to navigate to the Recherche page, go to the Bilder tab, perform a search, and verify that images are displayed correctly and the download function works without crashing the application.
 -   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Finalize Workplan Table Implementation (P0)**
-    -   **Description:** The agent started implementing the user's layout changes for the Workplan Table by updating the frontend file () but has not yet modified the backend to support the new, static column structure. The task is incomplete and untested.
-    -   **Attempted fixes:**  was overwritten with a new version.
+-   **Issue 1: Image Search in Recherche page is broken (P0)**
+    -   **Description:** The user reported that the image search functionality shows broken image placeholders () and that attempting to download an image causes the application to crash.
+    -   **Attempted fixes:** The agent modified  to switch from Pexels/Unsplash to the Pixabay API. However, the fix has not been fully implemented or tested, and the frontend might not be correctly parsing the new API response.
     -   **Next debug checklist:**
-        1.  Modify the Pydantic models in  related to the work plan to replace the dynamic column structure with fixed fields (e.g., , , ).
-        2.  Update the  and  endpoints to handle the new, fixed data model.
-        3.  Restart backend and frontend services.
-        4.  Test the complete flow:
-            -   Navigate to the Arbeitsplan page.
-            -   Verify the new column headers and narrower initial columns are displayed.
-            -   Enter data into the table for a class.
-            -   Save the data and reload the page to ensure it persists correctly.
-    -   **Why fix this issue and what will be achieved with the fix?** To deliver the user's primary requested feature in the exact format they specified.
+        1.  Restart backend and frontend services to ensure all changes are active.
+        2.  Review  to ensure the component correctly processes the response from the Pixabay API (i.e., extracts image URLs for display and download).
+        3.  Manually test the flow: navigate to Recherche -> Bilder, perform a search (e.g., Burg), and confirm that images are displayed.
+        4.  Test the Download button for one of the displayed images to ensure it works as expected and does not crash the app.
+        5.  If the issue persists, check the browser console for frontend errors and the backend logs for any API-related issues.
+    -   **Why fix this issue and what will be achieved with the fix?** This is a critical bug fix to complete the newly implemented Recherche feature and resolve the application crash reported by the user.
     -   **Status:** IN PROGRESS
     -   **Is recurring issue?** N
-    -   **Should Test frontend/backend/both after fix?** both
-    -   **Blocked on other issue:** None.
-
--   **Issue 2: Calendar Lesson Color Bug (P1)**
-    -   **Description:** The user reported that lessons in the calendar do not display the color assigned to their class. For example, a class set to blue shows lessons with a different, incorrect color. The agent attempted a fix, but subsequent user feedback and screenshots imply the issue persists.
-    -   **Attempted fixes:** The agent modified  and added an inline style for the background color in . This might not have been sufficient or targeted the wrong element.
-    -   **Next debug checklist:**
-        1.  In  or , ensure the  array, when passed for rendering, is enriched with the  from its parent class.
-        2.  Verify the rendering logic in  correctly applies the  (or equivalent) property as the background color for the lesson item .
-        3.  Create two separate classes with distinct colors (e.g., red and green).
-        4.  Add lessons for both classes on the same day in the calendar.
-        5.  Take a screenshot to confirm if the lessons render with their correct, distinct colors.
-    -   **Why fix this issue and what will be achieved with the fix?** This is a core UI/UX feature that allows users to easily distinguish between subjects in the calendar.
-    -   **Status:** NOT STARTED
-    -   **Is recurring issue?** Y
     -   **Should Test frontend/backend/both after fix?** frontend
     -   **Blocked on other issue:** None.
 
 **In progress Task List**:
--   None. All current work is captured in the Pending/In progress Issue list.
+-   None.
 
 **Upcoming and Future Tasks**
-After completing the current high-priority fixes, the following features from the original plan should be proposed to the user:
 -   **(P1) Excel-Import:** Allow importing existing work plans from Excel files.
 -   **(P1) Kommentare:** Add a commenting feature to shared work plans.
 -   **(P1) Erweiterte Statistik-Diagramme:** Enhance the statistics page with more chart types.
 -   **(P2) E-Mail-Benachrichtigungen:** Implement email notifications for shares and comments.
+-   **(P2) Verlauf wiederherstellen:** Re-add the History page to the navigation if the user requests it for collaborative features.
 -   **(P2) Materialien verknüpfen:** Link uploaded documents directly to specific lessons.
--   **(P3) Native Desktop/Mobile Apps:** Package the PWA using Electron or Capacitor for native app store distribution (user has expressed interest).
+-   **(P3) Native Desktop/Mobile Apps:** Package the PWA using Electron or Capacitor for native app store distribution.
 
 **Completed work in this session**
--   **Application Stabilization & Refactoring:** Successfully refactored the monolithic  into a clean, component-based architecture, resolving the initial broken state of the app.
--   **PWA Implementation:** Converted the application into an installable Progressive Web App with a service worker, manifest, and icons.
--   **Invitation Code System:** Secured the registration process with a mandatory invitation code ().
--   **User Handout Creation:** Generated a downloadable PDF guide for new users.
--   **Timetable Feature:** Implemented a Stundenplan editor for classes and integrated it into the calendar view.
--   **UI/UX Improvements:** Responded to user feedback by relabeling form fields and improving component layouts.
--   **Workplan Table (Initial Version):** Created the new Arbeitsplan page with a collaborative table view, which is now being refined.
+-   **Workplan Table Finalization:** Fully implemented the backend and frontend for the new static, collaborative workplan table.
+-   **Resizable Columns & Rows:** Added robust controls (/ buttons) for resizing columns in the Workplan and adjusting row heights in both the Workplan and Calendar, with settings saved locally.
+-   **Calendar Color Bug:** Fixed the long-standing issue where lessons did not display their assigned class color.
+-   **Workplan ↔ Calendar Sync:** Implemented a major feature to automatically display workplan entries within the calendar view.
+-   **Statistics Page Overhaul:** Completely rewrote the statistics feature to provide accurate and meaningful metrics based on the user's actual schedule and planned lessons.
+-   **New Recherche Feature:** Created a new page for searching images (Pixabay), videos (YouTube links), and academic papers (OpenAlex) with AI-powered translation.
+-   **UI Cleanup:** Removed the Verlauf (History) page from the navigation at the user's request.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Backend:** FastAPI, MongoDB (via ), Pydantic, JWT.
--   **Frontend:** React, , , . The architecture is now component-based.
--   **PWA:** Service Workers, .
+-   **Backend:** FastAPI, MongoDB (), Pydantic, JWT.
+-   **Frontend:** React, , .
+-   **APIs:** Integration with OpenAlex and Pixabay for the research feature.
+-   **AI:**  library used to call Gemini for translating text.
+-   **Browser Storage:** Using  to persist user UI preferences (column widths, row heights).
 
 **key DB schema**
--   : Extended with a  field to store the weekly timetable.
--   : Extended with an optional  field for the lesson number.
--   ****: (New/Being modified) This model is being changed to support the new table structure. It will contain fixed fields like , , and .
+-   ****: Model is now stable with fixed fields: , , , which are used to sync with the calendar.
+-   ****: The  field is now used as the source of truth for all statistics calculations.
+
+**changes in tech stack**
+-   The  library was installed and is used for the translation feature.
 
 **All files of reference**
--   : The file for the new table view, currently being modified.
--   : Contains all backend logic; needs modification to support the new Workplan Table data model.
--   : Contains the logic for the calendar view, where the color bug is present.
--   : Contains the modal for creating/editing classes, including the timetable editor.
+-   : The new page for the research feature, which contains the image search bug.
+-   : The backend file, which was recently modified to use the Pixabay API.
+-   : Contains the logic for the calendar view, including the workplan sync.
+-   : Contains the logic for the workplan table, including resizable rows/columns.
+-   : The completely rewritten statistics page.
+-   : Navigation component, modified to add Recherche.
+-   : Contains the up-to-date product requirements and changelog.
 
 **Areas that need refactoring**:
--   The  file is monolithic. For future scalability, it could be beneficial to split it into separate files for routes, models, and services.
+-   The  file has grown even more monolithic with the addition of statistics and research endpoints. Splitting it into separate files for routes, models, and services would improve maintainability.
 
 **key api endpoints**
--   : The new endpoints for managing data in the Workplan Table. These need to be updated.
--   : Updated to save the  data.
--   , : Updated to include the  number.
+-   : The endpoint for the broken image search, now pointing to the Pixabay API.
+-   : Searches OpenAlex for academic papers.
+-   : Translates text using Gemini.
+-   : Provides data for the new statistics page.
+-   : Saves workplan data.
 
 **Critical Info for New Agent**
--   Your immediate priority is to finish the user's requested changes for the **Workplan Table** (Issue 1). This involves modifying both the backend data model in  and verifying the frontend in .
--   After completing the Workplan Table, address the persistent **color bug** in the calendar view (Issue 2).
--   Remember that the user's focus has shifted to the collaborative, Excel-like table view. This is currently the most critical feature for them.
--   The application is a PWA; ensure frontend changes do not break existing PWA functionality.
--   **All communication with the user must be in German.**
+-   Your first and highest priority is to fix the broken image search on the Recherche page, as reported by the user. The previous agent has already attempted a backend fix by switching to the Pixabay API, but you must complete and verify this fix on the frontend.
+-   The user is using Safari and has experienced significant caching issues. When delivering a fix, be prepared to explicitly instruct the user to perform a hard refresh (e.g.,  or ) or test in a private/incognito window to ensure they see the latest version.
+-   All communication must be in German.
 
 **documents and test reports created in this job**
 -   
--   
--   
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** Asks for the handout as a PDF. (Completed)
-2.  **User:** Asks how to add lesson topics and wants a timetable in the calendar. (Completed)
-3.  **User:** Confirms timetable and requests UI label changes. (Completed)
-4.  **User:** Reports the timetable editor is not visible. (Resolved, was a scrolling issue).
-5.  **User:** Reports the modal is not scrollable. (Resolved, styling was fixed).
-6.  **User:** Reports lesson colors aren't working and timetable text is too dark. (Partially resolved, text color fixed, item color bug remains).
-7.  **User:** Sends screenshot, still not working. (Agent fixes timetable text color).
-8.  **User:** Sends another screenshot, clarifying the main goal is a collaborative, Excel-like table view. (Agent understands new requirement).
-9.  **User:** Provides specific layout and header changes for the new table view. **(This is the current task).**
-10. **User:** Asks for the app URL again. (Provided).
+1.  **User:** Application error - App zeigt keine Bilder - nur ? - wollte Bild downloaden - App hat sich geschlossen? (Application error - App shows no images - only ? - wanted to download image - App closed?) **This is the current, active issue.**
+2.  **User:** Requests the new Recherche (Research) feature with image, video, and academic text search capabilities. (Implemented, but now has a bug).
+3.  **User:** Reports that the statistics page numbers don't make sense and requests more meaningful stats. (Completed, the page was fully revamped).
+4.  **User:** Asks about the purpose of the Verlauf (History) page and agrees to have it removed from the navigation. (Completed).
+5.  **User:** Asks for the text from the workplan in the calendar to be made smaller. (Completed).
+6.  **User:** Requests the same row-height adjustment feature from the Calendar to be added to the Workplan. (Completed).
+7.  **User:** Reports that the calendar's adjustable row height is not saved and asks for it to be persistent. (Completed).
+8.  **User:** Confirms the workplan saving issue is resolved on their end.
+9.  **User:** Proposes a major new feature: syncing the workplan with the calendar and increasing font sizes in the calendar. (Completed).
+10. **User:** Initially reported that saving in the workplan was not working. (This was investigated and resolved).
 
 **Project Health Check:**
--   **Stable:** The application is running, and the major architectural issues have been resolved.
--   **Mocked:** No mocked components. One feature () is in a partially implemented state.
+-   **Broken:** The Bilder (Image) search tab within the new Recherche feature is currently broken and causing the app to crash. The rest of the application is stable.
+-   **Mocked:** None.
 
 **3rd Party Integrations**
--   **Gemini:** For AI-powered lesson topic suggestions (uses Emergent LLM Key).
+-   **Gemini:** For AI translation (uses Emergent LLM Key).
 -   **holidays:** Python library for fetching German school holidays.
+-   **OpenAlex:** For academic paper search (no key required).
+-   **Pixabay:** For image search (no key required). This is the newly implemented service intended to fix the image search bug.
+-   **YouTube:** Not a direct integration; the app links to a pre-filled YouTube search query.
 
 **Testing status**
--   **Testing agent used after significant changes:** YES, after the major refactoring. 38/38 tests passed.
+-   **Testing agent used after significant changes:** NO (in this session). The agent performed extensive manual testing via  and screenshots.
 -   **Test files created:** None.
--   **Known regressions:** The lesson color bug in the calendar view.
+-   **Known regressions:** The image search feature on the Recherche page is a new regression introduced with the feature's deployment.
 
 **Credentials to test flow:**
 -   **Invitation Code for Registration:** 
 
 **What agent forgot to execute**
--   The agent started the frontend changes for the Workplan Table redesign but did not proceed to implement the required backend data model changes in  to complete the feature. This is the main handoff point.</analysis>
+-   After implementing the backend part of the fix for the broken image search (switching to the Pixabay API), the agent did not proceed to verify the frontend's compatibility with the new API response or test the end-to-end functionality. This is the immediate task for the next agent.</analysis>
