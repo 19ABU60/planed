@@ -390,6 +390,54 @@ const CalendarPage = ({ classes, lessons, holidays, schoolHolidays, publicHolida
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <h2 style={{ fontSize: '1.75rem', fontWeight: '700', fontFamily: 'Manrope, sans-serif' }}>Kalender</h2>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Cell height controls */}
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '0.5rem',
+            padding: '0.25rem 0.5rem',
+            background: 'var(--bg-subtle)',
+            borderRadius: '8px',
+            fontSize: '0.85rem'
+          }}>
+            <span style={{ color: 'var(--text-muted)' }}>Höhe:</span>
+            <button 
+              onClick={() => adjustCellHeight(-20)}
+              style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: '6px',
+                border: '1px solid var(--border-default)',
+                background: 'var(--bg-paper)',
+                color: 'var(--text-default)',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                fontSize: '1rem'
+              }}
+              title="Zellen kleiner"
+            >
+              −
+            </button>
+            <span style={{ minWidth: '40px', textAlign: 'center', fontWeight: '600' }}>{cellHeight}px</span>
+            <button 
+              onClick={() => adjustCellHeight(20)}
+              style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: '6px',
+                border: '1px solid var(--border-default)',
+                background: 'var(--bg-paper)',
+                color: 'var(--text-default)',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                fontSize: '1rem'
+              }}
+              title="Zellen größer"
+            >
+              +
+            </button>
+          </div>
+          
           <div className="tabs">
             <button className={`tab ${viewMode === 'month' ? 'active' : ''}`} onClick={() => setViewMode('month')}>Monat</button>
             <button className={`tab ${viewMode === 'week' ? 'active' : ''}`} onClick={() => setViewMode('week')}>Woche</button>
