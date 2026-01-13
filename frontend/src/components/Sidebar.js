@@ -9,6 +9,7 @@ const Sidebar = ({ currentPage, onNavigate, onLogout, user }) => {
     { id: 'workplan', label: 'Arbeitsplan', icon: Table },
     { id: 'calendar', label: 'Kalender', icon: Calendar },
     { id: 'statistics', label: 'Statistik', icon: BarChart3 },
+    { id: 'research', label: 'Recherche', icon: Search },
     { id: 'classes', label: 'Klassen', icon: BookOpen },
     { id: 'templates', label: 'Vorlagen', icon: FileCheck },
     { id: 'todos', label: 'Aufgaben', icon: ListTodo },
