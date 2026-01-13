@@ -1729,35 +1729,38 @@ async def search_images(query: str, user_id: str = Depends(get_current_user)):
             
             # Fallback if no results: provide direct search links
             if not results:
-                encoded_query = query.replace(" ", "+")
+                from urllib.parse import quote
+                url_encoded_query = quote(query)
+                hyphen_query = query.replace(" ", "-").lower()
+                plus_query = query.replace(" ", "+")
                 results = [
                     {
                         "id": "search-wikimedia",
-                        "url": f"https://commons.wikimedia.org/w/index.php?search={encoded_query}&title=Special:MediaSearch&type=image",
+                        "url": f"https://commons.wikimedia.org/w/index.php?search={url_encoded_query}&title=Special:MediaSearch&type=image",
                         "thumb": None,
                         "description": f"Auf Wikimedia Commons nach '{query}' suchen",
                         "author": "Wikimedia Commons",
-                        "download_url": f"https://commons.wikimedia.org/w/index.php?search={encoded_query}&title=Special:MediaSearch&type=image",
+                        "download_url": f"https://commons.wikimedia.org/w/index.php?search={url_encoded_query}&title=Special:MediaSearch&type=image",
                         "source": "Wikimedia Commons",
                         "is_link": True
                     },
                     {
                         "id": "search-pixabay",
-                        "url": f"https://pixabay.com/images/search/{encoded_query}/",
+                        "url": f"https://pixabay.com/images/search/{url_encoded_query}/",
                         "thumb": None,
                         "description": f"Auf Pixabay nach '{query}' suchen",
                         "author": "Pixabay",
-                        "download_url": f"https://pixabay.com/images/search/{encoded_query}/",
+                        "download_url": f"https://pixabay.com/images/search/{url_encoded_query}/",
                         "source": "Pixabay",
                         "is_link": True
                     },
                     {
                         "id": "search-unsplash",
-                        "url": f"https://unsplash.com/s/photos/{encoded_query}",
+                        "url": f"https://unsplash.com/s/photos/{hyphen_query}",
                         "thumb": None,
                         "description": f"Auf Unsplash nach '{query}' suchen",
                         "author": "Unsplash",
-                        "download_url": f"https://unsplash.com/s/photos/{encoded_query}",
+                        "download_url": f"https://unsplash.com/s/photos/{hyphen_query}",
                         "source": "Unsplash",
                         "is_link": True
                     }
