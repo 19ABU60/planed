@@ -16,6 +16,7 @@ const DEFAULT_WIDTHS = {
 
 const MIN_WIDTH = 100;
 const MAX_WIDTH = 600;
+const DEFAULT_ROW_HEIGHT = 50;
 
 const WorkplanTablePage = ({ classes, schoolYears }) => {
   const { authAxios } = useAuth();
@@ -30,6 +31,21 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
     const saved = localStorage.getItem('workplanColumnWidths');
     return saved ? JSON.parse(saved) : DEFAULT_WIDTHS;
   });
+
+  // Row height state - saved to localStorage
+  const [rowHeight, setRowHeight] = useState(() => {
+    const saved = localStorage.getItem('workplanRowHeight');
+    return saved ? parseInt(saved) : DEFAULT_ROW_HEIGHT;
+  });
+
+  // Save row height to localStorage
+  useEffect(() => {
+    localStorage.setItem('workplanRowHeight', rowHeight.toString());
+  }, [rowHeight]);
+
+  const adjustRowHeight = (delta) => {
+    setRowHeight(prev => Math.max(35, Math.min(150, prev + delta)));
+  };
 
   const currentClass = classes.find(c => c.id === selectedClass);
   
