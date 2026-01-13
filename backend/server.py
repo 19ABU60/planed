@@ -14,6 +14,8 @@ from datetime import datetime, timezone, timedelta, date
 import jwt
 import bcrypt
 from io import BytesIO
+import httpx
+import asyncio
 
 # Document exports
 from docx import Document
