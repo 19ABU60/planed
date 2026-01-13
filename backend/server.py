@@ -1661,6 +1661,197 @@ async def delete_notification(notification_id: str, user_id: str = Depends(get_c
         raise HTTPException(status_code=404, detail="Benachrichtigung nicht gefunden")
     return {"status": "deleted"}
 
+# ============== RESEARCH API ==============
+
+@api_router.get("/research/images")
+async def search_images(query: str, user_id: str = Depends(get_current_user)):
+    """Search for educational images using Unsplash API"""
+    try:
+        async with httpx.AsyncClient() as client:
+            # Use Unsplash API (free tier)
+            response = await client.get(
+                "https://api.unsplash.com/search/photos",
+                params={"query": query, "per_page": 12, "orientation": "landscape"},
+                headers={"Authorization": "Client-ID " + os.environ.get("UNSPLASH_ACCESS_KEY", "")},
+                timeout=10.0
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                results = []
+                for photo in data.get("results", []):
+                    results.append({
+                        "id": photo["id"],
+                        "url": photo["urls"]["regular"],
+                        "thumb": photo["urls"]["thumb"],
+                        "description": photo.get("description") or photo.get("alt_description") or "",
+                        "author": photo["user"]["name"],
+                        "download_url": photo["urls"]["full"],
+                        "source": "Unsplash"
+                    })
+                return {"results": results, "total": data.get("total", 0)}
+            else:
+                # Fallback to Pexels-like structure without API
+                return {"results": [], "total": 0, "error": "Image API not configured"}
+    except Exception as e:
+        logger.error(f"Image search error: {e}")
+        return {"results": [], "total": 0, "error": str(e)}
+
+@api_router.get("/research/videos")
+async def search_videos(query: str, user_id: str = Depends(get_current_user)):
+    """Search for educational YouTube videos"""
+    try:
+        async with httpx.AsyncClient() as client:
+            # Use YouTube Data API
+            api_key = os.environ.get("YOUTUBE_API_KEY", "")
+            if not api_key:
+                return {"results": [], "total": 0, "error": "YouTube API not configured"}
+            
+            response = await client.get(
+                "https://www.googleapis.com/youtube/v3/search",
+                params={
+                    "part": "snippet",
+                    "q": f"{query} Unterricht Schule",
+                    "type": "video",
+                    "maxResults": 10,
+                    "relevanceLanguage": "de",
+                    "safeSearch": "strict",
+                    "key": api_key
+                },
+                timeout=10.0
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                results = []
+                for item in data.get("items", []):
+                    results.append({
+                        "id": item["id"]["videoId"],
+                        "title": item["snippet"]["title"],
+                        "description": item["snippet"]["description"][:200],
+                        "thumbnail": item["snippet"]["thumbnails"]["medium"]["url"],
+                        "channel": item["snippet"]["channelTitle"],
+                        "url": f"https://www.youtube.com/watch?v={item['id']['videoId']}",
+                        "source": "YouTube"
+                    })
+                return {"results": results, "total": len(results)}
+            else:
+                return {"results": [], "total": 0, "error": "YouTube search failed"}
+    except Exception as e:
+        logger.error(f"Video search error: {e}")
+        return {"results": [], "total": 0, "error": str(e)}
+
+@api_router.get("/research/papers")
+async def search_academic_papers(query: str, source: str = "semantic_scholar", user_id: str = Depends(get_current_user)):
+    """Search for academic papers from Semantic Scholar or OpenAlex"""
+    try:
+        async with httpx.AsyncClient() as client:
+            results = []
+            
+            if source == "semantic_scholar":
+                response = await client.get(
+                    "https://api.semanticscholar.org/graph/v1/paper/search",
+                    params={
+                        "query": query,
+                        "limit": 10,
+                        "fields": "title,abstract,authors,year,url,citationCount,openAccessPdf"
+                    },
+                    timeout=15.0
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    for paper in data.get("data", []):
+                        results.append({
+                            "id": paper.get("paperId", ""),
+                            "title": paper.get("title", ""),
+                            "abstract": paper.get("abstract", "")[:500] if paper.get("abstract") else "",
+                            "authors": ", ".join([a.get("name", "") for a in paper.get("authors", [])[:3]]),
+                            "year": paper.get("year"),
+                            "citations": paper.get("citationCount", 0),
+                            "url": paper.get("url", ""),
+                            "pdf_url": paper.get("openAccessPdf", {}).get("url") if paper.get("openAccessPdf") else None,
+                            "source": "Semantic Scholar"
+                        })
+            
+            elif source == "openalex":
+                response = await client.get(
+                    "https://api.openalex.org/works",
+                    params={
+                        "search": query,
+                        "per_page": 10,
+                        "sort": "cited_by_count:desc"
+                    },
+                    headers={"User-Agent": "PlanEd-App/1.0"},
+                    timeout=15.0
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    for work in data.get("results", []):
+                        abstract = ""
+                        if work.get("abstract_inverted_index"):
+                            # Reconstruct abstract from inverted index
+                            inv_idx = work["abstract_inverted_index"]
+                            words = [(word, min(positions)) for word, positions in inv_idx.items()]
+                            words.sort(key=lambda x: x[1])
+                            abstract = " ".join([w[0] for w in words])[:500]
+                        
+                        results.append({
+                            "id": work.get("id", "").split("/")[-1],
+                            "title": work.get("title", ""),
+                            "abstract": abstract,
+                            "authors": ", ".join([a.get("author", {}).get("display_name", "") for a in work.get("authorships", [])[:3]]),
+                            "year": work.get("publication_year"),
+                            "citations": work.get("cited_by_count", 0),
+                            "url": work.get("doi", "") if work.get("doi") else work.get("id", ""),
+                            "pdf_url": work.get("open_access", {}).get("oa_url"),
+                            "source": "OpenAlex"
+                        })
+            
+            return {"results": results, "total": len(results)}
+    except Exception as e:
+        logger.error(f"Academic search error: {e}")
+        return {"results": [], "total": 0, "error": str(e)}
+
+@api_router.post("/research/translate")
+async def translate_text(text: str = "", target_lang: str = "de", user_id: str = Depends(get_current_user)):
+    """Translate text to German using AI"""
+    if not text:
+        return {"translated": "", "error": "No text provided"}
+    
+    try:
+        from emergentintegrations.llm.chat import Chat, UserMessage
+        
+        # Use Emergent LLM key for translation
+        emergent_key = os.environ.get("EMERGENT_MODEL_API_KEY", "")
+        if not emergent_key:
+            return {"translated": text, "error": "Translation service not configured"}
+        
+        chat = Chat(
+            api_key=emergent_key,
+            model="gemini-2.0-flash",
+            temperature=0.3
+        )
+        
+        prompt = f"""Übersetze den folgenden wissenschaftlichen Text ins Deutsche. 
+Behalte Fachbegriffe bei, wenn sie im Deutschen üblich sind.
+Antworte NUR mit der Übersetzung, ohne Erklärungen.
+
+Text: {text[:2000]}"""
+        
+        response = await asyncio.wait_for(
+            chat.send_message(UserMessage(text=prompt)),
+            timeout=20.0
+        )
+        
+        return {"translated": response, "original": text[:500]}
+    except asyncio.TimeoutError:
+        return {"translated": text, "error": "Translation timeout"}
+    except Exception as e:
+        logger.error(f"Translation error: {e}")
+        return {"translated": text, "error": str(e)}
+
 # ============== ROOT ==============
 
 @api_router.get("/")
