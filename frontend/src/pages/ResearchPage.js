@@ -180,30 +180,30 @@ const ResearchPage = () => {
       </div>
 
       {/* Search Bar */}
-      <div className="card" style={{ marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: '250px' }}>
-            <label className="form-label">
-              {activeTab === 'images' && 'Bildsuche (z.B. "Zelle Biologie", "Mittelalter Burg")'}
-              {activeTab === 'videos' && 'Videosuche (z.B. "Bruchrechnung erklärt", "Fotosynthese")'}
-              {activeTab === 'papers' && 'Fachtextsuche (z.B. "climate change education", "mathematics learning")'}
-            </label>
+      <div className="card" style={{ marginBottom: '1.5rem', padding: '1rem' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: '200px', maxWidth: '400px' }}>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <input
                 type="text"
                 className="form-input"
-                placeholder={activeTab === 'papers' ? 'Englische Suchbegriffe empfohlen...' : 'Suchbegriff eingeben...'}
+                placeholder={
+                  activeTab === 'images' ? 'z.B. Burg, Zelle...' : 
+                  activeTab === 'papers' ? 'z.B. climate change...' : 
+                  'z.B. Bruchrechnung...'
+                }
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                style={{ flex: 1 }}
+                style={{ flex: 1, padding: '0.5rem 0.75rem', fontSize: '0.9rem' }}
               />
               <button 
                 className="btn btn-primary" 
                 onClick={handleSearch}
                 disabled={loading}
+                style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
               >
-                {loading ? <RefreshCw size={18} className="spin" /> : <Search size={18} />}
+                {loading ? <RefreshCw size={16} className="spin" /> : <Search size={16} />}
                 Suchen
               </button>
             </div>
@@ -211,12 +211,12 @@ const ResearchPage = () => {
 
           {/* Academic source selector */}
           {activeTab === 'papers' && (
-            <div style={{ minWidth: '200px' }}>
-              <label className="form-label">Datenbank</label>
+            <div style={{ minWidth: '150px' }}>
               <select
                 className="form-input"
                 value={academicSource}
                 onChange={(e) => setAcademicSource(e.target.value)}
+                style={{ padding: '0.5rem 0.75rem', fontSize: '0.9rem' }}
               >
                 <option value="semantic_scholar">Semantic Scholar</option>
                 <option value="openalex">OpenAlex</option>
@@ -227,15 +227,15 @@ const ResearchPage = () => {
 
         {activeTab === 'papers' && (
           <div style={{ 
-            marginTop: '1rem', 
-            padding: '0.75rem', 
+            marginTop: '0.75rem', 
+            padding: '0.5rem 0.75rem', 
             background: 'rgba(59, 130, 246, 0.1)', 
-            borderRadius: '8px',
-            fontSize: '0.85rem',
+            borderRadius: '6px',
+            fontSize: '0.8rem',
             color: 'var(--text-muted)'
           }}>
-            <strong>Tipp:</strong> Wissenschaftliche Datenbanken enthalten meist englische Texte. 
-            Nutzen Sie die <Languages size={14} style={{ display: 'inline', margin: '0 4px' }} />Übersetzen-Funktion für deutsche Zusammenfassungen.
+            <strong>Tipp:</strong> Englische Suchbegriffe empfohlen. 
+            <Languages size={12} style={{ display: 'inline', margin: '0 4px' }} />Übersetzen-Funktion nutzen.
           </div>
         )}
       </div>
