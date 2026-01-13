@@ -9,7 +9,7 @@ const ResearchPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
-  const [academicSource, setAcademicSource] = useState('semantic_scholar');
+  const [academicSource, setAcademicSource] = useState('openalex');
   const [translatingId, setTranslatingId] = useState(null);
   const [translations, setTranslations] = useState({});
   const [copiedId, setCopiedId] = useState(null);
