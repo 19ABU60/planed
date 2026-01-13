@@ -623,19 +623,19 @@ const CalendarPage = ({ classes, lessons, holidays, schoolHolidays, publicHolida
                                 flexWrap: 'wrap'
                               }}>
                                 <span style={{ 
-                                  fontWeight: '800', 
-                                  fontSize: '1rem', 
+                                  fontWeight: '700', 
+                                  fontSize: '0.8rem', 
                                   background: 'rgba(255,255,255,0.3)', 
-                                  padding: '2px 8px', 
+                                  padding: '1px 6px', 
                                   borderRadius: '4px',
                                   color: 'white'
                                 }}>
                                   {period}.
                                 </span>
-                                <BookOpen size={14} style={{ color: 'white', opacity: 0.8 }} />
+                                <BookOpen size={12} style={{ color: 'white', opacity: 0.8 }} />
                                 <span style={{ 
-                                  fontWeight: '700', 
-                                  fontSize: '0.95rem',
+                                  fontWeight: '600', 
+                                  fontSize: '0.75rem',
                                   color: 'white',
                                   textShadow: '0 1px 2px rgba(0,0,0,0.3)'
                                 }}>
