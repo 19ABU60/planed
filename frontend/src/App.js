@@ -186,6 +186,8 @@ const MainApp = () => {
     workplan: 'Arbeitsplan',
     calendar: 'Kalender', 
     statistics: 'Statistik', 
+    research: 'Recherche',
+    learning: 'Lernprogramme',
     classes: 'Klassen', 
     templates: 'Vorlagen',
     todos: 'Aufgaben', 
