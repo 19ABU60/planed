@@ -170,6 +170,8 @@ const MainApp = () => {
         return <DocumentsPage classes={classes} />;
       case 'research':
         return <ResearchPage />;
+      case 'learning':
+        return <LearningResourcesPage />;
       case 'history': 
         return <HistoryPage />;
       case 'settings': 
