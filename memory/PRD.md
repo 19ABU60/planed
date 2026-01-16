@@ -173,7 +173,18 @@ PlanEd ist eine Web-Anwendung für Lehrer zur Verwaltung von Arbeitsplänen, die
 
 ## Changelog
 
-### 13.01.2026 - Bildersuche-Bug behoben
+### 13.01.2026 - Bildersuche komplett überarbeitet
+- **Bug behoben:** Bilder zeigten nur ? Platzhalter, Download stürzte ab
+- **Lösung:** Wikimedia Commons API (kostenlos, kein API-Key)
+- **UI:** Suchfelder kompakter für iPad-Nutzung (140px breit, 28px hoch)
+- **Unsplash-Fix:** URL-Format korrigiert (Bindestriche statt +)
+
+**Zukünftige Feature-Ideen (vom Benutzer):**
+- Lernprogramme für SuS finden (Anton, Kahoot, LearningApps etc.)
+- Arbeitsblätter mit KI entwickeln
+- Quiz-Generator für Lernstandskontrollen
+
+### 13.01.2026 - Bildersuche-Bug behoben (ursprünglich)
 - **Problem:** Bildersuche auf "Recherche"-Seite zeigte nur ? Platzhalter, Download stürzte ab
 - **Ursache:** Pixabay API benötigt API-Key, fehlende User-Agent Header bei Wikimedia
 - **Lösung:** 
