@@ -26,6 +26,7 @@ import HistoryPage from './pages/HistoryPage';
 import SettingsPage from './pages/SettingsPage';
 import WorkplanTablePage from './pages/WorkplanTablePage';
 import ResearchPage from './pages/ResearchPage';
+import LearningResourcesPage from './pages/LearningResourcesPage';
 
 // Main App Component
 const MainApp = () => {
