@@ -1,6 +1,6 @@
 import { 
   LayoutDashboard, Calendar, BarChart3, BookOpen, FolderOpen, 
-  Settings, LogOut, GraduationCap, FileCheck, ListTodo, Share2, History, Table, Search, Lightbulb
+  Settings, LogOut, GraduationCap, FileCheck, ListTodo, Share2, History, Table, Search, Lightbulb, Wand2
 } from 'lucide-react';
 
 const Sidebar = ({ currentPage, onNavigate, onLogout, user }) => {
@@ -8,6 +8,7 @@ const Sidebar = ({ currentPage, onNavigate, onLogout, user }) => {
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'workplan', label: 'Arbeitsplan', icon: Table },
     { id: 'calendar', label: 'Kalender', icon: Calendar },
+    { id: 'curriculum', label: 'Unterrichtsplanung', icon: Wand2 },
     { id: 'statistics', label: 'Statistik', icon: BarChart3 },
     { id: 'research', label: 'Recherche', icon: Search },
     { id: 'learning', label: 'Lernprogramme', icon: Lightbulb },
