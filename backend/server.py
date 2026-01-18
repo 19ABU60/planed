@@ -1939,6 +1939,590 @@ async def translate_text(text: str = "", target_lang: str = "de", user_id: str =
         logger.error(f"Translation error: {e}")
         return {"translated": text, "error": str(e)}
 
+# ============== LEHRPLAN-BASIERTE UNTERRICHTSPLANUNG ==============
+
+# Lehrplan Datenbank für Deutsch RS+ RLP
+LEHRPLAN_DEUTSCH_RLP = {
+    "5/6": {
+        "sprechen_zuhoeren": {
+            "name": "Sprechen & Zuhören",
+            "themen": [
+                {
+                    "id": "gespraechsregeln",
+                    "name": "Gesprächsregeln & aktiv zuhören",
+                    "G": "Gesprächsregeln einhalten; aktiv zuhören; kurze Beiträge",
+                    "M": "Gespräche strukturieren; Gesprächsbeiträge begründen",
+                    "E": "Argumentativ in Kleingruppen diskutieren; moderieren (einfach)"
+                },
+                {
+                    "id": "praesentieren",
+                    "name": "Präsentieren & Vortragen",
+                    "G": "Kurze Vorträge mit Stichwortzettel; Nachfragen stellen",
+                    "M": "Präsentieren mit klarer Gliederung und Medienstützen",
+                    "E": "Rollen- und Gesprächsstrategien reflektieren"
+                }
+            ]
+        },
+        "lesen": {
+            "name": "Lesen – mit Texten & Medien umgehen",
+            "themen": [
+                {
+                    "id": "texte_verstehen",
+                    "name": "Texte verstehen",
+                    "G": "Einfache Sach- und literarische Texte verstehen (Kernaussagen)",
+                    "M": "Lesestrategien selbstständiger anwenden; Textsorten unterscheiden",
+                    "E": "Komplexere Texte erschließen; Figuren/Handlungen deuten"
+                },
+                {
+                    "id": "lesestrategien",
+                    "name": "Lesestrategien anwenden",
+                    "G": "Lesestrategien unter Anleitung (Markieren, Fragen, Zusammenfassen)",
+                    "M": "Einfache Deutungen/Interpretationsansätze formulieren",
+                    "E": "Informationen aus mehreren Texten vergleichen"
+                }
+            ]
+        },
+        "schreiben": {
+            "name": "Schreiben",
+            "themen": [
+                {
+                    "id": "erzaehlen_berichten",
+                    "name": "Erzählen & Berichten",
+                    "G": "Erzählungen, Berichte über Erlebnisse; Beschreiben",
+                    "M": "Zusammenfassen (kurz); adressatengerecht schreiben",
+                    "E": "Erste Stellungnahmen/Argumentationen; kreative Schreibformen"
+                },
+                {
+                    "id": "ueberarbeiten",
+                    "name": "Texte überarbeiten",
+                    "G": "Texte mit einfachen Kriterien überarbeiten (Inhalt/Ordnung)",
+                    "M": "Überarbeiten: sprachliche Richtigkeit und Verständlichkeit",
+                    "E": "Quellen/Belege in einfacher Form einbinden"
+                }
+            ]
+        },
+        "sprache": {
+            "name": "Sprache untersuchen",
+            "themen": [
+                {
+                    "id": "rechtschreibung",
+                    "name": "Rechtschreibung & Zeichensetzung",
+                    "G": "Grundlegende RS/ZS: Groß-/Kleinschreibung, Punkt/Komma",
+                    "M": "Wortarten/Satzglieder anwenden; Rechtschreibstrategien",
+                    "E": "Rechtschreibung weitgehend sicher; eigene Fehleranalyse"
+                },
+                {
+                    "id": "grammatik",
+                    "name": "Grammatik & Wortarten",
+                    "G": "Wörterbuch nutzen; Wortarten-Grundlagen",
+                    "M": "Texte und Satzbau variieren; Wirkung sprachlicher Mittel beschreiben",
+                    "E": "Eigenständige Recherche; Quellen grob bewerten"
+                }
+            ]
+        },
+        "digital": {
+            "name": "Digitale Medien & Methoden",
+            "themen": [
+                {
+                    "id": "digital_schreiben",
+                    "name": "Digital schreiben & recherchieren",
+                    "G": "Texte digital schreiben und einfach formatieren",
+                    "M": "Kurze Präsentationen (Folien/Plakat) mit Bild-/Textquellen",
+                    "E": "Produktive Beiträge (Blogpost/Audio) mit Regeln zu Bild/Ton"
+                },
+                {
+                    "id": "recherche",
+                    "name": "Recherche & Quellen",
+                    "G": "Recherche mit Vorgaben; Quellen nennen (Basis)",
+                    "M": "Notizen führen",
+                    "E": "Eigenständige Recherche; Quellen grob bewerten"
+                }
+            ]
+        }
+    },
+    "7/8": {
+        "sprechen_zuhoeren": {
+            "name": "Sprechen & Zuhören",
+            "themen": [
+                {
+                    "id": "diskutieren",
+                    "name": "Diskutieren & Argumentieren",
+                    "G": "Sachbezogen sprechen; einfache Diskussionen führen",
+                    "M": "Argumente entwickeln und begründen; Gesprächsprotokoll",
+                    "E": "Moderieren/Leiten; Debatte mit Rede-/Gegenrede"
+                },
+                {
+                    "id": "praesentieren_78",
+                    "name": "Präsentieren & Feedback",
+                    "G": "Referat/Präsentation mit Hilfen; Feedback annehmen",
+                    "M": "Feedback geben; Präsentation zunehmend frei",
+                    "E": "Rhetorische Mittel im Sprechen gezielt einsetzen"
+                }
+            ]
+        },
+        "lesen": {
+            "name": "Lesen – mit Texten & Medien umgehen",
+            "themen": [
+                {
+                    "id": "textanalyse",
+                    "name": "Textanalyse",
+                    "G": "Längere Texte verstehen; Aufbau/Absichten erkennen",
+                    "M": "Analyse von Sach- und literarischen Texten (Perspektive, Mittel)",
+                    "E": "Anspruchsvolle Texte deuten; Deutungsansätze begründen"
+                },
+                {
+                    "id": "medienkritik",
+                    "name": "Medienkritik",
+                    "G": "Informationen entnehmen; einfache Analyse (Wer? Was? Warum?)",
+                    "M": "Medienkritische Grundfragen (Absicht, Wirkung, Zielgruppe)",
+                    "E": "Medien/Genres vergleichen (Text–Film–Online-Artikel)"
+                }
+            ]
+        },
+        "schreiben": {
+            "name": "Schreiben",
+            "themen": [
+                {
+                    "id": "zusammenfassen_beschreiben",
+                    "name": "Zusammenfassen & Beschreiben",
+                    "G": "Zusammenfassung, Bericht, Personen-/Vorgangsbeschreibung",
+                    "M": "Erörterung (Grundformen); einfache Textanalyse",
+                    "E": "Fundierte Erörterung; Analyse/Interpretation mit Belegen"
+                },
+                {
+                    "id": "argumentieren",
+                    "name": "Argumentieren",
+                    "G": "Pro/Contra mit Stützsätzen; Überarbeiten nach Vorlage",
+                    "M": "Vorstufe materialgestütztes Schreiben (Material auswählen/belegen)",
+                    "E": "Materialgestütztes Argumentieren (stringent, quellengestützt)"
+                }
+            ]
+        },
+        "sprache": {
+            "name": "Sprache untersuchen",
+            "themen": [
+                {
+                    "id": "grammatik_78",
+                    "name": "Grammatik & Stil",
+                    "G": "RS/ZS systematisch festigen; Zeiten/Konjunktiv-Grundlagen",
+                    "M": "Satzgefüge/indirekte Rede; Zeichensetzung bei Nebensätzen",
+                    "E": "Sprachvarietäten/Manipulation erkennen; Stil bewusst variieren"
+                },
+                {
+                    "id": "stilmittel",
+                    "name": "Stilmittel & Wortbildung",
+                    "G": "Stilmittel benennen (Grundstock)",
+                    "M": "Wortbildung; Register/Stil situationsangemessen",
+                    "E": "Eigenständige Fehleranalyse und gezielte Korrektur"
+                }
+            ]
+        },
+        "digital": {
+            "name": "Digitale Medien & Methoden",
+            "themen": [
+                {
+                    "id": "kollaboration",
+                    "name": "Kollaboratives Arbeiten",
+                    "G": "Textlayout (Absätze, Überschriften); einfache Visualisierung",
+                    "M": "Kollaboratives Schreiben/Überarbeiten (z.B. geteilte Dokumente)",
+                    "E": "Eigenständige Medienprojekte (Podcast/Video) inkl. Reflexion"
+                },
+                {
+                    "id": "quellen_78",
+                    "name": "Quellen & Urheberrecht",
+                    "G": "Recherche mit Leitfragen; Quellen angeben",
+                    "M": "Quellen prüfen (Autor, Datum, Intention); korrekt zitieren (Basis)",
+                    "E": "Urheberrecht/Datenschutz anwenden; Quellenkritik vertieft"
+                }
+            ]
+        }
+    },
+    "9/10": {
+        "sprechen_zuhoeren": {
+            "name": "Sprechen & Zuhören",
+            "themen": [
+                {
+                    "id": "berufskommunikation",
+                    "name": "Kommunikation in Schule & Beruf",
+                    "G": "Präsentieren mit Hilfen; Gespräche in Schule/Beruf üben",
+                    "M": "Diskutieren/argumentieren; Präsentationen mediengestützt",
+                    "E": "Debatten/Dispute souverän führen; rhetorische Strategien"
+                },
+                {
+                    "id": "rhetorik",
+                    "name": "Rhetorik & Gesprächsführung",
+                    "G": "Ziele/Adressaten berücksichtigen (Basis)",
+                    "M": "Gesprächsleitung und adressatengerechte Rhetorik",
+                    "E": "Kommunikation reflektieren und zielgerichtet steuern"
+                }
+            ]
+        },
+        "lesen": {
+            "name": "Lesen – mit Texten & Medien umgehen",
+            "themen": [
+                {
+                    "id": "sachtexte_beruf",
+                    "name": "Sachtexte für Alltag & Beruf",
+                    "G": "Zentrale Aussagen erfassen; Arbeitsaufträge textnah bearbeiten",
+                    "M": "Literarische Interpretation; Analyse argumentativer Texte",
+                    "E": "Komplexe literarische & pragmatische Texte mehrperspektivisch deuten"
+                },
+                {
+                    "id": "medienanalyse",
+                    "name": "Medienanalyse",
+                    "G": "Sachtexte zu Alltag/Beruf verstehen und nutzen",
+                    "M": "Informationen bewerten; Kontextwissen angemessen nutzen",
+                    "E": "Medienanalyse (Film/Podcast/Online) kritisch vergleichen"
+                }
+            ]
+        },
+        "schreiben": {
+            "name": "Schreiben",
+            "themen": [
+                {
+                    "id": "bewerbung",
+                    "name": "Bewerbung & formelle Texte",
+                    "G": "Bewerbung (Lebenslauf/Anschreiben); Bericht/Protokoll",
+                    "M": "Materialgestütztes Schreiben (MSA-nah); Analyse/Interpretation",
+                    "E": "Anspruchsvolle Interpretation/Analyse; stringente Argumentation"
+                },
+                {
+                    "id": "eroerterung",
+                    "name": "Erörterung & Kommentar",
+                    "G": "Einfache Erörterung; Überarbeiten mit Checkliste",
+                    "M": "Erörterung/Kommentar; adressatengerechte Sachtexte",
+                    "E": "Materialgestützte Erörterung mit Belegen; kreative Transformation + Reflexion"
+                }
+            ]
+        },
+        "sprache": {
+            "name": "Sprache untersuchen",
+            "themen": [
+                {
+                    "id": "sprachreflexion",
+                    "name": "Sprachreflexion",
+                    "G": "RS/ZS weitgehend sicher; Konnektoren für Textzusammenhang",
+                    "M": "Stil/Wirkung; Satzbauvarianten; Sprachreflexion",
+                    "E": "Stilistische Feinarbeit; Sprachkritik (Medien/Politik/Werbung)"
+                },
+                {
+                    "id": "normen_varietaeten",
+                    "name": "Normen & Varietäten",
+                    "G": "Grammatik zur Korrektur; Verständlichkeit sichern",
+                    "M": "Normen vs. Varietäten unterscheiden; Fehler vermeiden",
+                    "E": "Eigenständige Revision; sprachliche Präzision sichern"
+                }
+            ]
+        },
+        "digital": {
+            "name": "Digitale Medien & Methoden",
+            "themen": [
+                {
+                    "id": "beruf_digital",
+                    "name": "Digitale Bewerbung & Recherche",
+                    "G": "Bewerbungsunterlagen digital; Recherche zu Ausbildung/Beruf",
+                    "M": "Recherche & Zitieren; Tools für Planung/Überarbeitung",
+                    "E": "Forschungs-/Medienprojekte selbstständig planen, umsetzen, publizieren"
+                },
+                {
+                    "id": "ki_tools",
+                    "name": "KI-Tools & Quellenkritik",
+                    "G": "Seriöse Quellen erkennen (Basis)",
+                    "M": "Urheberrecht/Datenschutz; reflektierter Einsatz von KI-Tools",
+                    "E": "Quellenbewertung vertieft; Recht/Ethik/KI kritisch anwenden"
+                }
+            ]
+        }
+    }
+}
+
+# Pydantic Models für Unterrichtsplanung
+class UnterrichtsreiheRequest(BaseModel):
+    klassenstufe: str
+    kompetenzbereich: str
+    thema_id: str
+    niveau: str  # G, M, E
+    stunden_anzahl: int = 6
+
+class MaterialRequest(BaseModel):
+    thema: str
+    niveau: str
+    material_typ: str  # arbeitsblatt, quiz, raetsel, zuordnung
+    klassenstufe: str
+
+class GeneratedMaterial(BaseModel):
+    typ: str
+    titel: str
+    inhalt: str
+    loesung: Optional[str] = None
+
+# API Endpoints
+
+@api_router.get("/lehrplan/struktur")
+async def get_lehrplan_struktur(user_id: str = Depends(get_current_user)):
+    """Gibt die komplette LP-Struktur für das Auswahlmenü zurück"""
+    struktur = {}
+    for klassenstufe, bereiche in LEHRPLAN_DEUTSCH_RLP.items():
+        struktur[klassenstufe] = {}
+        for bereich_id, bereich_data in bereiche.items():
+            struktur[klassenstufe][bereich_id] = {
+                "name": bereich_data["name"],
+                "themen": [{"id": t["id"], "name": t["name"]} for t in bereich_data["themen"]]
+            }
+    return {"fach": "Deutsch", "bundesland": "RLP", "schulart": "RS+", "struktur": struktur}
+
+@api_router.get("/lehrplan/thema/{klassenstufe}/{kompetenzbereich}/{thema_id}")
+async def get_thema_details(
+    klassenstufe: str, 
+    kompetenzbereich: str, 
+    thema_id: str,
+    user_id: str = Depends(get_current_user)
+):
+    """Gibt Details zu einem spezifischen Thema zurück"""
+    try:
+        bereich = LEHRPLAN_DEUTSCH_RLP.get(klassenstufe, {}).get(kompetenzbereich, {})
+        themen = bereich.get("themen", [])
+        for thema in themen:
+            if thema["id"] == thema_id:
+                return {
+                    "klassenstufe": klassenstufe,
+                    "kompetenzbereich": bereich.get("name", kompetenzbereich),
+                    "thema": thema
+                }
+        raise HTTPException(status_code=404, detail="Thema nicht gefunden")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/lehrplan/unterrichtsreihe/generieren")
+async def generiere_unterrichtsreihe(
+    request: UnterrichtsreiheRequest,
+    user_id: str = Depends(get_current_user)
+):
+    """Generiert eine Unterrichtsreihe mit KI"""
+    try:
+        # Hole Thema-Details
+        bereich = LEHRPLAN_DEUTSCH_RLP.get(request.klassenstufe, {}).get(request.kompetenzbereich, {})
+        thema_data = None
+        for t in bereich.get("themen", []):
+            if t["id"] == request.thema_id:
+                thema_data = t
+                break
+        
+        if not thema_data:
+            raise HTTPException(status_code=404, detail="Thema nicht gefunden")
+        
+        niveau_text = thema_data.get(request.niveau, "")
+        niveau_name = {"G": "grundlegend", "M": "mittel", "E": "erweitert"}.get(request.niveau, "mittel")
+        
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        
+        emergent_key = os.environ.get("EMERGENT_LLM_KEY", "")
+        if not emergent_key:
+            raise HTTPException(status_code=500, detail="KI-Service nicht konfiguriert")
+        
+        chat = LlmChat(
+            api_key=emergent_key,
+            session_id=f"unterricht-{user_id}-{uuid.uuid4()}",
+            system_message="""Du bist ein erfahrener Deutschlehrer an einer Realschule plus in Rheinland-Pfalz. 
+Du erstellst praxisnahe, differenzierte Unterrichtsreihen für den Deutschunterricht.
+Deine Unterrichtsreihen sind klar strukturiert, schülerorientiert und enthalten konkrete Aktivitäten.
+Antworte IMMER im JSON-Format."""
+        ).with_model("gemini", "gemini-3-flash-preview")
+        
+        prompt = f"""Erstelle eine Unterrichtsreihe für Deutsch RS+ mit folgenden Parametern:
+
+Klassenstufe: {request.klassenstufe}
+Kompetenzbereich: {bereich.get('name', request.kompetenzbereich)}
+Thema: {thema_data['name']}
+Lehrplaninhalt ({niveau_name}): {niveau_text}
+Niveau: {niveau_name} ({"einfacher, mehr Unterstützung" if request.niveau == "G" else "anspruchsvoller, mehr Eigenständigkeit" if request.niveau == "E" else "mittleres Anforderungsniveau"})
+Anzahl Unterrichtsstunden: {request.stunden_anzahl}
+
+Erstelle eine detaillierte Unterrichtsreihe im folgenden JSON-Format:
+{{
+    "titel": "Titel der Unterrichtsreihe",
+    "ueberblick": "Kurze Beschreibung (2-3 Sätze)",
+    "lernziele": ["Lernziel 1", "Lernziel 2", "Lernziel 3"],
+    "stunden": [
+        {{
+            "nummer": 1,
+            "titel": "Titel der Stunde",
+            "phase": "Einstieg/Erarbeitung/Sicherung",
+            "dauer": "45 min",
+            "inhalt": "Detaillierte Beschreibung der Stundeninhalte",
+            "methoden": ["Methode 1", "Methode 2"],
+            "material": ["Benötigtes Material"]
+        }}
+    ],
+    "differenzierung": {{
+        "foerdern": "Maßnahmen für schwächere SuS",
+        "fordern": "Maßnahmen für stärkere SuS"
+    }},
+    "leistungsnachweis": "Vorschlag für Leistungsüberprüfung"
+}}
+
+Wichtig: 
+- Genau {request.stunden_anzahl} Stunden erstellen
+- Niveau {niveau_name} beachten
+- Praxisnah und umsetzbar
+- Nur valides JSON zurückgeben, keine Erklärungen davor oder danach"""
+
+        response = await asyncio.wait_for(
+            chat.send_message(UserMessage(text=prompt)),
+            timeout=60.0
+        )
+        
+        # Parse JSON response
+        import json
+        # Entferne mögliche Markdown-Codeblöcke
+        response_text = response.strip()
+        if response_text.startswith("```json"):
+            response_text = response_text[7:]
+        if response_text.startswith("```"):
+            response_text = response_text[3:]
+        if response_text.endswith("```"):
+            response_text = response_text[:-3]
+        
+        unterrichtsreihe = json.loads(response_text.strip())
+        
+        # Speichere in Datenbank
+        doc = {
+            "user_id": user_id,
+            "klassenstufe": request.klassenstufe,
+            "kompetenzbereich": request.kompetenzbereich,
+            "thema_id": request.thema_id,
+            "niveau": request.niveau,
+            "unterrichtsreihe": unterrichtsreihe,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        result = await db.unterrichtsreihen.insert_one(doc)
+        
+        return {
+            "id": str(result.inserted_id),
+            "unterrichtsreihe": unterrichtsreihe,
+            "meta": {
+                "klassenstufe": request.klassenstufe,
+                "thema": thema_data["name"],
+                "niveau": niveau_name
+            }
+        }
+        
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON Parse error: {e}")
+        raise HTTPException(status_code=500, detail="Fehler beim Parsen der KI-Antwort")
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="KI-Anfrage Timeout")
+    except Exception as e:
+        logger.error(f"Unterrichtsreihe generation error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/lehrplan/material/generieren")
+async def generiere_material(
+    request: MaterialRequest,
+    user_id: str = Depends(get_current_user)
+):
+    """Generiert Unterrichtsmaterial (Arbeitsblatt, Quiz, Rätsel) mit KI"""
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        
+        emergent_key = os.environ.get("EMERGENT_LLM_KEY", "")
+        if not emergent_key:
+            raise HTTPException(status_code=500, detail="KI-Service nicht konfiguriert")
+        
+        niveau_name = {"G": "grundlegend", "M": "mittel", "E": "erweitert"}.get(request.niveau, "mittel")
+        
+        material_prompts = {
+            "arbeitsblatt": f"""Erstelle ein Arbeitsblatt für Deutsch RS+ Klasse {request.klassenstufe} zum Thema "{request.thema}" (Niveau: {niveau_name}).
+
+Das Arbeitsblatt soll enthalten:
+- Überschrift
+- Kurze Einleitung/Erklärung
+- 4-6 abwechslungsreiche Aufgaben
+- Platz für Schülerantworten (markiert mit ___)
+
+Format als JSON:
+{{"titel": "...", "einleitung": "...", "aufgaben": [{{"nummer": 1, "aufgabenstellung": "...", "punkte": 2}}], "loesung": [{{"nummer": 1, "loesung": "..."}}]}}""",
+
+            "quiz": f"""Erstelle ein Quiz für Deutsch RS+ Klasse {request.klassenstufe} zum Thema "{request.thema}" (Niveau: {niveau_name}).
+
+Das Quiz soll 8 Multiple-Choice-Fragen enthalten.
+
+Format als JSON:
+{{"titel": "Quiz: {request.thema}", "fragen": [{{"nummer": 1, "frage": "...", "optionen": ["A) ...", "B) ...", "C) ...", "D) ..."], "richtig": "A", "erklaerung": "..."}}]}}""",
+
+            "raetsel": f"""Erstelle ein Kreuzworträtsel für Deutsch RS+ Klasse {request.klassenstufe} zum Thema "{request.thema}" (Niveau: {niveau_name}).
+
+Das Rätsel soll 8-10 Begriffe enthalten.
+
+Format als JSON:
+{{"titel": "Kreuzworträtsel: {request.thema}", "begriffe": [{{"wort": "...", "hinweis": "...", "richtung": "waagerecht/senkrecht", "nummer": 1}}], "loesung": ["Liste aller Lösungswörter"]}}""",
+
+            "zuordnung": f"""Erstelle eine Zuordnungsübung für Deutsch RS+ Klasse {request.klassenstufe} zum Thema "{request.thema}" (Niveau: {niveau_name}).
+
+Die Übung soll 8 Paare zum Zuordnen enthalten (z.B. Begriff → Definition, Beispiel → Regel).
+
+Format als JSON:
+{{"titel": "Zuordnung: {request.thema}", "anleitung": "Ordne die passenden Paare zu.", "paare": [{{"links": "...", "rechts": "..."}}], "tipp": "Ein hilfreicher Hinweis"}}""",
+
+            "lueckentext": f"""Erstelle einen Lückentext für Deutsch RS+ Klasse {request.klassenstufe} zum Thema "{request.thema}" (Niveau: {niveau_name}).
+
+Der Text soll 8-10 Lücken enthalten.
+
+Format als JSON:
+{{"titel": "Lückentext: {request.thema}", "text": "Der Text mit ___(1)___ Lücken ___(2)___ markiert...", "luecken": [{{"nummer": 1, "loesung": "...", "hinweis": "..."}}], "woerter_box": ["Liste der einzusetzenden Wörter (gemischt)"]}}"""
+        }
+        
+        prompt = material_prompts.get(request.material_typ, material_prompts["arbeitsblatt"])
+        
+        chat = LlmChat(
+            api_key=emergent_key,
+            session_id=f"material-{user_id}-{uuid.uuid4()}",
+            system_message="""Du bist ein erfahrener Deutschlehrer an einer Realschule plus. 
+Du erstellst kreative, schülergerechte Unterrichtsmaterialien.
+Antworte IMMER nur mit validem JSON, ohne Erklärungen."""
+        ).with_model("gemini", "gemini-3-flash-preview")
+        
+        response = await asyncio.wait_for(
+            chat.send_message(UserMessage(text=prompt)),
+            timeout=45.0
+        )
+        
+        # Parse JSON
+        import json
+        response_text = response.strip()
+        if response_text.startswith("```json"):
+            response_text = response_text[7:]
+        if response_text.startswith("```"):
+            response_text = response_text[3:]
+        if response_text.endswith("```"):
+            response_text = response_text[:-3]
+        
+        material = json.loads(response_text.strip())
+        
+        return {
+            "typ": request.material_typ,
+            "niveau": niveau_name,
+            "klassenstufe": request.klassenstufe,
+            "thema": request.thema,
+            "material": material
+        }
+        
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON Parse error: {e}")
+        raise HTTPException(status_code=500, detail="Fehler beim Parsen der KI-Antwort")
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="KI-Anfrage Timeout")
+    except Exception as e:
+        logger.error(f"Material generation error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/lehrplan/unterrichtsreihen")
+async def get_saved_unterrichtsreihen(user_id: str = Depends(get_current_user)):
+    """Gibt alle gespeicherten Unterrichtsreihen des Nutzers zurück"""
+    cursor = db.unterrichtsreihen.find({"user_id": user_id}, {"_id": 0})
+    reihen = await cursor.to_list(100)
+    return {"unterrichtsreihen": reihen}
+
 # ============== ROOT ==============
 
 @api_router.get("/")
