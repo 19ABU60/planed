@@ -173,6 +173,8 @@ const MainApp = () => {
         return <ResearchPage />;
       case 'learning':
         return <LearningResourcesPage />;
+      case 'curriculum':
+        return <CurriculumPlannerPage />;
       case 'history': 
         return <HistoryPage />;
       case 'settings': 
