@@ -27,6 +27,7 @@ import SettingsPage from './pages/SettingsPage';
 import WorkplanTablePage from './pages/WorkplanTablePage';
 import ResearchPage from './pages/ResearchPage';
 import LearningResourcesPage from './pages/LearningResourcesPage';
+import CurriculumPlannerPage from './pages/CurriculumPlannerPage';
 
 // Main App Component
 const MainApp = () => {
