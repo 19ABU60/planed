@@ -75,8 +75,15 @@ const CurriculumPlannerPage = () => {
       const fetchDetails = async () => {
         try {
           const res = await axios.get(
-            `${API}/api/lehrplan/thema/${selectedKlasse}/${selectedBereich}/${selectedThema}`,
-            { headers: { Authorization: `Bearer ${token}` } }
+            `${API}/api/lehrplan/thema`,
+            { 
+              headers: { Authorization: `Bearer ${token}` },
+              params: {
+                klassenstufe: selectedKlasse,
+                kompetenzbereich: selectedBereich,
+                thema_id: selectedThema
+              }
+            }
           );
           setThemaDetails(res.data);
         } catch (err) {
