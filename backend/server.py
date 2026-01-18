@@ -2271,11 +2271,11 @@ async def get_lehrplan_struktur(user_id: str = Depends(get_current_user)):
             }
     return {"fach": "Deutsch", "bundesland": "RLP", "schulart": "RS+", "struktur": struktur}
 
-@api_router.get("/lehrplan/thema/{klassenstufe}/{kompetenzbereich}/{thema_id}")
+@api_router.get("/lehrplan/thema")
 async def get_thema_details(
-    klassenstufe: str, 
-    kompetenzbereich: str, 
-    thema_id: str,
+    klassenstufe: str = Query(...),
+    kompetenzbereich: str = Query(...),
+    thema_id: str = Query(...),
     user_id: str = Depends(get_current_user)
 ):
     """Gibt Details zu einem spezifischen Thema zurück"""
