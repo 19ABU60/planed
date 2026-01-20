@@ -386,7 +386,7 @@ const CurriculumPlannerPage = () => {
     } catch (err) {
       console.error('Fehler beim Laden der gespeicherten Reihen');
     } finally {
-      setLoadingSaved(false));
+      setLoadingSaved(false);
     }
   };
 
