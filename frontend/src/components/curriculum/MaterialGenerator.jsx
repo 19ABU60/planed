@@ -327,7 +327,7 @@ export const MaterialGenerator = ({
       {!generatedMaterial && !generatingMaterial && (
         <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
           <FileText size={32} style={{ opacity: 0.3, marginBottom: '0.5rem' }} />
-          <p style={{ fontSize: '0.8rem' }}>Wählen Sie einen Material-Typ und klicken Sie auf "Erstellen"</p>
+          <p style={{ fontSize: '0.8rem' }}>Wählen Sie einen Material-Typ und klicken Sie auf &quot;Erstellen&quot;</p>
         </div>
       )}
     </div>

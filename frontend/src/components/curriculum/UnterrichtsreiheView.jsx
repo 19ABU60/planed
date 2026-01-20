@@ -365,7 +365,7 @@ export const UnterrichtsreiheView = ({
       {!unterrichtsreihe && !generatingReihe && (
         <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
           <BookOpen size={32} style={{ opacity: 0.3, marginBottom: '0.5rem' }} />
-          <p style={{ fontSize: '0.8rem' }}>Wählen Sie ein Thema und klicken Sie auf "Generieren"</p>
+          <p style={{ fontSize: '0.8rem' }}>Wählen Sie ein Thema und klicken Sie auf &quot;Generieren&quot;</p>
         </div>
       )}
     </div>
