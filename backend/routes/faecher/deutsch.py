@@ -529,12 +529,14 @@ async def export_material_to_word(
             doc.add_paragraph(f"{i}. {loesung}")
     
     elif material_typ == "raetsel":
-        # Kreuzworträtsel mit echtem Gitter
-        from docx.shared import Pt, Cm, RGBColor
-        from docx.oxml.ns import qn
-        from docx.oxml import OxmlElement
+        # Echtes Kreuzworträtsel mit sich kreuzenden Wörtern
+        from docx.shared import Pt, Cm, RGBColor, Twips
+        from docx.enum.table import WD_TABLE_ALIGNMENT, WD_CELL_VERTICAL_ALIGNMENT
+        from docx.oxml.ns import nsdecls
+        from docx.oxml import parse_xml
         
         doc.add_heading("Kreuzworträtsel", level=1)
+        doc.add_paragraph()
         
         # Hole alle Begriffe
         begriffe = inhalt.get("begriffe", [])
@@ -546,120 +548,261 @@ async def export_material_to_word(
             waagerecht = [b for b in begriffe if b.get("richtung") == "waagerecht"]
             senkrecht = [b for b in begriffe if b.get("richtung") == "senkrecht"]
         
-        # Sammle alle Lösungswörter
-        alle_woerter = []
+        # Sammle alle Wörter mit Infos
+        h_words = []
         for item in waagerecht:
-            wort = item.get("loesung", item.get("wort", ""))
+            wort = item.get("loesung", item.get("wort", "")).upper().strip()
             if wort:
-                alle_woerter.append({"wort": wort.upper(), "richtung": "H", "nummer": item.get("nummer", len(alle_woerter)+1)})
-        for item in senkrecht:
-            wort = item.get("loesung", item.get("wort", ""))
-            if wort:
-                alle_woerter.append({"wort": wort.upper(), "richtung": "V", "nummer": item.get("nummer", len(alle_woerter)+1)})
+                h_words.append({
+                    "wort": wort, 
+                    "nummer": item.get("nummer", len(h_words)+1),
+                    "hinweis": item.get("frage", item.get("hinweis", ""))
+                })
         
-        if alle_woerter:
-            # Berechne Gittergröße
-            max_len = max(len(w["wort"]) for w in alle_woerter) if alle_woerter else 10
-            grid_size = max(max_len + 2, len(alle_woerter) + 2, 12)
+        v_words = []
+        for item in senkrecht:
+            wort = item.get("loesung", item.get("wort", "")).upper().strip()
+            if wort:
+                v_words.append({
+                    "wort": wort, 
+                    "nummer": item.get("nummer", len(v_words)+1),
+                    "hinweis": item.get("frage", item.get("hinweis", ""))
+                })
+        
+        # Kreuzworträtsel-Grid erstellen
+        # Einfacher Algorithmus: Platziere Wörter so, dass sie sich überschneiden
+        grid_size = 15
+        grid = [[None for _ in range(grid_size)] for _ in range(grid_size)]
+        placed_words = []
+        nummer_positionen = []  # Speichert (row, col, nummer)
+        
+        # Erstes horizontales Wort in der Mitte platzieren
+        if h_words:
+            first_word = h_words[0]
+            start_row = grid_size // 3
+            start_col = (grid_size - len(first_word["wort"])) // 2
+            for i, char in enumerate(first_word["wort"]):
+                grid[start_row][start_col + i] = char
+            placed_words.append({
+                "wort": first_word["wort"],
+                "row": start_row,
+                "col": start_col,
+                "dir": "H",
+                "nummer": first_word["nummer"],
+                "hinweis": first_word["hinweis"]
+            })
+            nummer_positionen.append((start_row, start_col, first_word["nummer"]))
+        
+        # Versuche vertikale Wörter zu platzieren (kreuzend)
+        for v_word in v_words:
+            wort = v_word["wort"]
+            placed = False
             
-            # Erstelle Tabelle als Gitter
-            table = doc.add_table(rows=grid_size, cols=grid_size)
-            table.style = 'Table Grid'
+            # Suche nach Überschneidungspunkt mit platzierten Wörtern
+            for pw in placed_words:
+                if pw["dir"] == "H":
+                    # Suche gemeinsamen Buchstaben
+                    for i, char in enumerate(wort):
+                        if char in pw["wort"]:
+                            # Gefunden! Platziere vertikal
+                            h_idx = pw["wort"].index(char)
+                            cross_col = pw["col"] + h_idx
+                            cross_row = pw["row"]
+                            start_row = cross_row - i
+                            
+                            # Prüfe ob Platzierung möglich
+                            if start_row >= 0 and start_row + len(wort) < grid_size:
+                                can_place = True
+                                for j, c in enumerate(wort):
+                                    r = start_row + j
+                                    if grid[r][cross_col] is not None and grid[r][cross_col] != c:
+                                        can_place = False
+                                        break
+                                
+                                if can_place:
+                                    for j, c in enumerate(wort):
+                                        grid[start_row + j][cross_col] = c
+                                    placed_words.append({
+                                        "wort": wort,
+                                        "row": start_row,
+                                        "col": cross_col,
+                                        "dir": "V",
+                                        "nummer": v_word["nummer"],
+                                        "hinweis": v_word["hinweis"]
+                                    })
+                                    nummer_positionen.append((start_row, cross_col, v_word["nummer"]))
+                                    placed = True
+                                    break
+                if placed:
+                    break
             
-            # Setze Zellengröße
-            for row in table.rows:
-                row.height = Cm(0.8)
-                for cell in row.cells:
-                    cell.width = Cm(0.8)
-                    # Zentriere Text
-                    cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    # Setze Schriftgröße
-                    for paragraph in cell.paragraphs:
-                        for run in paragraph.runs:
-                            run.font.size = Pt(12)
-                            run.font.bold = True
+            # Fallback: Platziere separat
+            if not placed and len(placed_words) < 8:
+                col = 1 + len([p for p in placed_words if p["dir"] == "V"]) * 3
+                row = 1
+                if col < grid_size - 1:
+                    for j, c in enumerate(wort):
+                        if row + j < grid_size:
+                            grid[row + j][col] = c
+                    placed_words.append({
+                        "wort": wort,
+                        "row": row,
+                        "col": col,
+                        "dir": "V",
+                        "nummer": v_word["nummer"],
+                        "hinweis": v_word["hinweis"]
+                    })
+                    nummer_positionen.append((row, col, v_word["nummer"]))
+        
+        # Weitere horizontale Wörter platzieren
+        for h_word in h_words[1:]:
+            wort = h_word["wort"]
+            placed = False
             
-            # Platziere Wörter im Gitter (vereinfachte Platzierung)
-            placed = []
-            start_row = 1
-            start_col = 1
-            
-            for idx, item in enumerate(alle_woerter):
-                wort = item["wort"]
-                nummer = item["nummer"]
+            for pw in placed_words:
+                if pw["dir"] == "V":
+                    for i, char in enumerate(wort):
+                        if char in pw["wort"]:
+                            v_idx = pw["wort"].index(char)
+                            cross_row = pw["row"] + v_idx
+                            cross_col = pw["col"]
+                            start_col = cross_col - i
+                            
+                            if start_col >= 0 and start_col + len(wort) < grid_size:
+                                can_place = True
+                                for j, c in enumerate(wort):
+                                    col = start_col + j
+                                    if grid[cross_row][col] is not None and grid[cross_row][col] != c:
+                                        can_place = False
+                                        break
+                                
+                                if can_place:
+                                    for j, c in enumerate(wort):
+                                        grid[cross_row][start_col + j] = c
+                                    placed_words.append({
+                                        "wort": wort,
+                                        "row": cross_row,
+                                        "col": start_col,
+                                        "dir": "H",
+                                        "nummer": h_word["nummer"],
+                                        "hinweis": h_word["hinweis"]
+                                    })
+                                    nummer_positionen.append((cross_row, start_col, h_word["nummer"]))
+                                    placed = True
+                                    break
+                if placed:
+                    break
+        
+        # Finde die tatsächlich verwendeten Grenzen des Gitters
+        min_row, max_row = grid_size, 0
+        min_col, max_col = grid_size, 0
+        for r in range(grid_size):
+            for c in range(grid_size):
+                if grid[r][c] is not None:
+                    min_row = min(min_row, r)
+                    max_row = max(max_row, r)
+                    min_col = min(min_col, c)
+                    max_col = max(max_col, c)
+        
+        # Etwas Rand hinzufügen
+        min_row = max(0, min_row - 1)
+        min_col = max(0, min_col - 1)
+        max_row = min(grid_size - 1, max_row + 1)
+        max_col = min(grid_size - 1, max_col + 1)
+        
+        # Tabelle erstellen
+        rows = max_row - min_row + 1
+        cols = max_col - min_col + 1
+        
+        table = doc.add_table(rows=rows, cols=cols)
+        table.alignment = WD_TABLE_ALIGNMENT.CENTER
+        
+        # Zellen formatieren
+        cell_size = Cm(0.7)
+        for r_idx, row in enumerate(table.rows):
+            row.height = cell_size
+            for c_idx, cell in enumerate(row.cells):
+                cell.width = cell_size
                 
-                if item["richtung"] == "H":
-                    # Horizontal platzieren
-                    row_idx = start_row + idx
-                    if row_idx < grid_size:
-                        # Nummer in erste Zelle
-                        cell = table.rows[row_idx].cells[start_col]
-                        cell.paragraphs[0].clear()
-                        run = cell.paragraphs[0].add_run(str(nummer))
-                        run.font.size = Pt(8)
+                grid_r = min_row + r_idx
+                grid_c = min_col + c_idx
+                
+                # Vertikale Zentrierung
+                cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+                
+                para = cell.paragraphs[0]
+                para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                
+                if grid[grid_r][grid_c] is not None:
+                    # Zelle mit Buchstabe - weißer Hintergrund, Rahmen
+                    # Prüfe ob hier eine Nummer hingehört
+                    nummer = None
+                    for np in nummer_positionen:
+                        if np[0] == grid_r and np[1] == grid_c:
+                            nummer = np[2]
+                            break
+                    
+                    if nummer:
+                        # Kleine Nummer oben links
+                        run = para.add_run(str(nummer))
+                        run.font.size = Pt(6)
                         run.font.bold = False
-                        
-                        # Leere Kästchen für Buchstaben
-                        for char_idx, char in enumerate(wort):
-                            col_idx = start_col + char_idx + 1
-                            if col_idx < grid_size:
-                                cell = table.rows[row_idx].cells[col_idx]
-                                # Leeres Kästchen (Schüler füllt aus)
-                                cell.paragraphs[0].clear()
+                    
+                    # Setze weißen Hintergrund
+                    shading = parse_xml(f'<w:shd {nsdecls("w")} w:fill="FFFFFF"/>')
+                    cell._tc.get_or_add_tcPr().append(shading)
                 else:
-                    # Vertikal platzieren
-                    col_idx = start_col + idx + len([w for w in alle_woerter[:idx] if w["richtung"] == "H"]) + 3
-                    if col_idx < grid_size:
-                        # Nummer in erste Zelle
-                        cell = table.rows[start_row].cells[col_idx]
-                        cell.paragraphs[0].clear()
-                        run = cell.paragraphs[0].add_run(str(nummer))
-                        run.font.size = Pt(8)
-                        run.font.bold = False
-                        
-                        # Leere Kästchen für Buchstaben
-                        for char_idx, char in enumerate(wort):
-                            row_idx = start_row + char_idx + 1
-                            if row_idx < grid_size:
-                                cell = table.rows[row_idx].cells[col_idx]
-                                cell.paragraphs[0].clear()
-            
-            # Schwarze Zellen für nicht verwendete Bereiche
-            # (optional - macht das Rätsel schöner)
+                    # Leere Zelle - schwarzer Hintergrund
+                    shading = parse_xml(f'<w:shd {nsdecls("w")} w:fill="000000"/>')
+                    cell._tc.get_or_add_tcPr().append(shading)
+        
+        # Rahmen für alle Zellen
+        tbl = table._tbl
+        tblPr = tbl.tblPr if tbl.tblPr is not None else parse_xml(f'<w:tblPr {nsdecls("w")}/>')
+        tblBorders = parse_xml(
+            f'<w:tblBorders {nsdecls("w")}>'
+            '<w:top w:val="single" w:sz="4" w:color="000000"/>'
+            '<w:left w:val="single" w:sz="4" w:color="000000"/>'
+            '<w:bottom w:val="single" w:sz="4" w:color="000000"/>'
+            '<w:right w:val="single" w:sz="4" w:color="000000"/>'
+            '<w:insideH w:val="single" w:sz="4" w:color="000000"/>'
+            '<w:insideV w:val="single" w:sz="4" w:color="000000"/>'
+            '</w:tblBorders>'
+        )
+        tblPr.append(tblBorders)
         
         doc.add_paragraph()
         doc.add_paragraph()
         
         # Hinweise (Fragen)
-        doc.add_heading("Waagerecht →", level=2)
-        for item in waagerecht:
-            nummer = item.get("nummer", "")
-            frage = item.get("frage", item.get("hinweis", ""))
-            doc.add_paragraph(f"{nummer}. {frage}")
+        h_placed = [p for p in placed_words if p["dir"] == "H"]
+        v_placed = [p for p in placed_words if p["dir"] == "V"]
+        
+        if h_placed:
+            doc.add_heading("Waagerecht →", level=2)
+            for item in sorted(h_placed, key=lambda x: x["nummer"]):
+                doc.add_paragraph(f"{item['nummer']}. {item['hinweis']}")
         
         doc.add_paragraph()
         
-        doc.add_heading("Senkrecht ↓", level=2)
-        for item in senkrecht:
-            nummer = item.get("nummer", "")
-            frage = item.get("frage", item.get("hinweis", ""))
-            doc.add_paragraph(f"{nummer}. {frage}")
+        if v_placed:
+            doc.add_heading("Senkrecht ↓", level=2)
+            for item in sorted(v_placed, key=lambda x: x["nummer"]):
+                doc.add_paragraph(f"{item['nummer']}. {item['hinweis']}")
         
         # Lösungsseite
         doc.add_page_break()
         doc.add_heading("Lösungen", level=1)
         
-        doc.add_heading("Waagerecht", level=2)
-        for item in waagerecht:
-            nummer = item.get("nummer", "")
-            loesung = item.get("loesung", item.get("wort", ""))
-            doc.add_paragraph(f"{nummer}. {loesung}")
+        if h_placed:
+            doc.add_heading("Waagerecht", level=2)
+            for item in sorted(h_placed, key=lambda x: x["nummer"]):
+                doc.add_paragraph(f"{item['nummer']}. {item['wort']}")
         
-        doc.add_heading("Senkrecht", level=2)
-        for item in senkrecht:
-            nummer = item.get("nummer", "")
-            loesung = item.get("loesung", item.get("wort", ""))
-            doc.add_paragraph(f"{nummer}. {loesung}")
+        if v_placed:
+            doc.add_heading("Senkrecht", level=2)
+            for item in sorted(v_placed, key=lambda x: x["nummer"]):
+                doc.add_paragraph(f"{item['nummer']}. {item['wort']}")
     
     elif material_typ == "zuordnung":
         # Zuordnungsübung
