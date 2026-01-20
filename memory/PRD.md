@@ -173,6 +173,30 @@ PlanEd ist eine Web-Anwendung für Lehrer zur Verwaltung von Arbeitsplänen, die
 
 ## Changelog
 
+### 20.01.2026 - Backend Refactoring: Modulare Struktur ✅
+- **Problem:** server.py hatte 3083 Zeilen - schwer wartbar und erweiterbar
+- **Lösung:** Modulare Struktur eingeführt
+- **Neue Struktur:**
+  ```
+  /app/backend/
+  ├── server.py              ← 2355 Zeilen (vorher 3083)
+  ├── data/
+  │   ├── lehrplan_deutsch_rlp.py   ← 294 Zeilen (Lehrplan)
+  │   └── schulbuecher_deutsch.py   ← 438 Zeilen (31 Schulbücher)
+  ├── models/
+  │   └── schemas.py         ← Alle Pydantic Models
+  ├── services/
+  │   └── auth.py            ← Auth-Helfer, DB-Zugriff
+  └── routes/
+      └── auth.py            ← (vorbereitet für spätere Auslagerung)
+  ```
+- **Vorteile:**
+  - Neue Fächer können als eigene Dateien hinzugefügt werden (z.B. `data/lehrplan_mathe_rlp.py`)
+  - Schulbücher sind separat und leicht erweiterbar
+  - Keine Änderung an Haupt-server.py nötig für neue Fach-Daten
+- **Test-Status:** ✅ Server startet, alle APIs funktionieren
+- **Reduzierung:** 728 Zeilen aus server.py ausgelagert
+
 ### 20.01.2026 - Alternative Unterrichtsreihen mit verschiedenen Schulbüchern ✅
 - **Neues Feature:** Vergleich mehrerer Unterrichtsreihen mit verschiedenen Schulbüchern
 - **Funktionsweise:**
