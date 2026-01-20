@@ -889,6 +889,30 @@ const CurriculumPlannerPage = () => {
                     </div>
                   </div>
                 )}
+
+                {/* Button: In Arbeitsplan übernehmen */}
+                <button
+                  onClick={() => setShowWorkplanModal(true)}
+                  style={{
+                    width: '100%',
+                    marginTop: '1rem',
+                    padding: '0.6rem',
+                    fontSize: '0.8rem',
+                    fontWeight: '600',
+                    background: 'linear-gradient(135deg, var(--primary) 0%, #6366f1 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem'
+                  }}
+                >
+                  <Calendar size={16} />
+                  In Arbeitsplan übernehmen
+                </button>
               </div>
             )}
 
