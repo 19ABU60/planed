@@ -159,12 +159,15 @@ PlanEd ist eine Web-Anwendung für Lehrer zur Verwaltung von Arbeitsplänen, die
 
 ### Phase 1 (Hohe Priorität - Fertig) ✅
 - [x] Excel-Import für bestehende Arbeitspläne
+- [x] Excel-Import mit Vorschau-Funktion
 - [x] Fach-Auswahl (Deutsch/Mathematik) in Unterrichtsplanung
 - [x] Mathe-Schulbücher mit Kapitelstrukturen (24 Bücher)
 - [x] Auth-Routes ausgelagert
+- [x] Lessons/Workplan-Routes ausgelagert
+- [x] Templates/Todos-Routes ausgelagert
 
 ### Phase 1.5 (Backend-Refactoring - Fortsetzung)
-- [ ] Weitere Routes auslagern (Holidays, Lessons, Templates, Todos)
+- [ ] Weitere Routes auslagern (Holidays, Comments, Statistics, Research)
 - [ ] Ziel: server.py unter 1500 Zeilen
 
 ### Phase 2 (Mittlere Priorität)
