@@ -189,6 +189,28 @@ PlanEd ist eine Web-Anwendung für Lehrer zur Verwaltung von Arbeitsplänen, die
 
 ## Changelog
 
+### 20.01.2026 - Frontend-Refactoring CurriculumPlannerPage ✅
+- **CurriculumPlannerPage.js reduziert von 1920 auf 519 Zeilen** (-73%)
+- **P0-Bug behoben:** Multi-Fach Plan-Management - deleteSavedReihe akzeptiert jetzt 'fach' Parameter
+- **Neue modulare Komponenten-Struktur erstellt:**
+  ```
+  /app/frontend/src/components/curriculum/
+  ├── constants.js           (~17 Zeilen) - NIVEAU_LABELS, MATERIAL_TYPEN
+  ├── WorkplanModal.jsx      (~246 Zeilen) - Arbeitsplan-Integration Modal
+  ├── SavedReihenPanel.jsx   (~180 Zeilen) - "Meine Reihen" Panel mit Fach-Gruppierung
+  ├── SubjectSelector.jsx    (~179 Zeilen) - Fach/Klasse/Bereich/Thema/Niveau Auswahl
+  ├── AlternativeTabs.jsx    (~196 Zeilen) - Schulbuch-Alternativen Tabs & Modal
+  ├── UnterrichtsreiheView.jsx (~373 Zeilen) - Unterrichtsreihe Anzeige & Bearbeitung
+  ├── MaterialGenerator.jsx  (~335 Zeilen) - Material erstellen & Download
+  └── index.js               (~7 Zeilen) - Exports
+  ```
+- **Vorteile:**
+  - Bessere Wartbarkeit und Lesbarkeit
+  - Wiederverwendbare Komponenten
+  - Einfacheres Testing einzelner Komponenten
+  - Saubere Trennung von Concerns
+- **Test-Status:** ✅ 100% - Alle 7 Features getestet (Frontend Testing Agent)
+
 ### 20.01.2026 - Backend-Refactoring Phase 3 - Ziel erreicht! ✅
 - **server.py reduziert auf 1378 Zeilen** (von ursprünglich 2162 - Ziel war unter 1500)
 - **Neue Module erstellt:**
