@@ -935,3 +935,359 @@ async def export_material_to_word(
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
 
+
+# ============== QR-CODE GENERATOR ==============
+
+@router.post("/material/qrcode")
+async def generate_qr_code(
+    url: str,
+    titel: str = "Material",
+    user_id: str = Depends(get_current_user)
+):
+    """Generiert einen QR-Code für eine URL"""
+    import qrcode
+    from io import BytesIO
+    
+    # QR-Code erstellen
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=2,
+    )
+    qr.add_data(url)
+    qr.make(fit=True)
+    
+    # Als Bild generieren
+    img = qr.make_image(fill_color="black", back_color="white")
+    
+    # In BytesIO speichern
+    img_stream = BytesIO()
+    img.save(img_stream, format='PNG')
+    img_stream.seek(0)
+    
+    return StreamingResponse(
+        img_stream,
+        media_type="image/png",
+        headers={"Content-Disposition": f"attachment; filename=qrcode_{titel}.png"}
+    )
+
+
+# ============== LEARNINGAPPS INTEGRATION ==============
+
+@router.get("/learningapps/vorlagen")
+async def get_learningapps_templates(
+    material_typ: str = "quiz",
+    user_id: str = Depends(get_current_user)
+):
+    """
+    Gibt LearningApps-Vorlagen für verschiedene Materialtypen zurück.
+    Diese können direkt auf learningapps.org erstellt werden.
+    """
+    
+    templates = {
+        "quiz": {
+            "name": "Multiple-Choice-Quiz",
+            "url": "https://learningapps.org/create.php?new=24",
+            "beschreibung": "Erstellen Sie ein Quiz mit Multiple-Choice-Fragen",
+            "icon": "❓",
+            "anleitung": [
+                "1. Klicken Sie auf den Link",
+                "2. Geben Sie Ihre Fragen und Antworten ein",
+                "3. Markieren Sie die richtige Antwort",
+                "4. Speichern und teilen Sie den Link"
+            ]
+        },
+        "lueckentext": {
+            "name": "Lückentext",
+            "url": "https://learningapps.org/create.php?new=35",
+            "beschreibung": "Interaktiver Lückentext zum Ausfüllen",
+            "icon": "📝",
+            "anleitung": [
+                "1. Klicken Sie auf den Link",
+                "2. Geben Sie Ihren Text ein",
+                "3. Markieren Sie Wörter als Lücken mit *Wort*",
+                "4. Speichern und teilen Sie den Link"
+            ]
+        },
+        "zuordnung": {
+            "name": "Paare zuordnen",
+            "url": "https://learningapps.org/create.php?new=21",
+            "beschreibung": "Begriffe einander zuordnen (Memory-Stil)",
+            "icon": "🔗",
+            "anleitung": [
+                "1. Klicken Sie auf den Link",
+                "2. Geben Sie zusammengehörende Paare ein",
+                "3. Wählen Sie die Darstellung (Karten, Liste, etc.)",
+                "4. Speichern und teilen Sie den Link"
+            ]
+        },
+        "raetsel": {
+            "name": "Kreuzworträtsel",
+            "url": "https://learningapps.org/create.php?new=32",
+            "beschreibung": "Interaktives Kreuzworträtsel online lösen",
+            "icon": "🔤",
+            "anleitung": [
+                "1. Klicken Sie auf den Link",
+                "2. Geben Sie Begriffe und Hinweise ein",
+                "3. Das Rätsel wird automatisch generiert",
+                "4. Speichern und teilen Sie den Link"
+            ]
+        },
+        "millionenspiel": {
+            "name": "Wer wird Millionär",
+            "url": "https://learningapps.org/create.php?new=28",
+            "beschreibung": "Quiz im Stil von 'Wer wird Millionär'",
+            "icon": "💰",
+            "anleitung": [
+                "1. Klicken Sie auf den Link",
+                "2. Erstellen Sie 15 Fragen mit steigender Schwierigkeit",
+                "3. Fügen Sie Joker hinzu",
+                "4. Speichern und teilen Sie den Link"
+            ]
+        },
+        "gruppenzuordnung": {
+            "name": "Gruppenzuordnung",
+            "url": "https://learningapps.org/create.php?new=22",
+            "beschreibung": "Begriffe in Kategorien einordnen",
+            "icon": "📊",
+            "anleitung": [
+                "1. Klicken Sie auf den Link",
+                "2. Erstellen Sie Kategorien (z.B. Nomen, Verben, Adjektive)",
+                "3. Fügen Sie Begriffe hinzu",
+                "4. Speichern und teilen Sie den Link"
+            ]
+        },
+        "wortsuchraetsel": {
+            "name": "Wortgitter / Suchsel",
+            "url": "https://learningapps.org/create.php?new=34",
+            "beschreibung": "Versteckte Wörter im Buchstabengitter finden",
+            "icon": "🔍",
+            "anleitung": [
+                "1. Klicken Sie auf den Link",
+                "2. Geben Sie die zu suchenden Wörter ein",
+                "3. Das Gitter wird automatisch erstellt",
+                "4. Speichern und teilen Sie den Link"
+            ]
+        },
+        "timeline": {
+            "name": "Zeitstrahl",
+            "url": "https://learningapps.org/create.php?new=31",
+            "beschreibung": "Ereignisse chronologisch einordnen",
+            "icon": "📅",
+            "anleitung": [
+                "1. Klicken Sie auf den Link",
+                "2. Fügen Sie Ereignisse mit Datum hinzu",
+                "3. Schüler ordnen die Ereignisse ein",
+                "4. Speichern und teilen Sie den Link"
+            ]
+        }
+    }
+    
+    if material_typ in templates:
+        return templates[material_typ]
+    
+    return {"alle_vorlagen": templates}
+
+
+@router.post("/learningapps/suche")
+async def search_learningapps(
+    suchbegriff: str,
+    kategorie: str = "Deutsch",
+    user_id: str = Depends(get_current_user)
+):
+    """
+    Generiert einen Suchlink für LearningApps.org
+    """
+    from urllib.parse import quote
+    
+    # Kategorien-Mapping für LearningApps
+    kategorien = {
+        "Deutsch": "5",
+        "Mathematik": "2", 
+        "Englisch": "6",
+        "Geschichte": "10",
+        "Biologie": "8",
+        "Physik": "9",
+        "Chemie": "16",
+        "Geografie": "11",
+        "Musik": "13",
+        "Kunst": "14",
+        "Sport": "15",
+        "Religion": "17",
+        "Politik": "12"
+    }
+    
+    kat_id = kategorien.get(kategorie, "5")
+    encoded_search = quote(suchbegriff)
+    
+    return {
+        "suchbegriff": suchbegriff,
+        "kategorie": kategorie,
+        "such_url": f"https://learningapps.org/index.php?category={kat_id}&s={encoded_search}",
+        "direkt_erstellen": f"https://learningapps.org/create.php",
+        "empfohlene_apps": [
+            {
+                "name": f"LearningApps zu '{suchbegriff}' durchsuchen",
+                "url": f"https://learningapps.org/index.php?category={kat_id}&s={encoded_search}",
+                "beschreibung": f"Fertige interaktive Übungen zum Thema '{suchbegriff}'"
+            }
+        ]
+    }
+
+
+# ============== WORD MIT QR-CODE ==============
+
+class WordExportWithQRRequest(PydanticBaseModel):
+    material_typ: str
+    titel: str
+    inhalt: dict
+    qr_url: str = None  # Optional: URL für QR-Code
+    learningapps_typ: str = None  # Optional: LearningApps-Typ für Link
+
+@router.post("/material/export/word-mit-qr")
+async def export_material_with_qr(
+    request: WordExportWithQRRequest,
+    user_id: str = Depends(get_current_user)
+):
+    """
+    Exportiert Material als Word-Dokument MIT QR-Code und LearningApps-Link
+    """
+    from docx import Document
+    from docx.shared import Inches, Pt, Cm
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    import qrcode
+    from io import BytesIO
+    
+    material_typ = request.material_typ
+    titel = request.titel
+    inhalt = request.inhalt
+    
+    doc = Document()
+    
+    # Seitenränder
+    for section in doc.sections:
+        section.top_margin = Cm(2)
+        section.bottom_margin = Cm(2)
+        section.left_margin = Cm(2.5)
+        section.right_margin = Cm(2.5)
+    
+    # Titel
+    title_para = doc.add_heading(titel, 0)
+    title_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    # QR-Code und LearningApps-Box oben rechts
+    if request.qr_url or request.learningapps_typ:
+        # Info-Box erstellen
+        info_table = doc.add_table(rows=1, cols=2)
+        info_table.autofit = True
+        
+        left_cell = info_table.rows[0].cells[0]
+        right_cell = info_table.rows[0].cells[1]
+        
+        # Linke Seite: LearningApps Info
+        if request.learningapps_typ:
+            templates = {
+                "quiz": ("Multiple-Choice-Quiz", "https://learningapps.org/create.php?new=24"),
+                "lueckentext": ("Lückentext", "https://learningapps.org/create.php?new=35"),
+                "zuordnung": ("Paare zuordnen", "https://learningapps.org/create.php?new=21"),
+                "raetsel": ("Kreuzworträtsel", "https://learningapps.org/create.php?new=32"),
+            }
+            
+            if request.learningapps_typ in templates:
+                name, url = templates[request.learningapps_typ]
+                p = left_cell.paragraphs[0]
+                p.add_run("🎮 Interaktiv online üben:\n").bold = True
+                p.add_run(f"{name}\n")
+                p.add_run(url).font.size = Pt(8)
+        
+        # Rechte Seite: QR-Code
+        if request.qr_url:
+            # QR-Code generieren
+            qr = qrcode.QRCode(version=1, box_size=6, border=1)
+            qr.add_data(request.qr_url)
+            qr.make(fit=True)
+            qr_img = qr.make_image(fill_color="black", back_color="white")
+            
+            # Als Bytes speichern
+            qr_stream = BytesIO()
+            qr_img.save(qr_stream, format='PNG')
+            qr_stream.seek(0)
+            
+            # In Dokument einfügen
+            p = right_cell.paragraphs[0]
+            p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+            run = p.add_run()
+            run.add_picture(qr_stream, width=Cm(2.5))
+            p.add_run("\n📱 Scan für Mobile").font.size = Pt(8)
+        
+        doc.add_paragraph()
+    
+    # Metadaten
+    if inhalt.get("klassenstufe") or inhalt.get("niveau"):
+        meta = doc.add_paragraph()
+        meta.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        meta_parts = []
+        if inhalt.get("klassenstufe"):
+            meta_parts.append(f"Klassenstufe {inhalt['klassenstufe']}")
+        if inhalt.get("niveau"):
+            niveau_map = {"G": "Grundniveau", "M": "Mittleres Niveau", "E": "Erweitertes Niveau"}
+            meta_parts.append(niveau_map.get(inhalt["niveau"], inhalt["niveau"]))
+        meta.add_run(" • ".join(meta_parts)).italic = True
+    
+    doc.add_paragraph()
+    
+    # Material-spezifischer Inhalt (vereinfacht - nur Arbeitsblatt als Beispiel)
+    if material_typ == "arbeitsblatt":
+        aufgaben = inhalt.get("aufgaben", [])
+        for i, aufgabe in enumerate(aufgaben, 1):
+            doc.add_heading(f"Aufgabe {i}: {aufgabe.get('titel', '')}", level=2)
+            if aufgabe.get("aufgabenstellung"):
+                doc.add_paragraph(aufgabe["aufgabenstellung"])
+            if aufgabe.get("material"):
+                p = doc.add_paragraph()
+                p.add_run("Material: ").bold = True
+                p.add_run(aufgabe["material"])
+            doc.add_paragraph("Antwort:\n" + "_" * 60 + "\n" + "_" * 60)
+            doc.add_paragraph()
+    
+    elif material_typ == "quiz":
+        fragen = inhalt.get("fragen", [])
+        for i, frage in enumerate(fragen, 1):
+            p = doc.add_paragraph()
+            p.add_run(f"{i}. {frage.get('frage', '')}").bold = True
+            for j, option in enumerate(frage.get("optionen", [])):
+                option_text = str(option)
+                if len(option_text) > 2 and option_text[1] in ')':
+                    doc.add_paragraph(f"   {option_text}")
+                else:
+                    doc.add_paragraph(f"   {chr(65+j)}) {option_text}")
+            doc.add_paragraph()
+    
+    else:
+        # Generischer Export
+        doc.add_paragraph(str(inhalt))
+    
+    # Footer mit QR-Code Hinweis
+    doc.add_paragraph()
+    footer = doc.add_paragraph()
+    footer.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    footer_text = f"Erstellt mit PlanEd • {datetime.now().strftime('%d.%m.%Y')}"
+    if request.qr_url:
+        footer_text += " • 📱 QR-Code für mobile Nutzung"
+    footer.add_run(footer_text).italic = True
+    
+    # Speichern
+    file_stream = BytesIO()
+    doc.save(file_stream)
+    file_stream.seek(0)
+    
+    safe_titel = "".join(c for c in titel if c.isalnum() or c in (' ', '-', '_')).strip()[:50]
+    filename = f"{safe_titel}_{material_typ}_qr.docx"
+    
+    return StreamingResponse(
+        file_stream,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
