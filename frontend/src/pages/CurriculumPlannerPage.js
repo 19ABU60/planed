@@ -169,7 +169,7 @@ const WorkplanModal = ({ isOpen, onClose, unterrichtsreihe, stunden, token, onSu
               <option value="">Klasse wählen...</option>
               {classes.map(c => (
                 <option key={c.id} value={c.id}>
-                  {c.class_name} - {c.subject}
+                  {c.name} - {c.subject}
                 </option>
               ))}
             </select>
