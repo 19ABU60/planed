@@ -804,7 +804,7 @@ const CurriculumPlannerPage = () => {
                 <BookOpen size={18} />
                 Unterrichtsreihe
               </h3>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Stunden:</label>
                 <select
                   value={stundenAnzahl}
@@ -815,6 +815,32 @@ const CurriculumPlannerPage = () => {
                     <option key={n} value={n}>{n}</option>
                   ))}
                 </select>
+                
+                {/* Schulbuch-Dropdown */}
+                <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>Schulbuch:</label>
+                <select
+                  value={selectedSchulbuch}
+                  onChange={(e) => setSelectedSchulbuch(e.target.value)}
+                  disabled={loadingSchulbuecher}
+                  style={{ 
+                    padding: '0.25rem 0.4rem', 
+                    fontSize: '0.75rem', 
+                    borderRadius: '4px', 
+                    border: '1px solid var(--border-default)', 
+                    background: selectedSchulbuch !== 'kein_schulbuch' ? 'rgba(139, 92, 246, 0.15)' : 'var(--bg-subtle)',
+                    color: selectedSchulbuch !== 'kein_schulbuch' ? 'var(--primary)' : 'inherit',
+                    maxWidth: '180px'
+                  }}
+                  data-testid="schulbuch-dropdown"
+                >
+                  <option value="kein_schulbuch">Ohne Schulbuch</option>
+                  {schulbuecher.filter(b => b.id !== 'kein_schulbuch').map(buch => (
+                    <option key={buch.id} value={buch.id}>
+                      {buch.name} ({buch.verlag})
+                    </option>
+                  ))}
+                </select>
+                
                 <button
                   onClick={generiereUnterrichtsreihe}
                   disabled={!selectedThema || generatingReihe}
@@ -827,6 +853,24 @@ const CurriculumPlannerPage = () => {
               </div>
             </div>
 
+            {/* Schulbuch-Info wenn gewählt */}
+            {selectedSchulbuch !== 'kein_schulbuch' && schulbuecher.find(b => b.id === selectedSchulbuch) && (
+              <div style={{ 
+                marginBottom: '0.75rem', 
+                padding: '0.5rem 0.75rem', 
+                background: 'rgba(139, 92, 246, 0.1)', 
+                borderRadius: '6px',
+                fontSize: '0.75rem',
+                color: 'var(--primary)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}>
+                <BookOpen size={14} />
+                Mit Seitenverweisen zu: <strong>{schulbuecher.find(b => b.id === selectedSchulbuch)?.name}</strong>
+              </div>
+            )}
+
             {/* Generierte Unterrichtsreihe */}
             {unterrichtsreihe && (
               <div>
@@ -837,6 +881,23 @@ const CurriculumPlannerPage = () => {
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                     {unterrichtsreihe.ueberblick}
                   </p>
+                  {/* Schulbuch-Badge wenn vorhanden */}
+                  {(unterrichtsreihe.schulbuch || currentSchulbuch) && (
+                    <div style={{ 
+                      marginTop: '0.5rem',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      padding: '0.2rem 0.5rem',
+                      background: 'rgba(139, 92, 246, 0.15)',
+                      borderRadius: '4px',
+                      fontSize: '0.7rem',
+                      color: 'var(--primary)'
+                    }}>
+                      <BookOpen size={12} />
+                      {unterrichtsreihe.schulbuch || currentSchulbuch}
+                    </div>
+                  )}
                 </div>
 
                 {/* Lernziele */}
