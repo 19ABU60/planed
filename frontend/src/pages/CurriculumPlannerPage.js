@@ -1487,8 +1487,72 @@ const CurriculumPlannerPage = () => {
                 maxHeight: '500px',
                 overflowY: 'auto'
               }}>
-                <div style={{ fontWeight: '600', fontSize: '0.9rem', marginBottom: '0.75rem' }}>
-                  {generatedMaterial.material.titel}
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center',
+                  marginBottom: '0.75rem'
+                }}>
+                  <div style={{ fontWeight: '600', fontSize: '0.9rem' }}>
+                    {generatedMaterial.material.titel}
+                  </div>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const response = await fetch(`${API}/api/lehrplan/material/export/word`, {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                          },
+                          body: JSON.stringify({
+                            material_typ: generatedMaterial.typ,
+                            titel: generatedMaterial.material.titel || 'Material',
+                            inhalt: {
+                              ...generatedMaterial.material,
+                              klassenstufe: selectedKlasse,
+                              niveau: selectedNiveau
+                            }
+                          })
+                        });
+                        
+                        if (response.ok) {
+                          const blob = await response.blob();
+                          const url = window.URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `${generatedMaterial.material.titel || 'Material'}_${generatedMaterial.typ}.docx`;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          window.URL.revokeObjectURL(url);
+                          toast.success('Word-Dokument heruntergeladen!');
+                        } else {
+                          toast.error('Download fehlgeschlagen');
+                        }
+                      } catch (error) {
+                        console.error('Download error:', error);
+                        toast.error('Download fehlgeschlagen: ' + error.message);
+                      }
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      padding: '0.4rem 0.75rem',
+                      background: 'var(--primary)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '0.8rem',
+                      fontWeight: '500',
+                      cursor: 'pointer'
+                    }}
+                    data-testid="download-word-btn"
+                  >
+                    <Download size={14} />
+                    Word
+                  </button>
                 </div>
 
                 {/* Arbeitsblatt */}
