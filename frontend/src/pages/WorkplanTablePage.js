@@ -175,7 +175,7 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
     setSaving(false);
   };
 
-  // Excel Import
+  // Excel Import - Step 1: Preview
   const handleExcelImport = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -186,21 +186,58 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
     }
     
     // Check file type
-    const validTypes = [
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'application/vnd.ms-excel',
-      '.xlsx', '.xls'
-    ];
-    const isValidType = validTypes.some(t => file.type === t || file.name.endsWith('.xlsx') || file.name.endsWith('.xls'));
-    
+    const isValidType = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
     if (!isValidType) {
       toast.error('Bitte eine Excel-Datei (.xlsx oder .xls) auswählen');
       return;
     }
     
     setImporting(true);
+    setPendingFile(file);
+    
     const formData = new FormData();
     formData.append('file', file);
+    
+    try {
+      // First: Get preview
+      const previewResponse = await fetch(`${API}/api/import/excel/preview`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+      
+      const previewResult = await previewResponse.json();
+      
+      if (!previewResponse.ok) {
+        throw new Error(previewResult.detail || 'Vorschau fehlgeschlagen');
+      }
+      
+      setImportPreview(previewResult);
+      setShowPreviewModal(true);
+      
+    } catch (error) {
+      toast.error('Vorschau fehlgeschlagen: ' + error.message);
+      console.error('Preview error:', error);
+      setPendingFile(null);
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+  
+  // Excel Import - Step 2: Confirm and import
+  const confirmImport = async () => {
+    if (!pendingFile || !selectedClass) return;
+    
+    setImporting(true);
+    setShowPreviewModal(false);
+    
+    const formData = new FormData();
+    formData.append('file', pendingFile);
     
     try {
       const response = await fetch(`${API}/api/import/excel/${selectedClass}`, {
@@ -236,11 +273,17 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
       console.error('Import error:', error);
     } finally {
       setImporting(false);
-      // Reset file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      setPendingFile(null);
+      setImportPreview(null);
     }
+  };
+  
+  // Cancel import
+  const cancelImport = () => {
+    setShowPreviewModal(false);
+    setPendingFile(null);
+    setImportPreview(null);
+  };
   };
 
   const navigateMonth = (direction) => {
