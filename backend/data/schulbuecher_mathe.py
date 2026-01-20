@@ -200,6 +200,147 @@ SCHULBUECHER_MATHE = {
             "daten": {"name": "Daten und Zufall", "seiten": "191-235", "themen": ["Statistik", "Wahrscheinlichkeit"]}
         }
     },
+    "mathe_live_7": {
+        "id": "mathe_live_7",
+        "name": "Mathe Live 7",
+        "verlag": "Cornelsen",
+        "isbn": "978-3-06-040053-9",
+        "klassenstufe": "7/8",
+        "kapitel": {
+            "rationale_zahlen": {"name": "Rationale Zahlen", "seiten": "8-52", "themen": ["Negative Zahlen", "Rechnen mit rationalen Zahlen"]},
+            "prozent": {"name": "Prozentrechnung", "seiten": "53-98", "themen": ["Prozent", "Promille", "Diagramme"]},
+            "terme": {"name": "Terme und Gleichungen", "seiten": "99-148", "themen": ["Termumformung", "Lineare Gleichungen"]},
+            "zuordnungen": {"name": "Zuordnungen", "seiten": "149-195", "themen": ["Proportional", "Antiproportional", "Dreisatz"]},
+            "geometrie": {"name": "Geometrie", "seiten": "196-245", "themen": ["Kongruenz", "Konstruktionen"]}
+        }
+    },
+    "mathe_live_8": {
+        "id": "mathe_live_8",
+        "name": "Mathe Live 8",
+        "verlag": "Cornelsen",
+        "isbn": "978-3-06-040054-6",
+        "klassenstufe": "7/8",
+        "kapitel": {
+            "lineare_funktionen": {"name": "Lineare Funktionen", "seiten": "10-62", "themen": ["Steigung", "y-Achsenabschnitt", "Geraden"]},
+            "gleichungen": {"name": "Lineare Gleichungen", "seiten": "63-108", "themen": ["Äquivalenzumformungen", "Textaufgaben"]},
+            "kreis": {"name": "Kreis und Kreisberechnung", "seiten": "109-155", "themen": ["Umfang", "Flächeninhalt", "Kreisausschnitt"]},
+            "pythagoras": {"name": "Satz des Pythagoras", "seiten": "156-200", "themen": ["Pythagoras", "Anwendungen"]},
+            "statistik": {"name": "Statistik", "seiten": "201-248", "themen": ["Mittelwert", "Median", "Boxplot"]}
+        }
+    },
+    "mathe_live_9": {
+        "id": "mathe_live_9",
+        "name": "Mathe Live 9",
+        "verlag": "Cornelsen",
+        "isbn": "978-3-06-040055-3",
+        "klassenstufe": "9/10",
+        "kapitel": {
+            "quadratische_funktionen": {"name": "Quadratische Funktionen", "seiten": "8-65", "themen": ["Parabeln", "Scheitelpunkt", "Normalform"]},
+            "potenzen": {"name": "Potenzen und Wurzeln", "seiten": "66-112", "themen": ["Potenzgesetze", "Wurzelrechnung"]},
+            "aehnlichkeit": {"name": "Ähnlichkeit und Strahlensätze", "seiten": "113-160", "themen": ["Strahlensätze", "Maßstab"]},
+            "trigonometrie": {"name": "Trigonometrie", "seiten": "161-215", "themen": ["Sinus", "Kosinus", "Tangens"]},
+            "koerper": {"name": "Körperberechnungen", "seiten": "216-265", "themen": ["Prismen", "Zylinder", "Pyramiden"]}
+        }
+    },
+    "mathe_live_10": {
+        "id": "mathe_live_10",
+        "name": "Mathe Live 10",
+        "verlag": "Cornelsen",
+        "isbn": "978-3-06-040056-0",
+        "klassenstufe": "9/10",
+        "kapitel": {
+            "gleichungssysteme": {"name": "Lineare Gleichungssysteme", "seiten": "8-58", "themen": ["Grafisches Lösen", "Rechnerische Verfahren"]},
+            "quadratische_gleichungen": {"name": "Quadratische Gleichungen", "seiten": "59-108", "themen": ["p-q-Formel", "Satz von Vieta"]},
+            "exponential": {"name": "Exponentialfunktionen", "seiten": "109-155", "themen": ["Wachstum", "Zerfall", "Zinseszins"]},
+            "kugel_kegel": {"name": "Kugel und Kegel", "seiten": "156-200", "themen": ["Volumen", "Oberfläche"]},
+            "stochastik": {"name": "Stochastik", "seiten": "201-250", "themen": ["Wahrscheinlichkeit", "Baumdiagramme", "Erwartungswert"]}
+        }
+    },
+    # ==================== SCHROEDEL - Mathematik Neue Wege ====================
+    "neue_wege_5": {
+        "id": "neue_wege_5",
+        "name": "Mathematik Neue Wege 5",
+        "verlag": "Schroedel",
+        "isbn": "978-3-507-85655-8",
+        "klassenstufe": "5/6",
+        "kapitel": {
+            "natuerliche_zahlen": {"name": "Natürliche Zahlen", "seiten": "8-48", "themen": ["Stellenwertsystem", "Große Zahlen", "Runden"]},
+            "rechnen": {"name": "Rechnen mit natürlichen Zahlen", "seiten": "49-95", "themen": ["Grundrechenarten", "Rechenvorteile"]},
+            "geometrie": {"name": "Geometrie entdecken", "seiten": "96-140", "themen": ["Geraden", "Winkel", "Koordinaten"]},
+            "groessen": {"name": "Größen im Alltag", "seiten": "141-185", "themen": ["Länge", "Masse", "Zeit", "Geld"]},
+            "brueche": {"name": "Brüche verstehen", "seiten": "186-230", "themen": ["Bruchteile", "Kürzen", "Erweitern"]}
+        }
+    },
+    "neue_wege_6": {
+        "id": "neue_wege_6",
+        "name": "Mathematik Neue Wege 6",
+        "verlag": "Schroedel",
+        "isbn": "978-3-507-85656-5",
+        "klassenstufe": "5/6",
+        "kapitel": {
+            "bruchrechnung": {"name": "Rechnen mit Brüchen", "seiten": "8-55", "themen": ["Addition", "Subtraktion", "Multiplikation", "Division"]},
+            "dezimalzahlen": {"name": "Dezimalzahlen", "seiten": "56-102", "themen": ["Umwandeln", "Rechnen", "Runden"]},
+            "geometrie": {"name": "Geometrie", "seiten": "103-148", "themen": ["Winkel", "Dreiecke", "Vierecke"]},
+            "koerper": {"name": "Körper untersuchen", "seiten": "149-190", "themen": ["Würfel", "Quader", "Netze", "Oberfläche"]},
+            "daten": {"name": "Daten und Zufall", "seiten": "191-235", "themen": ["Diagramme", "Mittelwert", "Wahrscheinlichkeit"]}
+        }
+    },
+    "neue_wege_7": {
+        "id": "neue_wege_7",
+        "name": "Mathematik Neue Wege 7",
+        "verlag": "Schroedel",
+        "isbn": "978-3-507-85657-2",
+        "klassenstufe": "7/8",
+        "kapitel": {
+            "rationale_zahlen": {"name": "Rationale Zahlen", "seiten": "8-52", "themen": ["Negative Zahlen", "Rechenoperationen"]},
+            "prozent": {"name": "Prozent- und Zinsrechnung", "seiten": "53-102", "themen": ["Grundwert", "Prozentwert", "Zinsen"]},
+            "terme": {"name": "Terme und Gleichungen", "seiten": "103-150", "themen": ["Variablen", "Termumformung", "Gleichungen lösen"]},
+            "proportional": {"name": "Proportionale Zuordnungen", "seiten": "151-195", "themen": ["Dreisatz", "Graphen"]},
+            "geometrie": {"name": "Kongruenz", "seiten": "196-245", "themen": ["Kongruenzsätze", "Dreieckskonstruktion"]}
+        }
+    },
+    "neue_wege_8": {
+        "id": "neue_wege_8",
+        "name": "Mathematik Neue Wege 8",
+        "verlag": "Schroedel",
+        "isbn": "978-3-507-85658-9",
+        "klassenstufe": "7/8",
+        "kapitel": {
+            "funktionen": {"name": "Lineare Funktionen", "seiten": "8-58", "themen": ["Funktionsbegriff", "Graphen", "Gleichungen"]},
+            "gleichungssysteme": {"name": "Lineare Gleichungssysteme", "seiten": "59-100", "themen": ["Grafisches Lösen", "Einsetzungsverfahren"]},
+            "kreis": {"name": "Kreis", "seiten": "101-145", "themen": ["Umfang", "Flächeninhalt"]},
+            "pythagoras": {"name": "Pythagoras", "seiten": "146-190", "themen": ["Satz des Pythagoras", "Berechnungen"]},
+            "statistik": {"name": "Beschreibende Statistik", "seiten": "191-240", "themen": ["Kennwerte", "Boxplot", "Streuung"]}
+        }
+    },
+    "neue_wege_9": {
+        "id": "neue_wege_9",
+        "name": "Mathematik Neue Wege 9",
+        "verlag": "Schroedel",
+        "isbn": "978-3-507-85659-6",
+        "klassenstufe": "9/10",
+        "kapitel": {
+            "parabeln": {"name": "Quadratische Funktionen", "seiten": "8-60", "themen": ["Parabeln", "Scheitelform", "Nullstellen"]},
+            "quadratische_gleichungen": {"name": "Quadratische Gleichungen", "seiten": "61-105", "themen": ["p-q-Formel", "Lösungsmenge"]},
+            "potenzen": {"name": "Potenzen und Wurzeln", "seiten": "106-150", "themen": ["Potenzgesetze", "Wurzelziehen"]},
+            "aehnlichkeit": {"name": "Ähnlichkeit", "seiten": "151-195", "themen": ["Strahlensätze", "Maßstab"]},
+            "trigonometrie": {"name": "Trigonometrie", "seiten": "196-250", "themen": ["Sinus", "Kosinus", "Tangens", "Anwendungen"]}
+        }
+    },
+    "neue_wege_10": {
+        "id": "neue_wege_10",
+        "name": "Mathematik Neue Wege 10",
+        "verlag": "Schroedel",
+        "isbn": "978-3-507-85660-2",
+        "klassenstufe": "9/10",
+        "kapitel": {
+            "exponential": {"name": "Exponentialfunktionen", "seiten": "8-55", "themen": ["Wachstum", "Zerfall", "Modellierung"]},
+            "koerper": {"name": "Körperberechnungen", "seiten": "56-105", "themen": ["Zylinder", "Kegel", "Kugel"]},
+            "trigonometrie_vertieft": {"name": "Trigonometrie vertieft", "seiten": "106-150", "themen": ["Sinussatz", "Kosinussatz"]},
+            "stochastik": {"name": "Wahrscheinlichkeitsrechnung", "seiten": "151-200", "themen": ["Pfadregeln", "Erwartungswert"]},
+            "pruefung": {"name": "Prüfungsvorbereitung", "seiten": "201-255", "themen": ["Gemischte Aufgaben", "Strategien"]}
+        }
+    },
     # ==================== OHNE SCHULBUCH ====================
     "kein_schulbuch": {
         "id": "kein_schulbuch",
