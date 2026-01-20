@@ -510,8 +510,14 @@ async def export_material_to_word(
             # Antwortmöglichkeiten
             optionen = frage.get("optionen", [])
             for j, option in enumerate(optionen):
-                buchstabe = chr(65 + j)  # A, B, C, D...
-                doc.add_paragraph(f"   {buchstabe}) {option}", style='List Bullet')
+                # Prüfen ob Option bereits mit Buchstabe beginnt (z.B. "A) ...")
+                option_text = str(option)
+                if len(option_text) > 2 and option_text[1] in ')':
+                    # Option hat bereits Buchstabe, nicht nochmal hinzufügen
+                    doc.add_paragraph(f"   {option_text}")
+                else:
+                    buchstabe = chr(65 + j)  # A, B, C, D...
+                    doc.add_paragraph(f"   {buchstabe}) {option_text}")
             
             doc.add_paragraph()  # Abstand
         
@@ -523,20 +529,137 @@ async def export_material_to_word(
             doc.add_paragraph(f"{i}. {loesung}")
     
     elif material_typ == "raetsel":
-        # Kreuzworträtsel
+        # Kreuzworträtsel mit echtem Gitter
+        from docx.shared import Pt, Cm, RGBColor
+        from docx.oxml.ns import qn
+        from docx.oxml import OxmlElement
+        
         doc.add_heading("Kreuzworträtsel", level=1)
         
-        # Waagerecht
-        doc.add_heading("Waagerecht →", level=2)
+        # Hole alle Begriffe
+        begriffe = inhalt.get("begriffe", [])
         waagerecht = inhalt.get("waagerecht", [])
+        senkrecht = inhalt.get("senkrecht", [])
+        
+        # Falls begriffe-Format verwendet wird, konvertiere es
+        if begriffe and not waagerecht:
+            waagerecht = [b for b in begriffe if b.get("richtung") == "waagerecht"]
+            senkrecht = [b for b in begriffe if b.get("richtung") == "senkrecht"]
+        
+        # Sammle alle Lösungswörter
+        alle_woerter = []
         for item in waagerecht:
-            doc.add_paragraph(f"{item.get('nummer', '')}: {item.get('frage', '')}")
+            wort = item.get("loesung", item.get("wort", ""))
+            if wort:
+                alle_woerter.append({"wort": wort.upper(), "richtung": "H", "nummer": item.get("nummer", len(alle_woerter)+1)})
+        for item in senkrecht:
+            wort = item.get("loesung", item.get("wort", ""))
+            if wort:
+                alle_woerter.append({"wort": wort.upper(), "richtung": "V", "nummer": item.get("nummer", len(alle_woerter)+1)})
+        
+        if alle_woerter:
+            # Berechne Gittergröße
+            max_len = max(len(w["wort"]) for w in alle_woerter) if alle_woerter else 10
+            grid_size = max(max_len + 2, len(alle_woerter) + 2, 12)
+            
+            # Erstelle Tabelle als Gitter
+            table = doc.add_table(rows=grid_size, cols=grid_size)
+            table.style = 'Table Grid'
+            
+            # Setze Zellengröße
+            for row in table.rows:
+                row.height = Cm(0.8)
+                for cell in row.cells:
+                    cell.width = Cm(0.8)
+                    # Zentriere Text
+                    cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    # Setze Schriftgröße
+                    for paragraph in cell.paragraphs:
+                        for run in paragraph.runs:
+                            run.font.size = Pt(12)
+                            run.font.bold = True
+            
+            # Platziere Wörter im Gitter (vereinfachte Platzierung)
+            placed = []
+            start_row = 1
+            start_col = 1
+            
+            for idx, item in enumerate(alle_woerter):
+                wort = item["wort"]
+                nummer = item["nummer"]
+                
+                if item["richtung"] == "H":
+                    # Horizontal platzieren
+                    row_idx = start_row + idx
+                    if row_idx < grid_size:
+                        # Nummer in erste Zelle
+                        cell = table.rows[row_idx].cells[start_col]
+                        cell.paragraphs[0].clear()
+                        run = cell.paragraphs[0].add_run(str(nummer))
+                        run.font.size = Pt(8)
+                        run.font.bold = False
+                        
+                        # Leere Kästchen für Buchstaben
+                        for char_idx, char in enumerate(wort):
+                            col_idx = start_col + char_idx + 1
+                            if col_idx < grid_size:
+                                cell = table.rows[row_idx].cells[col_idx]
+                                # Leeres Kästchen (Schüler füllt aus)
+                                cell.paragraphs[0].clear()
+                else:
+                    # Vertikal platzieren
+                    col_idx = start_col + idx + len([w for w in alle_woerter[:idx] if w["richtung"] == "H"]) + 3
+                    if col_idx < grid_size:
+                        # Nummer in erste Zelle
+                        cell = table.rows[start_row].cells[col_idx]
+                        cell.paragraphs[0].clear()
+                        run = cell.paragraphs[0].add_run(str(nummer))
+                        run.font.size = Pt(8)
+                        run.font.bold = False
+                        
+                        # Leere Kästchen für Buchstaben
+                        for char_idx, char in enumerate(wort):
+                            row_idx = start_row + char_idx + 1
+                            if row_idx < grid_size:
+                                cell = table.rows[row_idx].cells[col_idx]
+                                cell.paragraphs[0].clear()
+            
+            # Schwarze Zellen für nicht verwendete Bereiche
+            # (optional - macht das Rätsel schöner)
+        
+        doc.add_paragraph()
+        doc.add_paragraph()
+        
+        # Hinweise (Fragen)
+        doc.add_heading("Waagerecht →", level=2)
+        for item in waagerecht:
+            nummer = item.get("nummer", "")
+            frage = item.get("frage", item.get("hinweis", ""))
+            doc.add_paragraph(f"{nummer}. {frage}")
         
         doc.add_paragraph()
         
-        # Senkrecht
         doc.add_heading("Senkrecht ↓", level=2)
-        senkrecht = inhalt.get("senkrecht", [])
+        for item in senkrecht:
+            nummer = item.get("nummer", "")
+            frage = item.get("frage", item.get("hinweis", ""))
+            doc.add_paragraph(f"{nummer}. {frage}")
+        
+        # Lösungsseite
+        doc.add_page_break()
+        doc.add_heading("Lösungen", level=1)
+        
+        doc.add_heading("Waagerecht", level=2)
+        for item in waagerecht:
+            nummer = item.get("nummer", "")
+            loesung = item.get("loesung", item.get("wort", ""))
+            doc.add_paragraph(f"{nummer}. {loesung}")
+        
+        doc.add_heading("Senkrecht", level=2)
+        for item in senkrecht:
+            nummer = item.get("nummer", "")
+            loesung = item.get("loesung", item.get("wort", ""))
+            doc.add_paragraph(f"{nummer}. {loesung}")
         for item in senkrecht:
             doc.add_paragraph(f"{item.get('nummer', '')}: {item.get('frage', '')}")
         
