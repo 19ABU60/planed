@@ -640,20 +640,33 @@ const CurriculumPlannerPage = () => {
 
   // Material generieren
   const generiereMaterial = async () => {
-    if (!themaDetails) {
-      toast.error('Bitte zuerst ein Thema auswählen');
+    if (!themaDetails && !unterrichtsreihe) {
+      toast.error('Bitte zuerst ein Thema auswählen oder eine Unterrichtsreihe laden');
+      return;
+    }
+    
+    // Thema-Name ermitteln (aus themaDetails oder unterrichtsreihe)
+    const themaName = themaDetails?.thema?.name || unterrichtsreihe?.thema || selectedThema;
+    
+    if (!themaName) {
+      toast.error('Kein Thema gefunden');
       return;
     }
     
     setGeneratingMaterial(true);
     try {
+      // API-Pfad je nach Fach
+      const apiPath = selectedFach === 'mathe' 
+        ? `${API}/api/mathe/material/generieren`
+        : `${API}/api/lehrplan/material/generieren`;
+      
       const res = await axios.post(
-        `${API}/api/lehrplan/material/generieren`,
+        apiPath,
         {
-          thema: themaDetails.thema.name,
+          thema: themaName,
           niveau: selectedNiveau,
           material_typ: selectedMaterialTyp,
-          klassenstufe: selectedKlasse
+          klassenstufe: selectedKlasse || unterrichtsreihe?.klassenstufe
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
