@@ -265,6 +265,116 @@ Wichtig:
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ============== MATERIAL GENERIEREN ==============
+
+class MatheMaterialRequest(BaseModel):
+    thema: str
+    niveau: str = "M"
+    material_typ: str = "arbeitsblatt"
+    klassenstufe: str = "5/6"
+
+@router.post("/material/generieren")
+async def generiere_mathe_material(
+    request: MatheMaterialRequest,
+    user_id: str = Depends(get_current_user)
+):
+    """Generiert Mathematik-Unterrichtsmaterial (Arbeitsblatt, Quiz, Rätsel) mit KI"""
+    import json as json_lib
+    
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        
+        emergent_key = os.environ.get("EMERGENT_LLM_KEY", "")
+        if not emergent_key:
+            raise HTTPException(status_code=500, detail="KI-Service nicht konfiguriert")
+        
+        niveau_name = {"G": "grundlegend", "M": "mittel", "E": "erweitert"}.get(request.niveau, "mittel")
+        
+        material_prompts = {
+            "arbeitsblatt": f"""Erstelle ein Arbeitsblatt für Mathematik RS+ Klasse {request.klassenstufe} zum Thema "{request.thema}" (Niveau: {niveau_name}).
+
+Das Arbeitsblatt soll enthalten:
+- Überschrift
+- Kurze Einleitung/Erklärung mit Formeln oder Regeln
+- 5-8 Rechenaufgaben mit steigender Schwierigkeit
+- KONKRETE Zahlenbeispiele (keine Variablen ohne Werte)
+- Platz für Rechenwege
+
+Format als JSON:
+{{"titel": "...", "einleitung": "...", "aufgaben": [{{"nummer": 1, "titel": "...", "aufgabenstellung": "...", "punkte": 2}}], "loesung": [{{"nummer": 1, "loesung": "...", "rechenweg": "..."}}]}}""",
+
+            "quiz": f"""Erstelle ein Quiz für Mathematik RS+ Klasse {request.klassenstufe} zum Thema "{request.thema}" (Niveau: {niveau_name}).
+
+Das Quiz soll 8 Multiple-Choice-Fragen enthalten mit konkreten Rechenaufgaben.
+
+Format als JSON:
+{{"titel": "Quiz: {request.thema}", "fragen": [{{"nummer": 1, "frage": "...", "optionen": ["A) ...", "B) ...", "C) ...", "D) ..."], "richtig": "A", "erklaerung": "..."}}]}}""",
+
+            "raetsel": f"""Erstelle ein Kreuzworträtsel für Mathematik RS+ Klasse {request.klassenstufe} zum Thema "{request.thema}" (Niveau: {niveau_name}).
+
+Das Rätsel soll 8-10 mathematische Begriffe enthalten.
+
+Format als JSON:
+{{"titel": "Kreuzworträtsel: {request.thema}", "begriffe": [{{"wort": "...", "hinweis": "...", "richtung": "waagerecht/senkrecht", "nummer": 1}}], "loesung": ["Liste aller Lösungswörter"]}}""",
+
+            "zuordnung": f"""Erstelle eine Zuordnungsübung für Mathematik RS+ Klasse {request.klassenstufe} zum Thema "{request.thema}" (Niveau: {niveau_name}).
+
+Die Übung soll 8 Paare zum Zuordnen enthalten (z.B. Aufgabe → Ergebnis, Begriff → Definition).
+
+Format als JSON:
+{{"titel": "Zuordnung: {request.thema}", "anleitung": "Ordne die passenden Paare zu.", "paare": [{{"links": "...", "rechts": "..."}}], "tipp": "Ein hilfreicher Hinweis"}}""",
+
+            "lueckentext": f"""Erstelle einen Lückentext für Mathematik RS+ Klasse {request.klassenstufe} zum Thema "{request.thema}" (Niveau: {niveau_name}).
+
+Der Text soll mathematische Regeln und Formeln mit 8-10 Lücken erklären.
+
+Format als JSON:
+{{"titel": "Lückentext: {request.thema}", "text": "Der Text mit ___(1)___ Lücken ___(2)___ markiert...", "luecken": [{{"nummer": 1, "loesung": "...", "hinweis": "..."}}], "woerter_box": ["Liste der einzusetzenden Wörter (gemischt)"]}}"""
+        }
+        
+        prompt = material_prompts.get(request.material_typ, material_prompts["arbeitsblatt"])
+        
+        chat = LlmChat(
+            api_key=emergent_key,
+            session_id=f"mathe-material-{user_id}-{uuid.uuid4()}",
+            system_message="""Du bist ein erfahrener Mathematiklehrer an einer Realschule plus. 
+Du erstellst klare, schülergerechte Unterrichtsmaterialien mit konkreten Zahlenbeispielen.
+Antworte IMMER nur mit validem JSON, ohne Erklärungen."""
+        ).with_model("gemini", "gemini-3-flash-preview")
+        
+        response = await asyncio.wait_for(
+            chat.send_message(UserMessage(text=prompt)),
+            timeout=45.0
+        )
+        
+        response_text = response.strip()
+        if response_text.startswith("```json"):
+            response_text = response_text[7:]
+        if response_text.startswith("```"):
+            response_text = response_text[3:]
+        if response_text.endswith("```"):
+            response_text = response_text[:-3]
+        
+        material = json_lib.loads(response_text.strip())
+        
+        return {
+            "typ": request.material_typ,
+            "niveau": niveau_name,
+            "klassenstufe": request.klassenstufe,
+            "thema": request.thema,
+            "material": material
+        }
+        
+    except json_lib.JSONDecodeError as e:
+        logger.error(f"JSON Parse error: {e}")
+        raise HTTPException(status_code=500, detail="Fehler beim Parsen der KI-Antwort")
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="KI-Anfrage Timeout")
+    except Exception as e:
+        logger.error(f"Mathe Material generation error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ============== GESPEICHERTE UNTERRICHTSREIHEN ==============
 
 @router.get("/unterrichtsreihen")
