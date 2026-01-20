@@ -375,6 +375,161 @@ const LearningResourcesPage = () => {
         </p>
       </div>
 
+      {/* LearningApps Schnellsuche */}
+      <div style={{ 
+        background: 'linear-gradient(135deg, rgba(255, 107, 53, 0.1), rgba(247, 147, 30, 0.1))',
+        border: '1px solid rgba(255, 107, 53, 0.3)',
+        borderRadius: '10px',
+        padding: '1rem',
+        marginBottom: '1rem'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+          <span style={{ fontSize: '1.2rem' }}>🎮</span>
+          <h3 style={{ fontSize: '0.95rem', fontWeight: '600', margin: 0 }}>
+            LearningApps Schnellsuche
+          </h3>
+          <span style={{ 
+            fontSize: '0.65rem', 
+            background: 'rgba(34, 197, 94, 0.2)', 
+            color: '#22c55e',
+            padding: '0.15rem 0.4rem',
+            borderRadius: '4px'
+          }}>
+            Kostenlos
+          </span>
+        </div>
+        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+          Finden Sie fertige interaktive Übungen zu jedem Thema oder erstellen Sie eigene!
+        </p>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <select
+            value={learningAppsFach}
+            onChange={(e) => setLearningAppsFach(e.target.value)}
+            style={{
+              padding: '0.4rem 0.6rem',
+              fontSize: '0.8rem',
+              borderRadius: '6px',
+              border: '1px solid var(--border-default)',
+              background: 'var(--bg-paper)',
+              color: 'var(--text-default)'
+            }}
+          >
+            <option value="Deutsch">Deutsch</option>
+            <option value="Mathematik">Mathematik</option>
+            <option value="Englisch">Englisch</option>
+            <option value="Geschichte">Geschichte</option>
+            <option value="Biologie">Biologie</option>
+            <option value="Physik">Physik</option>
+            <option value="Chemie">Chemie</option>
+            <option value="Geografie">Geografie</option>
+          </select>
+          <input
+            type="text"
+            placeholder="Thema eingeben (z.B. Wortarten, Brüche...)"
+            value={learningAppsSearch}
+            onChange={(e) => setLearningAppsSearch(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && learningAppsSearch.trim()) {
+                const kategorien = {
+                  "Deutsch": "5", "Mathematik": "2", "Englisch": "6",
+                  "Geschichte": "10", "Biologie": "8", "Physik": "9",
+                  "Chemie": "16", "Geografie": "11"
+                };
+                const katId = kategorien[learningAppsFach] || "5";
+                window.open(`https://learningapps.org/index.php?category=${katId}&s=${encodeURIComponent(learningAppsSearch)}`, '_blank');
+              }
+            }}
+            style={{
+              flex: 1,
+              minWidth: '180px',
+              padding: '0.4rem 0.75rem',
+              fontSize: '0.8rem',
+              borderRadius: '6px',
+              border: '1px solid var(--border-default)',
+              background: 'var(--bg-paper)',
+              color: 'var(--text-default)'
+            }}
+          />
+          <button
+            onClick={() => {
+              if (learningAppsSearch.trim()) {
+                const kategorien = {
+                  "Deutsch": "5", "Mathematik": "2", "Englisch": "6",
+                  "Geschichte": "10", "Biologie": "8", "Physik": "9",
+                  "Chemie": "16", "Geografie": "11"
+                };
+                const katId = kategorien[learningAppsFach] || "5";
+                window.open(`https://learningapps.org/index.php?category=${katId}&s=${encodeURIComponent(learningAppsSearch)}`, '_blank');
+              } else {
+                window.open('https://learningapps.org', '_blank');
+              }
+            }}
+            style={{
+              padding: '0.4rem 0.75rem',
+              fontSize: '0.8rem',
+              fontWeight: '500',
+              background: 'linear-gradient(135deg, #FF6B35, #F7931E)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem'
+            }}
+          >
+            <Search size={14} />
+            Suchen
+          </button>
+          <button
+            onClick={() => window.open('https://learningapps.org/create.php', '_blank')}
+            style={{
+              padding: '0.4rem 0.75rem',
+              fontSize: '0.8rem',
+              fontWeight: '500',
+              background: 'var(--bg-subtle)',
+              color: 'var(--text-default)',
+              border: '1px solid var(--border-default)',
+              borderRadius: '6px',
+              cursor: 'pointer'
+            }}
+          >
+            + Selbst erstellen
+          </button>
+        </div>
+        <div style={{ 
+          display: 'flex', 
+          gap: '0.5rem', 
+          marginTop: '0.75rem',
+          flexWrap: 'wrap'
+        }}>
+          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Beliebte Vorlagen:</span>
+          {[
+            { name: 'Quiz', url: 'https://learningapps.org/create.php?new=24' },
+            { name: 'Lückentext', url: 'https://learningapps.org/create.php?new=35' },
+            { name: 'Zuordnung', url: 'https://learningapps.org/create.php?new=21' },
+            { name: 'Kreuzworträtsel', url: 'https://learningapps.org/create.php?new=32' },
+            { name: 'Wer wird Millionär', url: 'https://learningapps.org/create.php?new=28' }
+          ].map(v => (
+            <button
+              key={v.name}
+              onClick={() => window.open(v.url, '_blank')}
+              style={{
+                padding: '0.2rem 0.5rem',
+                fontSize: '0.7rem',
+                background: 'var(--bg-paper)',
+                border: '1px solid var(--border-default)',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                color: 'var(--text-default)'
+              }}
+            >
+              {v.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Tabs - klein */}
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
         <button
