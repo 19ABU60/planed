@@ -818,7 +818,24 @@ const CurriculumPlannerPage = () => {
             </label>
             <select
               value={selectedFach}
-              onChange={(e) => setSelectedFach(e.target.value)}
+              onChange={(e) => {
+                const neuesFach = e.target.value;
+                setSelectedFach(neuesFach);
+                // Reset alle Auswahlen und generierten Inhalte beim Fach-Wechsel
+                setSelectedKlasse('');
+                setSelectedBereich('');
+                setSelectedThema('');
+                setSelectedNiveau('M');
+                setSelectedSchulbuch('kein_schulbuch');
+                setSchulbuecher([]);
+                setThemaDetails(null);
+                setUnterrichtsreihe(null);
+                setUnterrichtsreiheId(null);
+                setAlternativen([]);
+                setActiveAlternativeIndex(0);
+                setGeneratedMaterial(null);
+                setCurrentSchulbuch(null);
+              }}
               className="form-input"
               data-testid="fach-select"
               style={{ 
