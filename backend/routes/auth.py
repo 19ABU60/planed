@@ -3,8 +3,8 @@ from fastapi import APIRouter, HTTPException, Depends
 from datetime import datetime, timezone
 import uuid
 
-from ..models.schemas import UserCreate, UserLogin, UserResponse, UserSettingsUpdate, TokenResponse
-from ..services.auth import (
+from models.schemas import UserCreate, UserLogin, UserResponse, UserSettingsUpdate, TokenResponse
+from services.auth import (
     get_db, get_current_user, hash_password, verify_password, create_token, INVITATION_CODE
 )
 
