@@ -482,12 +482,14 @@ const CurriculumPlannerPage = () => {
           kompetenzbereich: selectedBereich,
           thema_id: selectedThema,
           niveau: selectedNiveau,
-          stunden_anzahl: stundenAnzahl
+          stunden_anzahl: stundenAnzahl,
+          schulbuch_id: selectedSchulbuch
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setUnterrichtsreihe(res.data.unterrichtsreihe);
       setUnterrichtsreiheId(res.data.id);
+      setCurrentSchulbuch(res.data.schulbuch);
       setEditedStunden(res.data.unterrichtsreihe.stunden || []);
       // Aktualisiere gespeicherte Liste
       fetchSavedReihen();
