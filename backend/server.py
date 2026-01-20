@@ -2546,6 +2546,8 @@ Wichtig:
             "kompetenzbereich": request.kompetenzbereich,
             "thema_id": request.thema_id,
             "niveau": request.niveau,
+            "schulbuch_id": request.schulbuch_id,
+            "schulbuch_name": schulbuch_name,
             "unterrichtsreihe": unterrichtsreihe,
             "created_at": datetime.now(timezone.utc).isoformat()
         }
@@ -2554,6 +2556,7 @@ Wichtig:
         return {
             "id": str(result.inserted_id),
             "unterrichtsreihe": unterrichtsreihe,
+            "schulbuch": schulbuch_name,
             "meta": {
                 "klassenstufe": request.klassenstufe,
                 "thema": thema_data["name"],
