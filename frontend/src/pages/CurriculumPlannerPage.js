@@ -1499,11 +1499,12 @@ const CurriculumPlannerPage = () => {
                   <button
                     onClick={async () => {
                       try {
+                        const authToken = localStorage.getItem('planed_token');
                         const response = await fetch(`${API}/api/lehrplan/material/export/word`, {
                           method: 'POST',
                           headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                            'Authorization': `Bearer ${authToken}`
                           },
                           body: JSON.stringify({
                             material_typ: generatedMaterial.typ,
