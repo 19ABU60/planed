@@ -373,7 +373,7 @@ const CurriculumPlannerPage = () => {
     fetchStruktur();
     // Lade auch gespeicherte Reihen
     fetchSavedReihen();
-  }, [token]);
+  }, [token, selectedFach]);
 
   // Lade Schulbücher wenn Klassenstufe gewählt
   useEffect(() => {
@@ -384,11 +384,13 @@ const CurriculumPlannerPage = () => {
       }
       setLoadingSchulbuecher(true);
       try {
-        const res = await axios.get(`${API}/api/lehrplan/schulbuecher`, {
+        const apiPath = selectedFach === 'mathe' ? '/api/mathe/schulbuecher' : '/api/lehrplan/schulbuecher';
+        const res = await axios.get(`${API}${apiPath}`, {
           headers: { Authorization: `Bearer ${token}` },
           params: { klassenstufe: selectedKlasse }
         });
         setSchulbuecher(res.data.schulbuecher || []);
+        setSelectedSchulbuch('kein_schulbuch');
       } catch (err) {
         console.error('Fehler beim Laden der Schulbücher');
       } finally {
@@ -396,13 +398,14 @@ const CurriculumPlannerPage = () => {
       }
     };
     fetchSchulbuecher();
-  }, [selectedKlasse, token]);
+  }, [selectedKlasse, selectedFach, token]);
 
   // Gespeicherte Unterrichtsreihen laden
   const fetchSavedReihen = async () => {
     setLoadingSaved(true);
     try {
-      const res = await axios.get(`${API}/api/lehrplan/unterrichtsreihen`, {
+      const apiPath = selectedFach === 'mathe' ? '/api/mathe/unterrichtsreihen' : '/api/lehrplan/unterrichtsreihen';
+      const res = await axios.get(`${API}${apiPath}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSavedReihen(res.data.unterrichtsreihen || []);
