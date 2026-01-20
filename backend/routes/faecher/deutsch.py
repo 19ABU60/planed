@@ -660,18 +660,6 @@ async def export_material_to_word(
             nummer = item.get("nummer", "")
             loesung = item.get("loesung", item.get("wort", ""))
             doc.add_paragraph(f"{nummer}. {loesung}")
-        for item in senkrecht:
-            doc.add_paragraph(f"{item.get('nummer', '')}: {item.get('frage', '')}")
-        
-        # Lösungswörter
-        doc.add_page_break()
-        doc.add_heading("Lösungen", level=1)
-        doc.add_heading("Waagerecht", level=2)
-        for item in waagerecht:
-            doc.add_paragraph(f"{item.get('nummer', '')}: {item.get('loesung', '')}")
-        doc.add_heading("Senkrecht", level=2)
-        for item in senkrecht:
-            doc.add_paragraph(f"{item.get('nummer', '')}: {item.get('loesung', '')}")
     
     elif material_typ == "zuordnung":
         # Zuordnungsübung
