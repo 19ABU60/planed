@@ -93,22 +93,27 @@ const WorkplanModal = ({ isOpen, onClose, unterrichtsreihe, stunden, token, onSu
           period: 1, // Standard: 1. Stunde
           unterrichtseinheit: unterrichtsreihe?.titel || '',
           lehrplan: `Stunde ${stunde.nummer}: ${stunde.titel}`,
-          stundenthema: stunde.inhalt?.substring(0, 200) || '',
-          class_subject_id: selectedClass
+          stundenthema: stunde.inhalt?.substring(0, 200) || ''
         };
       });
 
+      console.log('Sending entries:', entries);
+      console.log('To class:', selectedClass);
+
       // Speichere alle Einträge
-      await axios.post(
+      const response = await axios.post(
         `${API}/api/workplan/${selectedClass}/bulk`,
         { entries },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
+      console.log('Response:', response.data);
+
       toast.success(`${entries.length} Stunden in Arbeitsplan übernommen!`);
       onSuccess?.();
       onClose();
     } catch (err) {
+      console.error('Error:', err.response?.data || err);
       toast.error(err.response?.data?.detail || 'Fehler beim Übernehmen');
     } finally {
       setLoading(false);
