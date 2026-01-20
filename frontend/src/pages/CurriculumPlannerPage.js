@@ -46,7 +46,9 @@ const WorkplanModal = ({ isOpen, onClose, unterrichtsreihe, stunden, token, onSu
           const deutschKlassen = res.data.filter(c => 
             c.subject?.toLowerCase().includes('deutsch')
           );
-          setClasses(deutschKlassen.length > 0 ? deutschKlassen : res.data);
+          // Zeige Deutsch-Klassen zuerst, dann alle anderen
+          const sortedClasses = [...deutschKlassen, ...res.data.filter(c => !c.subject?.toLowerCase().includes('deutsch'))];
+          setClasses(sortedClasses);
         } catch (err) {
           toast.error('Fehler beim Laden der Klassen');
         } finally {
