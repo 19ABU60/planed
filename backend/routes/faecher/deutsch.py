@@ -9,9 +9,9 @@ import uuid
 import os
 import logging
 
-from ..services.auth import get_db, get_current_user
-from ..data.lehrplan_deutsch_rlp import LEHRPLAN_DEUTSCH_RLP
-from ..data.schulbuecher_deutsch import SCHULBUECHER_DEUTSCH
+from services.auth import get_db, get_current_user
+from data.lehrplan_deutsch_rlp import LEHRPLAN_DEUTSCH_RLP
+from data.schulbuecher_deutsch import SCHULBUECHER_DEUTSCH
 
 logger = logging.getLogger(__name__)
 
