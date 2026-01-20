@@ -302,6 +302,11 @@ const CurriculumPlannerPage = () => {
   const [selectedNiveau, setSelectedNiveau] = useState('M');
   const [stundenAnzahl, setStundenAnzahl] = useState(6);
   
+  // Schulbuch-Auswahl
+  const [schulbuecher, setSchulbuecher] = useState([]);
+  const [selectedSchulbuch, setSelectedSchulbuch] = useState('kein_schulbuch');
+  const [loadingSchulbuecher, setLoadingSchulbuecher] = useState(false);
+  
   // Thema-Details
   const [themaDetails, setThemaDetails] = useState(null);
   
@@ -309,6 +314,7 @@ const CurriculumPlannerPage = () => {
   const [unterrichtsreihe, setUnterrichtsreihe] = useState(null);
   const [unterrichtsreiheId, setUnterrichtsreiheId] = useState(null);
   const [generatingReihe, setGeneratingReihe] = useState(false);
+  const [currentSchulbuch, setCurrentSchulbuch] = useState(null);
   
   // Material
   const [selectedMaterialTyp, setSelectedMaterialTyp] = useState('arbeitsblatt');
@@ -327,7 +333,7 @@ const CurriculumPlannerPage = () => {
   // Arbeitsplan-Integration Modal
   const [showWorkplanModal, setShowWorkplanModal] = useState(false);
 
-  // Lade LP-Struktur
+  // Lade LP-Struktur und Schulbücher
   useEffect(() => {
     const fetchStruktur = async () => {
       try {
@@ -346,6 +352,29 @@ const CurriculumPlannerPage = () => {
     fetchSavedReihen();
   }, [token]);
 
+  // Lade Schulbücher wenn Klassenstufe gewählt
+  useEffect(() => {
+    const fetchSchulbuecher = async () => {
+      if (!selectedKlassenstufe) {
+        setSchulbuecher([]);
+        return;
+      }
+      setLoadingSchulbuecher(true);
+      try {
+        const res = await axios.get(`${API}/api/lehrplan/schulbuecher`, {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { klassenstufe: selectedKlassenstufe }
+        });
+        setSchulbuecher(res.data.schulbuecher || []);
+      } catch (err) {
+        console.error('Fehler beim Laden der Schulbücher');
+      } finally {
+        setLoadingSchulbuecher(false);
+      }
+    };
+    fetchSchulbuecher();
+  }, [selectedKlassenstufe, token]);
+
   // Gespeicherte Unterrichtsreihen laden
   const fetchSavedReihen = async () => {
     setLoadingSaved(true);
@@ -357,7 +386,7 @@ const CurriculumPlannerPage = () => {
     } catch (err) {
       console.error('Fehler beim Laden der gespeicherten Reihen');
     } finally {
-      setLoadingSaved(false);
+      setLoadingSaved(false));
     }
   };
 
