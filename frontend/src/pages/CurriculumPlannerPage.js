@@ -74,7 +74,59 @@ const CurriculumPlannerPage = () => {
       }
     };
     fetchStruktur();
+    // Lade auch gespeicherte Reihen
+    fetchSavedReihen();
   }, [token]);
+
+  // Gespeicherte Unterrichtsreihen laden
+  const fetchSavedReihen = async () => {
+    setLoadingSaved(true);
+    try {
+      const res = await axios.get(`${API}/api/lehrplan/unterrichtsreihen`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSavedReihen(res.data.unterrichtsreihen || []);
+    } catch (err) {
+      console.error('Fehler beim Laden der gespeicherten Reihen');
+    } finally {
+      setLoadingSaved(false);
+    }
+  };
+
+  // Gespeicherte Reihe laden
+  const loadSavedReihe = (reihe) => {
+    setSelectedKlasse(reihe.klassenstufe);
+    setTimeout(() => {
+      setSelectedBereich(reihe.kompetenzbereich);
+      setTimeout(() => {
+        setSelectedThema(reihe.thema_id);
+        setSelectedNiveau(reihe.niveau);
+        setUnterrichtsreihe(reihe.unterrichtsreihe);
+        setUnterrichtsreiheId(reihe.id);
+        setEditedStunden(reihe.unterrichtsreihe?.stunden || []);
+        setShowSavedReihen(false);
+        toast.success('Unterrichtsreihe geladen');
+      }, 100);
+    }, 100);
+  };
+
+  // Unterrichtsreihe löschen
+  const deleteSavedReihe = async (reiheId) => {
+    if (!window.confirm('Unterrichtsreihe wirklich löschen?')) return;
+    try {
+      await axios.delete(`${API}/api/lehrplan/unterrichtsreihe/${reiheId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSavedReihen(savedReihen.filter(r => r.id !== reiheId));
+      if (unterrichtsreiheId === reiheId) {
+        setUnterrichtsreihe(null);
+        setUnterrichtsreiheId(null);
+      }
+      toast.success('Unterrichtsreihe gelöscht');
+    } catch (err) {
+      toast.error('Fehler beim Löschen');
+    }
+  };
 
   // Lade Thema-Details wenn ausgewählt
   useEffect(() => {
