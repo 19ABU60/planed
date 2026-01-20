@@ -173,6 +173,44 @@ PlanEd ist eine Web-Anwendung für Lehrer zur Verwaltung von Arbeitsplänen, die
 
 ## Changelog
 
+### 20.01.2026 - P1 & P2: Mathe-Fach + Excel-Import + Restliche Routes ✅
+- **P1.1 Mathe-Fach hinzugefügt:**
+  - `data/lehrplan_mathe_rlp.py` - Lehrplan Klassen 5-10 (302 Zeilen)
+  - `data/schulbuecher_mathe.py` - 15 Schulbücher (Sekundo, Schnittpunkt, Mathe Live)
+  - `routes/faecher/mathe.py` - Komplettes Modul (287 Zeilen)
+  - API: `/api/mathe/struktur`, `/api/mathe/schulbuecher`, `/api/mathe/unterrichtsreihe/generieren`
+  
+- **P1.2 Excel-Import:**
+  - Neuer Endpunkt: `POST /api/import/excel/{class_subject_id}`
+  - Erkennt automatisch Spalten: Datum, Stundenthema, Ziel, Lehrplan, Begriffe, UE, Ausfall
+  - Unterstützt Formate: DD.MM.YYYY, DD.MM.YY, YYYY-MM-DD
+  - Aktualisiert existierende Einträge oder erstellt neue
+
+- **P2 Restliche Routes ausgelagert:**
+  - `routes/school_years.py` - Schuljahre (61 Zeilen)
+  - `routes/workplan.py` - Arbeitsplan (138 Zeilen)
+  - `routes/classes.py` - Klassen (63 Zeilen)
+  - `routes/auth.py` - Authentifizierung (83 Zeilen)
+
+- **Finale Struktur:**
+  ```
+  /app/backend/
+  ├── server.py                 ← 2162 Zeilen (von ursprünglich 3083)
+  ├── data/
+  │   ├── lehrplan_deutsch_rlp.py   (294 Zeilen)
+  │   ├── lehrplan_mathe_rlp.py     (302 Zeilen) ← NEU
+  │   ├── schulbuecher_deutsch.py   (438 Zeilen)
+  │   └── schulbuecher_mathe.py     (212 Zeilen) ← NEU
+  ├── routes/
+  │   ├── auth.py, classes.py, school_years.py, workplan.py
+  │   └── faecher/
+  │       ├── deutsch.py (415 Zeilen)
+  │       └── mathe.py   (287 Zeilen) ← NEU
+  ├── models/schemas.py
+  └── services/auth.py
+  ```
+- **Test-Status:** ✅ Server läuft, alle APIs funktionieren
+
 ### 20.01.2026 - Backend Refactoring: Routes ausgelagert ✅
 - **Weiterführung des Refactorings:** Deutsch-Fach-Modul komplett ausgelagert
 - **Neue Struktur:**
