@@ -4,8 +4,8 @@ from typing import List, Optional
 from datetime import datetime, timezone
 import uuid
 
-from ..models.schemas import ClassSubjectCreate, ClassSubjectResponse
-from ..services.auth import get_db, get_current_user, log_history
+from models.schemas import ClassSubjectCreate, ClassSubjectResponse
+from services.auth import get_db, get_current_user, log_history
 
 router = APIRouter(prefix="/api", tags=["classes"])
 
