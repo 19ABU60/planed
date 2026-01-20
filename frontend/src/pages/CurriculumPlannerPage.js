@@ -451,10 +451,11 @@ const CurriculumPlannerPage = () => {
   };
 
   // Unterrichtsreihe löschen
-  const deleteSavedReihe = async (reiheId) => {
+  const deleteSavedReihe = async (reiheId, fach = 'deutsch') => {
     if (!window.confirm('Unterrichtsreihe wirklich löschen?')) return;
     try {
-      await axios.delete(`${API}/api/lehrplan/unterrichtsreihe/${reiheId}`, {
+      const apiPath = fach === 'mathe' ? '/api/mathe/unterrichtsreihe' : '/api/lehrplan/unterrichtsreihe';
+      await axios.delete(`${API}${apiPath}/${reiheId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSavedReihen(savedReihen.filter(r => r.id !== reiheId));
