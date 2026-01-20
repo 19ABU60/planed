@@ -833,6 +833,83 @@ async def export_material_to_word(
         for i, paar in enumerate(paare, 1):
             doc.add_paragraph(f"{i}. {paar.get('links', '')} → {paar.get('rechts', '')}")
     
+    elif material_typ == "lueckentext":
+        # Lückentext formatieren
+        text = inhalt.get("text", "")
+        luecken = inhalt.get("luecken", [])
+        woerter_box = inhalt.get("woerter_box", [])
+        
+        # Wörterbox anzeigen (wenn vorhanden)
+        if woerter_box:
+            doc.add_heading("Wörterbox", level=2)
+            woerter_para = doc.add_paragraph()
+            # Wörter in einer Box darstellen
+            woerter_text = "   •   ".join(woerter_box)
+            run = woerter_para.add_run(woerter_text)
+            run.font.size = Pt(12)
+            run.font.bold = True
+            doc.add_paragraph()
+        
+        # Aufgabenstellung
+        doc.add_heading("Aufgabe: Fülle die Lücken aus!", level=2)
+        doc.add_paragraph()
+        
+        # Text mit Lücken
+        # Ersetze \n\n durch echte Absätze
+        paragraphs = text.replace("\\n\\n", "\n\n").replace("\\n", "\n").split("\n\n")
+        
+        for para_text in paragraphs:
+            if para_text.strip():
+                p = doc.add_paragraph()
+                # Text mit normaler Schrift
+                run = p.add_run(para_text.strip())
+                run.font.size = Pt(11)
+        
+        doc.add_paragraph()
+        
+        # Hinweise zu den Lücken (optional)
+        if luecken:
+            doc.add_heading("Hinweise", level=2)
+            for luecke in luecken:
+                nummer = luecke.get("nummer", "")
+                hinweis = luecke.get("hinweis", "")
+                if hinweis:
+                    doc.add_paragraph(f"({nummer}) {hinweis}")
+        
+        # Lösungsseite
+        doc.add_page_break()
+        doc.add_heading("Lösungen", level=1)
+        
+        if luecken:
+            for luecke in luecken:
+                nummer = luecke.get("nummer", "")
+                loesung = luecke.get("loesung", "")
+                doc.add_paragraph(f"({nummer}) {loesung}")
+        
+        # Vollständiger Lösungstext
+        doc.add_paragraph()
+        doc.add_heading("Vollständiger Text", level=2)
+        
+        # Ersetze Lücken durch Lösungen
+        loesung_text = text
+        for luecke in luecken:
+            nummer = luecke.get("nummer", "")
+            loesung = luecke.get("loesung", "")
+            loesung_text = loesung_text.replace(f"__({nummer})__", f"**{loesung}**")
+        
+        loesung_paragraphs = loesung_text.replace("\\n\\n", "\n\n").replace("\\n", "\n").split("\n\n")
+        for para_text in loesung_paragraphs:
+            if para_text.strip():
+                p = doc.add_paragraph()
+                # Text parsen für fett markierte Wörter
+                parts = para_text.strip().split("**")
+                for i, part in enumerate(parts):
+                    run = p.add_run(part)
+                    run.font.size = Pt(11)
+                    if i % 2 == 1:  # Ungerade Indizes sind die Lösungswörter
+                        run.font.bold = True
+                        run.font.underline = True
+    
     else:
         # Generischer Export
         doc.add_paragraph(str(inhalt))
