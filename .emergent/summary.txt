@@ -1,143 +1,177 @@
 <analysis>**original_problem_statement:**
-The user, speaking German, requested an application named PlanEd to replace their Excel-based work plan for teachers. The core requirements include managing work plans for school years, classes, and subjects, integrating holidays, a calendar view, a document repository, and AI-powered suggestions for lesson topics. The user also requested a dark, professional design and several advanced features like a template library, Excel import, and collaborative tools.
+The user, speaking German, requested an application named PlanEd to replace their Excel-based work plan for teachers. The core requirements include managing work plans for school years, classes, and subjects, integrating holidays, a calendar view, a document repository, and AI-powered suggestions for lesson topics.
+
+The user has recently expanded the scope to include:
+- A new Lernprogramme (Learning Resources) page to find and filter educational platforms and publisher materials.
+- A new Unterrichtsplanung (Lesson Planning) page that uses a user-provided curriculum document () and an AI (Gemini) to generate detailed, multi-level lesson plans and associated materials (worksheets, quizzes, etc.).
+- A set of follow-up requirements to enhance the new lesson planning feature:
+    1. Integrate specific schoolbooks (e.g., Westermann's Praxis Sprache) into the KI generation.
+    2. Allow generating alternative lesson plans based on different schoolbooks.
+    3. Integrate the generated lesson plans directly into the main Arbeitsplan (Workplan).
+    4. Save the generated lesson plans to the user's account so they persist between sessions.
 
 **User's preferred language**: German. The next agent MUST respond in German.
 
 **what currently exists?**
-A full-stack application (React, FastAPI, MongoDB) featuring a component-based frontend and a monolithic backend. The application is a Progressive Web App (PWA) with invitation-only registration.
+A full-stack application (React, FastAPI, MongoDB) with a PWA configuration. The app features user authentication and management of school years, classes, and subjects.
 
 Key Implemented Features:
--   **Core Functionality:** User authentication and CRUD for School Years, Classes, and Lessons.
--   **Workplan & Calendar:** A collaborative, Excel-like Arbeitsplan (Workplan) table and a Kalender (Calendar) view.
--   **Feature-Rich UI:**
-    -   The Workplan and Calendar are now synchronized; entries in the workplan automatically appear in the calendar.
-    -   Both views feature user-configurable row heights (using / buttons), which are saved to the browser's .
-    -   The workplan table columns are resizable using / buttons.
--   **Statistics:** A completely revamped statistics page that provides meaningful data (e.g., total planned hours, progress percentage) based on the actual class schedule and workplan entries.
--   **AI-Powered Research:** A new Recherche page with three tabs:
-    -   **Bilder (Images):** Searches for images using the Pixabay API.
-    -   **Videos:** Links to YouTube search and suggests relevant educational channels.
-    -   **Fachtexte (Academic Papers):** Searches the OpenAlex database and offers AI-powered translation of abstracts into German using Gemini (via Emergent LLM Key).
--   **Navigation:** The Verlauf (History) link has been removed from the sidebar at the user's request to simplify the UI.
+- **Core Planning Tools:** A collaborative Arbeitsplan (Workplan) table and a synchronized Kalender (Calendar) view.
+- **AI-Powered Research:** A Recherche page to search for images (Wikimedia), videos (YouTube), and academic papers (OpenAlex) with AI-powered translation.
+- **Learning Resources:** A new Lernprogramme page with filterable lists of educational platforms and direct links to publisher materials, optimized for the user's RS+ school type.
+- **AI-Powered Lesson Planning:** A new Unterrichtsplanung page built around the user's Deutsch RS+ RLP curriculum. It features:
+    - Cascading dropdowns to select curriculum topics (Class -> Competence -> Topic -> Level).
+    - AI generation of detailed lesson plans (title, goals, hourly breakdown) using Gemini.
+    - Generation of various teaching materials (worksheets, quizzes, etc.).
+    - Functionality to save, load, and delete generated lesson plans, which are stored per-user in the database.
 
 **Last working item**:
--   **Last item agent was working:** The user reported an Application error where the new Recherche page's image search showed broken images () and the app crashed when trying to download an image. The agent diagnosed that the previously used Pexels/Unsplash APIs were failing due to authorization issues and updated the backend () to use the key-free Pixabay API instead.
--   **Status:** IN PROGRESS
--   **Agent Testing Done:** N
--   **Which testing method agent to use?** frontend testing agent. The agent should instruct the testing agent to navigate to the Recherche page, go to the Bilder tab, perform a search, and verify that images are displayed correctly and the download function works without crashing the application.
--   **User Testing Done:** N
+- **Last item agent was working:** The user reported that after successfully using the In Arbeitsplan übernehmen (Integrate into Workplan) feature, the generated lesson plan entries were not appearing in the workplan table. The agent diagnosed that the entries were being saved to the database correctly but with a hardcoded , while the class's actual schedule had lessons in different periods (e.g., 2nd, 3rd hour). This mismatch caused the UI to filter them out. The agent was about to correct this by dynamically using the selected class's schedule to assign the correct period to each entry.
+- **Status:** IN PROGRESS
+- **Agent Testing Done:** N
+- **Which testing method agent to use?** frontend testing agent. After implementing the fix, the agent needs to test the end-to-end flow:
+    1. Navigate to Unterrichtsplanung.
+    2. Generate or load a lesson plan.
+    3. Click In Arbeitsplan übernehmen.
+    4. In the modal, select a class with a known schedule (e.g., 6a - Deutsch).
+    5. Click Übernehmen.
+    6. Navigate to the Arbeitsplan page.
+    7. Select the same class (6a - Deutsch).
+    8. Navigate to the correct date range.
+    9. Verify that the lesson plan hours appear in the correct cells, corresponding to the dates and periods from the class's schedule.
+- **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Image Search in Recherche page is broken (P0)**
-    -   **Description:** The user reported that the image search functionality shows broken image placeholders () and that attempting to download an image causes the application to crash.
-    -   **Attempted fixes:** The agent modified  to switch from Pexels/Unsplash to the Pixabay API. However, the fix has not been fully implemented or tested, and the frontend might not be correctly parsing the new API response.
-    -   **Next debug checklist:**
-        1.  Restart backend and frontend services to ensure all changes are active.
-        2.  Review  to ensure the component correctly processes the response from the Pixabay API (i.e., extracts image URLs for display and download).
-        3.  Manually test the flow: navigate to Recherche -> Bilder, perform a search (e.g., Burg), and confirm that images are displayed.
-        4.  Test the Download button for one of the displayed images to ensure it works as expected and does not crash the app.
-        5.  If the issue persists, check the browser console for frontend errors and the backend logs for any API-related issues.
-    -   **Why fix this issue and what will be achieved with the fix?** This is a critical bug fix to complete the newly implemented Recherche feature and resolve the application crash reported by the user.
-    -   **Status:** IN PROGRESS
-    -   **Is recurring issue?** N
-    -   **Should Test frontend/backend/both after fix?** frontend
-    -   **Blocked on other issue:** None.
+- **Issue 1: Workplan entries not visible after transfer from Lesson Planner (P0)**
+    - **Description:** When a user transfers a generated lesson plan to the workplan, a success message appears, but the entries do not show up in the workplan table for the selected class. The data is saved in the database but is not rendered in the UI.
+    - **Attempted fixes:** The agent identified the root cause: the frontend  function in  sends all entries with a hardcoded . The workplan UI correctly filters entries based on the actual schedule for the class, so these  entries are not displayed if the class's lessons are at different times.
+    - **Next debug checklist:**
+        1.  In , locate the  function.
+        2.  Find the  object from the  state using the . This object contains the .
+        3.  Modify the logic that creates the  array. Instead of hardcoding , iterate through the weeks starting from the , find the days the subject is taught according to the , and use the correct  from the schedule for each entry.
+        4.  Ensure the logic correctly handles weeks with holidays or no scheduled classes.
+    - **Why fix this issue and what will be achieved with the fix?** This is a critical bug blocking the completion of the Integrate into Workplan feature (User Request #3). Fixing it will complete the core workflow from AI-powered planning to practical scheduling.
+    - **Status:** IN PROGRESS
+    - **Is recurring issue?** N
+    - **Should Test frontend/backend/both after fix?** frontend
+    - **Blocked on other issue:** None.
 
 **In progress Task List**:
--   None.
+- **Task 1: Complete Integrate into Workplan feature (P0)**
+    - **Where to resume:**  within the  function.
+    - **What will be achieved with this?** Generated lesson plans will be correctly added to the user's workplan, appearing in the right time slots according to the selected class's schedule. This completes a major user request.
+    - **Status:** IN PROGRESS
+    - **Should Test frontend/backend/both after fix?** frontend
+    - **Blocked on something:** Blocked by Issue 1.
 
 **Upcoming and Future Tasks**
--   **(P1) Excel-Import:** Allow importing existing work plans from Excel files.
--   **(P1) Kommentare:** Add a commenting feature to shared work plans.
--   **(P1) Erweiterte Statistik-Diagramme:** Enhance the statistics page with more chart types.
--   **(P2) E-Mail-Benachrichtigungen:** Implement email notifications for shares and comments.
--   **(P2) Verlauf wiederherstellen:** Re-add the History page to the navigation if the user requests it for collaborative features.
--   **(P2) Materialien verknüpfen:** Link uploaded documents directly to specific lessons.
--   **(P3) Native Desktop/Mobile Apps:** Package the PWA using Electron or Capacitor for native app store distribution.
+- **(P1) Schulbuch-Integration:** (User Request #1 & #2)
+    - Modify the Gemini prompt to include references from a specific textbook (Westermann's Praxis Sprache).
+    - Add a UI element (e.g., dropdown) to allow users to select different textbooks to generate alternative lesson plans.
+- **(P1) Erweiterte KI-Materialerstellung:** (User Request #3) Enhance the Material erstellen feature to generate or find interactive materials like quizzes, puzzles, or e-learning games.
+- **(P1) Excel-Import:** Allow importing existing work plans from Excel files.
+- **(P1) Kommentare:** Add a commenting feature to shared work plans.
+- **(P2) PWA Auto-Update-Benachrichtigung:** Implement a notification for PWA users when a new version of the app is available, to mitigate the user's persistent caching issues.
+- **(P2) Erweiterte Statistik-Diagramme:** Enhance the statistics page with more chart types.
+- **(P2) E-Mail-Benachrichtigungen:** Implement email notifications for shares and comments.
 
 **Completed work in this session**
--   **Workplan Table Finalization:** Fully implemented the backend and frontend for the new static, collaborative workplan table.
--   **Resizable Columns & Rows:** Added robust controls (/ buttons) for resizing columns in the Workplan and adjusting row heights in both the Workplan and Calendar, with settings saved locally.
--   **Calendar Color Bug:** Fixed the long-standing issue where lessons did not display their assigned class color.
--   **Workplan ↔ Calendar Sync:** Implemented a major feature to automatically display workplan entries within the calendar view.
--   **Statistics Page Overhaul:** Completely rewrote the statistics feature to provide accurate and meaningful metrics based on the user's actual schedule and planned lessons.
--   **New Recherche Feature:** Created a new page for searching images (Pixabay), videos (YouTube links), and academic papers (OpenAlex) with AI-powered translation.
--   **UI Cleanup:** Removed the Verlauf (History) page from the navigation at the user's request.
+- **Image Search Bug Fix:** Replaced failing image APIs with the Wikimedia Commons API in  and updated the frontend () to handle the new data structure and fix a crash-on-download bug.
+- **UI Refinements:** Iteratively adjusted the UI of the Recherche page search bar to be more compact based on user feedback.
+- **New Feature: Lernprogramme Page:** Created and refined a new page () for discovering educational resources, with filters and direct links. The UI was heavily optimized based on user feedback for compactness and relevance.
+- **New Feature: Unterrichtsplanung Page:**
+    - Built a new page () and corresponding backend endpoints.
+    - Integrated a user-provided curriculum from a  file into a structured database.
+    - Implemented AI-powered generation of detailed lesson plans and teaching materials using Gemini.
+- **Save/Load Lesson Plans:** Added functionality for users to save, load, and delete their generated lesson plans, making them persistent across sessions.
+
+**Earlier issues found/mentioned but not fixed**
+- None.
+
+**Known issue recurrence from previous fork**
+- **Issue:** The user, primarily using Safari, consistently encounters severe browser caching problems. They often see outdated versions of the application even after a fix has been successfully deployed and verified by the agent.
+- **Recurrence count:** High (occurred multiple times this session).
+- **Status:** NOT RESOLVED (This is a client-side environmental issue, but the agent suggested implementing a PWA update notification as a future mitigation strategy).
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Backend:** FastAPI, MongoDB (), Pydantic, JWT.
--   **Frontend:** React, , .
--   **APIs:** Integration with OpenAlex and Pixabay for the research feature.
--   **AI:**  library used to call Gemini for translating text.
--   **Browser Storage:** Using  to persist user UI preferences (column widths, row heights).
+- **Backend:** FastAPI, MongoDB (), Pydantic, JWT.
+- **Frontend:** React, , , .
+- **AI Integration:**  library for Gemini API calls to generate lesson plans and materials.
+- **File Analysis:** Used  to parse curriculum data from a user-uploaded  file.
+- **State Management:** Complex UI state managed with React Hooks (, ) for cascading dropdowns and dynamically generated AI content.
+- **URL Parameter Handling:** Fixed a routing issue by switching from path parameters to query parameters to handle special characters (e.g.,  in a grade level like ).
 
 **key DB schema**
--   ****: Model is now stable with fixed fields: , , , which are used to sync with the calendar.
--   ****: The  field is now used as the source of truth for all statistics calculations.
+- ****: New collection to store user-generated lesson plans. Contains , , , , and the full  JSON object.
+- ****: The target of the current buggy feature. The fix requires correctly populating the  field based on the class schedule.
 
 **changes in tech stack**
--   The  library was installed and is used for the translation feature.
+- No changes to the core stack. Increased reliance on the  library for Gemini.
 
 **All files of reference**
--   : The new page for the research feature, which contains the image search bug.
--   : The backend file, which was recently modified to use the Pixabay API.
--   : Contains the logic for the calendar view, including the workplan sync.
--   : Contains the logic for the workplan table, including resizable rows/columns.
--   : The completely rewritten statistics page.
--   : Navigation component, modified to add Recherche.
--   : Contains the up-to-date product requirements and changelog.
+- : The primary file containing the logic for the current bug.
+- : Contains the backend endpoints for curriculum planning and the workplan.
+- : The UI where the fix's result will be verified.
+- : Contains routing for the new pages.
+- : Contains navigation links for the new pages.
 
 **Areas that need refactoring**:
--   The  file has grown even more monolithic with the addition of statistics and research endpoints. Splitting it into separate files for routes, models, and services would improve maintainability.
+-  has become extremely large and monolithic. It should be broken down into separate files for routes, models, and services/helpers, especially for the distinct features like , , and .
+-  is now over 1000 lines long and handles many distinct pieces of logic (state management, API calls, UI rendering for multiple sections, modals). It should be refactored into smaller, reusable components.
 
 **key api endpoints**
--   : The endpoint for the broken image search, now pointing to the Pixabay API.
--   : Searches OpenAlex for academic papers.
--   : Translates text using Gemini.
--   : Provides data for the new statistics page.
--   : Saves workplan data.
+- : Endpoint used to transfer the lesson plan to the workplan. This is part of the buggy feature.
+- : Generates a lesson plan via the Gemini API.
+- : Saves a generated lesson plan to the user's account.
+- : Retrieves all saved lesson plans for the current user.
+- : Deletes a specific saved lesson plan.
+- : Retrieves details for a curriculum topic.
 
 **Critical Info for New Agent**
--   Your first and highest priority is to fix the broken image search on the Recherche page, as reported by the user. The previous agent has already attempted a backend fix by switching to the Pixabay API, but you must complete and verify this fix on the frontend.
--   The user is using Safari and has experienced significant caching issues. When delivering a fix, be prepared to explicitly instruct the user to perform a hard refresh (e.g.,  or ) or test in a private/incognito window to ensure they see the latest version.
--   All communication must be in German.
+- Your immediate and highest priority is to fix the bug preventing transferred lesson plans from appearing in the workplan. The root cause is a hardcoded  in . You must fetch the actual schedule for the selected class and use the correct period for each entry.
+- All communication must be in German.
+- Be prepared to guide the user through cache-clearing steps (, private windows). This is a recurring issue for them, especially on Safari.
+- The user's account  with password  is known to work. If they have login issues, it's likely due to a browser extension (tracker blocker) or VPN, which you should advise them to temporarily disable for the site.
 
 **documents and test reports created in this job**
--   
+- 
+- 
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** Application error - App zeigt keine Bilder - nur ? - wollte Bild downloaden - App hat sich geschlossen? (Application error - App shows no images - only ? - wanted to download image - App closed?) **This is the current, active issue.**
-2.  **User:** Requests the new Recherche (Research) feature with image, video, and academic text search capabilities. (Implemented, but now has a bug).
-3.  **User:** Reports that the statistics page numbers don't make sense and requests more meaningful stats. (Completed, the page was fully revamped).
-4.  **User:** Asks about the purpose of the Verlauf (History) page and agrees to have it removed from the navigation. (Completed).
-5.  **User:** Asks for the text from the workplan in the calendar to be made smaller. (Completed).
-6.  **User:** Requests the same row-height adjustment feature from the Calendar to be added to the Workplan. (Completed).
-7.  **User:** Reports that the calendar's adjustable row height is not saved and asks for it to be persistent. (Completed).
-8.  **User:** Confirms the workplan saving issue is resolved on their end.
-9.  **User:** Proposes a major new feature: syncing the workplan with the calendar and increasing font sizes in the calendar. (Completed).
-10. **User:** Initially reported that saving in the workplan was not working. (This was investigated and resolved).
+1.  **User:** Reports that the workplan is empty after a successful transfer.
+2.  **Agent:** Investigates, confirms data exists in the database.
+3.  **Agent:** Suspects a UI display issue and asks the user to check the date range and class selection in the workplan.
+4.  **User:** Sends a screenshot of the empty workplan.
+5.  **Agent:** Analyzes the screenshot and realizes the problem: entries were saved with  while the class schedule uses different periods. Identifies this as the root cause.
+6.  **User:** The class/subject dropdown works, but theres still no transfer to the workplan."
+7.  **Agent:** Does extensive testing and confirms via screenshots that the transfer now works on their end, and the data is correctly saved in the database.
+8.  **User:** "Im told it was transferred, but my workplan is still empty!
+9.  **Agent:** Re-confirms the data is in the database and realizes the UI is not showing it due to the period mismatch.
+10. **Agent:** Identifies the hardcoded  as the definitive problem and is about to start fixing it.
 
 **Project Health Check:**
--   **Broken:** The Bilder (Image) search tab within the new Recherche feature is currently broken and causing the app to crash. The rest of the application is stable.
+-   **Broken:** The integration between the Unterrichtsplanung and Arbeitsplan features is broken due to the  assignment bug.
 -   **Mocked:** None.
 
 **3rd Party Integrations**
--   **Gemini:** For AI translation (uses Emergent LLM Key).
--   **holidays:** Python library for fetching German school holidays.
--   **OpenAlex:** For academic paper search (no key required).
--   **Pixabay:** For image search (no key required). This is the newly implemented service intended to fix the image search bug.
--   **YouTube:** Not a direct integration; the app links to a pre-filled YouTube search query.
+-   **Gemini:** For AI-powered lesson plan and material generation (uses Emergent LLM Key).
+-   **holidays:** Python library for German school holidays.
+-   **OpenAlex:** For academic paper search.
+-   **Wikimedia Commons:** For image search.
 
 **Testing status**
--   **Testing agent used after significant changes:** NO (in this session). The agent performed extensive manual testing via  and screenshots.
--   **Test files created:** None.
--   **Known regressions:** The image search feature on the Recherche page is a new regression introduced with the feature's deployment.
+-   **Testing agent used after significant changes:** YES, for the image search feature fix.
+-   **Troubleshoot agent used after agent stuck in loop:** NO
+-   **Test files created:** None
+-   **Known regressions:** None.
 
 **Credentials to test flow:**
 -   **Invitation Code for Registration:** 
+-   **Test User:** 
+-   **Test Password:** 
 
 **What agent forgot to execute**
--   After implementing the backend part of the fix for the broken image search (switching to the Pixabay API), the agent did not proceed to verify the frontend's compatibility with the new API response or test the end-to-end functionality. This is the immediate task for the next agent.</analysis>
+-   The agent correctly diagnosed the root cause of the workplan integration bug (hardcoded ) but the session ended just before they could implement the fix in . The immediate next step is to execute that fix.</analysis>
