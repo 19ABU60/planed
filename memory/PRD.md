@@ -173,6 +173,22 @@ PlanEd ist eine Web-Anwendung für Lehrer zur Verwaltung von Arbeitsplänen, die
 
 ## Changelog
 
+### 20.01.2026 - Alternative Unterrichtsreihen mit verschiedenen Schulbüchern ✅
+- **Neues Feature:** Vergleich mehrerer Unterrichtsreihen mit verschiedenen Schulbüchern
+- **Funktionsweise:**
+  - Nach der Generierung erscheinen "Versionen"-Tabs 
+  - "+" Alternative Button öffnet Modal zur Schulbuch-Auswahl
+  - Max. 4 Alternativen möglich (temporär gespeichert)
+  - Wechsel zwischen Versionen per Klick auf Tab
+  - Jede Version wird automatisch in der Datenbank gespeichert
+  - "X" zum Löschen nicht benötigter Alternativen
+- **UI-Elemente:**
+  - Violett hervorgehobene aktive Version
+  - Modal mit allen verfügbaren Schulbüchern (bereits genutzte ausgeblendet)
+  - Loading-Indikator während Generierung
+- **Test-Status:** ✅ Frontend getestet - Versionen-Tabs und Modal funktionieren
+- **Dateien geändert:** `/app/frontend/src/pages/CurriculumPlannerPage.js`
+
 ### 20.01.2026 - Schulbuch-Integration für KI-Unterrichtsreihen ✅
 - **Neues Feature:** Schulbuch-Dropdown bei der Unterrichtsreihen-Generierung
 - **31 Schulbücher integriert:**
