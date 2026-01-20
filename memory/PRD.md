@@ -173,6 +173,23 @@ PlanEd ist eine Web-Anwendung für Lehrer zur Verwaltung von Arbeitsplänen, die
 
 ## Changelog
 
+### 20.01.2026 - Frontend Fach-Auswahl (Deutsch/Mathematik) ✅
+- **Neues Feature:** Fach-Dropdown in der Unterrichtsplanung
+- **UI-Änderungen:**
+  - Neues "Fach" Dropdown am Anfang der Auswahl-Leiste
+  - 🇩🇪 Deutsch (blauer Hintergrund) und 📐 Mathematik (grüner Hintergrund)
+  - Header zeigt aktuell gewähltes Fach an ("Mathematik RS+ • Rheinland-Pfalz • Lehrplanbasiert")
+- **Funktionalität:**
+  - Wechsel zwischen Fächern lädt automatisch den entsprechenden Lehrplan
+  - Klassenstufen, Kompetenzbereiche, Themen werden fachspezifisch geladen
+  - Schulbücher werden passend zum Fach und zur Klassenstufe angezeigt
+  - Generierung verwendet den korrekten API-Pfad (`/api/lehrplan/...` vs `/api/mathe/...`)
+- **Datei geändert:** `/app/frontend/src/pages/CurriculumPlannerPage.js`
+  - `selectedFach` State (Zeile 299)
+  - Dynamische API-Pfade für Struktur, Schulbücher, Generierung
+  - Fach-Dropdown mit data-testid="fach-select"
+- **Test-Status:** ✅ Frontend getestet - Fach-Wechsel und Datenladung funktionieren
+
 ### 20.01.2026 - P1 & P2: Mathe-Fach + Excel-Import + Restliche Routes ✅
 - **P1.1 Mathe-Fach hinzugefügt:**
   - `data/lehrplan_mathe_rlp.py` - Lehrplan Klassen 5-10 (302 Zeilen)
