@@ -173,6 +173,17 @@ PlanEd ist eine Web-Anwendung für Lehrer zur Verwaltung von Arbeitsplänen, die
 
 ## Changelog
 
+### 14.01.2026 - Unterrichtsreihen-Übertragung zu Arbeitsplan BUGFIX ✅
+- **Problem:** Generierte Unterrichtsreihen wurden in Arbeitsplan übertragen, aber nicht angezeigt
+- **Ursache:** Hardcodiertes `period: 1` in `handleSubmit` - Einträge wurden immer für die 1. Stunde erstellt, obwohl Klassen zu anderen Zeiten Unterricht haben
+- **Lösung:** Neue `getScheduledSlots()`-Funktion in `CurriculumPlannerPage.js`:
+  - Iteriert durch alle Tage ab Startdatum
+  - Sammelt Unterrichtsstunden gemäß dem Klassenplan (schedule)
+  - Weist jeder Unterrichtsstunde das korrekte Datum und die korrekte Periode zu
+- **Beispiel:** Klasse 6a-Deutsch mit Schedule `monday: [2,3], wednesday: [3], thursday: [4], friday: [2]` → Einträge erscheinen jetzt in Periode 2, 3, 4 statt alle in Periode 1
+- **Test-Status:** ✅ 100% bestanden - Einträge werden korrekt in der Arbeitsplan-Tabelle angezeigt
+- **Datei geändert:** `/app/frontend/src/pages/CurriculumPlannerPage.js` (Zeilen 86-160)
+
 ### 13.01.2026 - Bildersuche komplett überarbeitet
 - **Bug behoben:** Bilder zeigten nur ? Platzhalter, Download stürzte ab
 - **Lösung:** Wikimedia Commons API (kostenlos, kein API-Key)
