@@ -2527,7 +2527,6 @@ Wichtig:
         )
         
         # Parse JSON response
-        import json
         # Entferne mögliche Markdown-Codeblöcke
         response_text = response.strip()
         if response_text.startswith("```json"):
@@ -2537,7 +2536,8 @@ Wichtig:
         if response_text.endswith("```"):
             response_text = response_text[:-3]
         
-        unterrichtsreihe = json.loads(response_text.strip())
+        import json as json_lib
+        unterrichtsreihe = json_lib.loads(response_text.strip())
         
         # Speichere in Datenbank
         doc = {
