@@ -20,7 +20,16 @@ PlanEd ist eine Web-Anwendung für Lehrer zur Verwaltung von Arbeitsplänen, die
 ├── components/
 │   ├── Sidebar.js
 │   ├── NotificationBell.js
-│   └── GlobalSearch.js
+│   ├── GlobalSearch.js
+│   └── curriculum/              # NEU - Refactored 20.01.2026
+│       ├── constants.js
+│       ├── WorkplanModal.jsx
+│       ├── SavedReihenPanel.jsx
+│       ├── SubjectSelector.jsx
+│       ├── AlternativeTabs.jsx
+│       ├── UnterrichtsreiheView.jsx
+│       ├── MaterialGenerator.jsx
+│       └── index.js
 └── pages/
     ├── LoginPage.js
     ├── DashboardPage.js
@@ -32,7 +41,8 @@ PlanEd ist eine Web-Anwendung für Lehrer zur Verwaltung von Arbeitsplänen, die
     ├── SharingPage.js
     ├── DocumentsPage.js
     ├── HistoryPage.js
-    └── SettingsPage.js
+    ├── SettingsPage.js
+    └── CurriculumPlannerPage.js  # Refactored: 1920 → 519 Zeilen
 ```
 
 ### Backend-Struktur
