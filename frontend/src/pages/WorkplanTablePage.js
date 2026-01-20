@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Save, ChevronLeft, ChevronRight, Upload, FileSpreadsheet } from 'lucide-react';
+import { Save, ChevronLeft, ChevronRight, Upload, FileSpreadsheet, X, Check, AlertCircle } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { toast } from 'sonner';
