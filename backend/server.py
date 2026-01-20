@@ -2135,10 +2135,12 @@ class GeneratedMaterial(BaseModel):
 # ============== IMPORT AUSGELAGERTER MODULE ==============
 from routes.faecher.deutsch import router as deutsch_router
 from routes.faecher.mathe import router as mathe_router
+from routes.auth import router as auth_router
 
 # Include routers
 app.include_router(deutsch_router)
 app.include_router(mathe_router)
+app.include_router(auth_router)
 
 # ============== ROOT ==============
 
