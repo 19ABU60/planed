@@ -2406,7 +2406,7 @@ async def generiere_unterrichtsreihe(
     request: UnterrichtsreiheRequest,
     user_id: str = Depends(get_current_user)
 ):
-    """Generiert eine Unterrichtsreihe mit KI"""
+    """Generiert eine Unterrichtsreihe mit KI, optional mit Schulbuch-Referenzen"""
     try:
         # Hole Thema-Details
         bereich = LEHRPLAN_DEUTSCH_RLP.get(request.klassenstufe, {}).get(request.kompetenzbereich, {})
@@ -2422,20 +2422,84 @@ async def generiere_unterrichtsreihe(
         niveau_text = thema_data.get(request.niveau, "")
         niveau_name = {"G": "grundlegend", "M": "mittel", "E": "erweitert"}.get(request.niveau, "mittel")
         
+        # Schulbuch-Informationen vorbereiten
+        schulbuch_info = ""
+        schulbuch_name = None
+        if request.schulbuch_id and request.schulbuch_id != "kein_schulbuch":
+            schulbuch = SCHULBUECHER_DEUTSCH.get(request.schulbuch_id)
+            if schulbuch:
+                schulbuch_name = f"{schulbuch['name']} ({schulbuch['verlag']})"
+                # Finde passende Kapitel basierend auf dem Kompetenzbereich
+                kapitel_info = []
+                for kap_id, kap_data in schulbuch.get("kapitel", {}).items():
+                    # Prüfe ob das Kapitel thematisch passt
+                    kap_themen_lower = [t.lower() for t in kap_data.get("themen", [])]
+                    bereich_name_lower = bereich.get("name", "").lower()
+                    if any(word in bereich_name_lower for word in ["schreib", "erzähl", "bericht"]) and kap_id in ["erzaehlen", "berichten"]:
+                        kapitel_info.append(f"- {kap_data['name']}: Seiten {kap_data['seiten']}")
+                    elif any(word in bereich_name_lower for word in ["lesen", "text", "literatur"]) and kap_id == "lesen":
+                        kapitel_info.append(f"- {kap_data['name']}: Seiten {kap_data['seiten']}")
+                    elif any(word in bereich_name_lower for word in ["sprach", "grammatik", "rechtschreib"]) and kap_id in ["grammatik", "rechtschreibung"]:
+                        kapitel_info.append(f"- {kap_data['name']}: Seiten {kap_data['seiten']}")
+                    elif any(word in bereich_name_lower for word in ["argument", "diskut"]) and kap_id == "argumentieren":
+                        kapitel_info.append(f"- {kap_data['name']}: Seiten {kap_data['seiten']}")
+                
+                # Wenn keine spezifischen Kapitel gefunden, alle Kapitel anbieten
+                if not kapitel_info:
+                    for kap_id, kap_data in schulbuch.get("kapitel", {}).items():
+                        kapitel_info.append(f"- {kap_data['name']}: Seiten {kap_data['seiten']}")
+                
+                schulbuch_info = f"""
+SCHULBUCH-BEZUG:
+Verwende das Schulbuch "{schulbuch['name']}" ({schulbuch['verlag']}, ISBN: {schulbuch['isbn']}).
+Relevante Kapitel:
+{chr(10).join(kapitel_info)}
+
+Bei jeder Stunde: Gib konkrete Seitenzahlen an, z.B. "S. 34-36" oder "Aufgabe 3 auf S. 42".
+Füge bei jedem Material-Eintrag einen Schulbuch-Verweis hinzu wenn passend."""
+        
         from emergentintegrations.llm.chat import LlmChat, UserMessage
         
         emergent_key = os.environ.get("EMERGENT_LLM_KEY", "")
         if not emergent_key:
             raise HTTPException(status_code=500, detail="KI-Service nicht konfiguriert")
         
+        system_msg = """Du bist ein erfahrener Deutschlehrer an einer Realschule plus in Rheinland-Pfalz. 
+Du erstellst praxisnahe, differenzierte Unterrichtsreihen für den Deutschunterricht.
+Deine Unterrichtsreihen sind klar strukturiert, schülerorientiert und enthalten konkrete Aktivitäten.
+Wenn ein Schulbuch angegeben ist, integrierst du passende Seiten und Aufgaben aus diesem Buch.
+Antworte IMMER im JSON-Format."""
+        
         chat = LlmChat(
             api_key=emergent_key,
             session_id=f"unterricht-{user_id}-{uuid.uuid4()}",
-            system_message="""Du bist ein erfahrener Deutschlehrer an einer Realschule plus in Rheinland-Pfalz. 
-Du erstellst praxisnahe, differenzierte Unterrichtsreihen für den Deutschunterricht.
-Deine Unterrichtsreihen sind klar strukturiert, schülerorientiert und enthalten konkrete Aktivitäten.
-Antworte IMMER im JSON-Format."""
+            system_message=system_msg
         ).with_model("gemini", "gemini-3-flash-preview")
+        
+        # JSON-Format mit optionalen Schulbuch-Feldern
+        json_format = """{
+    "titel": "Titel der Unterrichtsreihe",
+    "ueberblick": "Kurze Beschreibung (2-3 Sätze)",
+    "schulbuch": "Name des Schulbuchs (falls verwendet)",
+    "lernziele": ["Lernziel 1", "Lernziel 2", "Lernziel 3"],
+    "stunden": [
+        {
+            "nummer": 1,
+            "titel": "Titel der Stunde",
+            "phase": "Einstieg/Erarbeitung/Sicherung",
+            "dauer": "45 min",
+            "inhalt": "Detaillierte Beschreibung der Stundeninhalte",
+            "methoden": ["Methode 1", "Methode 2"],
+            "material": ["Benötigtes Material"],
+            "schulbuch_seiten": "z.B. S. 34-36, Aufgabe 1-3"
+        }
+    ],
+    "differenzierung": {
+        "foerdern": "Maßnahmen für schwächere SuS",
+        "fordern": "Maßnahmen für stärkere SuS"
+    },
+    "leistungsnachweis": "Vorschlag für Leistungsüberprüfung"
+}"""
         
         prompt = f"""Erstelle eine Unterrichtsreihe für Deutsch RS+ mit folgenden Parametern:
 
@@ -2445,34 +2509,16 @@ Thema: {thema_data['name']}
 Lehrplaninhalt ({niveau_name}): {niveau_text}
 Niveau: {niveau_name} ({"einfacher, mehr Unterstützung" if request.niveau == "G" else "anspruchsvoller, mehr Eigenständigkeit" if request.niveau == "E" else "mittleres Anforderungsniveau"})
 Anzahl Unterrichtsstunden: {request.stunden_anzahl}
+{schulbuch_info}
 
 Erstelle eine detaillierte Unterrichtsreihe im folgenden JSON-Format:
-{{
-    "titel": "Titel der Unterrichtsreihe",
-    "ueberblick": "Kurze Beschreibung (2-3 Sätze)",
-    "lernziele": ["Lernziel 1", "Lernziel 2", "Lernziel 3"],
-    "stunden": [
-        {{
-            "nummer": 1,
-            "titel": "Titel der Stunde",
-            "phase": "Einstieg/Erarbeitung/Sicherung",
-            "dauer": "45 min",
-            "inhalt": "Detaillierte Beschreibung der Stundeninhalte",
-            "methoden": ["Methode 1", "Methode 2"],
-            "material": ["Benötigtes Material"]
-        }}
-    ],
-    "differenzierung": {{
-        "foerdern": "Maßnahmen für schwächere SuS",
-        "fordern": "Maßnahmen für stärkere SuS"
-    }},
-    "leistungsnachweis": "Vorschlag für Leistungsüberprüfung"
-}}
+{json_format}
 
 Wichtig: 
 - Genau {request.stunden_anzahl} Stunden erstellen
 - Niveau {niveau_name} beachten
 - Praxisnah und umsetzbar
+{"- Bei JEDER Stunde konkrete Schulbuch-Seitenzahlen angeben!" if schulbuch_info else "- schulbuch_seiten kann leer bleiben wenn kein Schulbuch gewählt"}
 - Nur valides JSON zurückgeben, keine Erklärungen davor oder danach"""
 
         response = await asyncio.wait_for(
