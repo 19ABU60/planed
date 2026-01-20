@@ -183,6 +183,23 @@ PlanEd ist eine Web-Anwendung für Lehrer zur Verwaltung von Arbeitsplänen, die
 
 ## Changelog
 
+### 20.01.2026 - Backend-Refactoring Phase 3 - Ziel erreicht! ✅
+- **server.py reduziert auf 1378 Zeilen** (von ursprünglich 2162 - Ziel war unter 1500)
+- **Neue Module erstellt:**
+  - `routes/statistics.py` - Statistik-Endpunkte (~150 Zeilen)
+  - `routes/sharing.py` - Sharing & Notification-Endpunkte (~170 Zeilen)
+  - `routes/research.py` - Research API (Images, Videos, Papers, Translate) (~280 Zeilen)
+- **Verbleibende Endpunkte in server.py:** 30 (von 45)
+- **Modulare Backend-Architektur abgeschlossen:**
+  - `/routes/auth.py` - Authentifizierung
+  - `/routes/lessons.py` - Stunden & Arbeitsplan
+  - `/routes/templates_todos.py` - Vorlagen & Aufgaben
+  - `/routes/statistics.py` - Statistiken
+  - `/routes/sharing.py` - Freigaben & Benachrichtigungen
+  - `/routes/research.py` - Recherche-API
+  - `/routes/faecher/deutsch.py` - Deutsch-Unterrichtsplanung
+  - `/routes/faecher/mathe.py` - Mathematik-Unterrichtsplanung
+
 ### 20.01.2026 - Excel-Import Vorschau + Backend-Refactoring Phase 2 ✅
 - **Excel-Import mit Vorschau-Funktion:**
   - Neuer `/api/import/excel/preview` Endpoint
