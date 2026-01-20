@@ -413,3 +413,186 @@ async def delete_unterrichtsreihe(reihe_id: str, user_id: str = Depends(get_curr
         return {"success": True, "message": "Unterrichtsreihe gelöscht"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============== WORD EXPORT ==============
+
+from fastapi.responses import StreamingResponse
+from io import BytesIO
+
+@router.post("/material/export/word")
+async def export_material_to_word(
+    material_typ: str,
+    titel: str,
+    inhalt: dict,
+    user_id: str = Depends(get_current_user)
+):
+    """
+    Exportiert generiertes Material als Word-Dokument (.docx)
+    Unterstützt: arbeitsblatt, quiz, raetsel, zuordnung
+    """
+    from docx import Document
+    from docx.shared import Inches, Pt, Cm
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.enum.style import WD_STYLE_TYPE
+    
+    doc = Document()
+    
+    # Seitenränder setzen
+    sections = doc.sections
+    for section in sections:
+        section.top_margin = Cm(2)
+        section.bottom_margin = Cm(2)
+        section.left_margin = Cm(2.5)
+        section.right_margin = Cm(2.5)
+    
+    # Titel
+    title = doc.add_heading(titel, 0)
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    # Metadaten
+    if inhalt.get("klassenstufe") or inhalt.get("niveau"):
+        meta = doc.add_paragraph()
+        meta.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        meta_text = []
+        if inhalt.get("klassenstufe"):
+            meta_text.append(f"Klassenstufe {inhalt['klassenstufe']}")
+        if inhalt.get("niveau"):
+            niveau_map = {"G": "Grundniveau", "M": "Mittleres Niveau", "E": "Erweitertes Niveau"}
+            meta_text.append(niveau_map.get(inhalt["niveau"], inhalt["niveau"]))
+        meta.add_run(" • ".join(meta_text)).italic = True
+    
+    doc.add_paragraph()  # Leerzeile
+    
+    if material_typ == "arbeitsblatt":
+        # Arbeitsblatt-Struktur
+        aufgaben = inhalt.get("aufgaben", [])
+        for i, aufgabe in enumerate(aufgaben, 1):
+            # Aufgabentitel
+            heading = doc.add_heading(f"Aufgabe {i}: {aufgabe.get('titel', '')}", level=2)
+            
+            # Aufgabenstellung
+            if aufgabe.get("aufgabenstellung"):
+                p = doc.add_paragraph(aufgabe["aufgabenstellung"])
+            
+            # Material/Text falls vorhanden
+            if aufgabe.get("material"):
+                doc.add_paragraph()
+                material_para = doc.add_paragraph()
+                material_para.add_run("Material: ").bold = True
+                material_para.add_run(aufgabe["material"])
+            
+            # Platz für Antworten
+            doc.add_paragraph()
+            answer_lines = doc.add_paragraph("Antwort:")
+            answer_lines.add_run("\n" + "_" * 60)
+            answer_lines.add_run("\n" + "_" * 60)
+            answer_lines.add_run("\n" + "_" * 60)
+            
+            doc.add_paragraph()  # Abstand zwischen Aufgaben
+    
+    elif material_typ == "quiz":
+        # Quiz-Struktur
+        fragen = inhalt.get("fragen", [])
+        for i, frage in enumerate(fragen, 1):
+            # Frage
+            q_para = doc.add_paragraph()
+            q_para.add_run(f"{i}. {frage.get('frage', '')}").bold = True
+            
+            # Antwortmöglichkeiten
+            optionen = frage.get("optionen", [])
+            for j, option in enumerate(optionen):
+                buchstabe = chr(65 + j)  # A, B, C, D...
+                doc.add_paragraph(f"   {buchstabe}) {option}", style='List Bullet')
+            
+            doc.add_paragraph()  # Abstand
+        
+        # Lösungen am Ende
+        doc.add_page_break()
+        doc.add_heading("Lösungen", level=1)
+        for i, frage in enumerate(fragen, 1):
+            loesung = frage.get("loesung", "")
+            doc.add_paragraph(f"{i}. {loesung}")
+    
+    elif material_typ == "raetsel":
+        # Kreuzworträtsel
+        doc.add_heading("Kreuzworträtsel", level=1)
+        
+        # Waagerecht
+        doc.add_heading("Waagerecht →", level=2)
+        waagerecht = inhalt.get("waagerecht", [])
+        for item in waagerecht:
+            doc.add_paragraph(f"{item.get('nummer', '')}: {item.get('frage', '')}")
+        
+        doc.add_paragraph()
+        
+        # Senkrecht
+        doc.add_heading("Senkrecht ↓", level=2)
+        senkrecht = inhalt.get("senkrecht", [])
+        for item in senkrecht:
+            doc.add_paragraph(f"{item.get('nummer', '')}: {item.get('frage', '')}")
+        
+        # Lösungswörter
+        doc.add_page_break()
+        doc.add_heading("Lösungen", level=1)
+        doc.add_heading("Waagerecht", level=2)
+        for item in waagerecht:
+            doc.add_paragraph(f"{item.get('nummer', '')}: {item.get('loesung', '')}")
+        doc.add_heading("Senkrecht", level=2)
+        for item in senkrecht:
+            doc.add_paragraph(f"{item.get('nummer', '')}: {item.get('loesung', '')}")
+    
+    elif material_typ == "zuordnung":
+        # Zuordnungsübung
+        doc.add_heading("Zuordnungsübung", level=1)
+        doc.add_paragraph("Verbinde die zusammengehörenden Begriffe:")
+        doc.add_paragraph()
+        
+        paare = inhalt.get("paare", [])
+        
+        # Linke Spalte
+        doc.add_heading("Begriffe", level=2)
+        for i, paar in enumerate(paare, 1):
+            doc.add_paragraph(f"{i}. {paar.get('links', '')}")
+        
+        doc.add_paragraph()
+        
+        # Rechte Spalte (gemischt)
+        doc.add_heading("Zuordnungen (durcheinander)", level=2)
+        import random
+        rechts_liste = [p.get("rechts", "") for p in paare]
+        random.shuffle(rechts_liste)
+        for buchstabe, item in zip("ABCDEFGHIJKLMNOP", rechts_liste):
+            doc.add_paragraph(f"{buchstabe}. {item}")
+        
+        # Lösungen
+        doc.add_page_break()
+        doc.add_heading("Lösungen", level=1)
+        for i, paar in enumerate(paare, 1):
+            doc.add_paragraph(f"{i}. {paar.get('links', '')} → {paar.get('rechts', '')}")
+    
+    else:
+        # Generischer Export
+        doc.add_paragraph(str(inhalt))
+    
+    # Footer
+    doc.add_paragraph()
+    footer = doc.add_paragraph()
+    footer.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    footer.add_run(f"Erstellt mit PlanEd • {datetime.now().strftime('%d.%m.%Y')}").italic = True
+    
+    # In BytesIO speichern
+    file_stream = BytesIO()
+    doc.save(file_stream)
+    file_stream.seek(0)
+    
+    # Dateiname generieren
+    safe_titel = "".join(c for c in titel if c.isalnum() or c in (' ', '-', '_')).strip()[:50]
+    filename = f"{safe_titel}_{material_typ}.docx"
+    
+    return StreamingResponse(
+        file_stream,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
