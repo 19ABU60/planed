@@ -778,53 +778,158 @@ const CurriculumPlannerPage = () => {
               Noch keine Unterrichtsreihen gespeichert.
             </p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '250px', overflowY: 'auto' }}>
-              {savedReihen.map((reihe) => (
-                <div 
-                  key={reihe.id}
-                  style={{
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '300px', overflowY: 'auto' }}>
+              {/* Deutsch Reihen */}
+              {savedReihen.filter(r => r.fach === 'deutsch' || !r.fach).length > 0 && (
+                <div>
+                  <div style={{ 
+                    fontSize: '0.75rem', 
+                    fontWeight: '600', 
+                    color: 'var(--primary)',
+                    marginBottom: '0.4rem',
                     display: 'flex',
-                    justifyContent: 'space-between',
                     alignItems: 'center',
-                    padding: '0.5rem 0.75rem',
-                    background: 'var(--bg-subtle)',
-                    borderRadius: '6px',
-                    fontSize: '0.8rem'
-                  }}
-                >
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: '500', marginBottom: '0.15rem' }}>
-                      {reihe.unterrichtsreihe?.titel || 'Ohne Titel'}
-                    </div>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                      Kl. {reihe.klassenstufe} • {NIVEAU_LABELS[reihe.niveau]?.name || reihe.niveau}
-                      {reihe.created_at && ` • ${new Date(reihe.created_at).toLocaleDateString('de-DE')}`}
-                    </div>
+                    gap: '0.35rem'
+                  }}>
+                    🇩🇪 Deutsch ({savedReihen.filter(r => r.fach === 'deutsch' || !r.fach).length})
                   </div>
-                  <div style={{ display: 'flex', gap: '0.35rem' }}>
-                    <button
-                      onClick={() => loadSavedReihe(reihe)}
-                      style={{
-                        padding: '0.25rem 0.5rem',
-                        fontSize: '0.7rem',
-                        background: 'var(--primary)',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Laden
-                    </button>
-                    <button
-                      onClick={() => deleteSavedReihe(reihe.id)}
-                      style={{
-                        padding: '0.25rem 0.5rem',
-                        fontSize: '0.7rem',
-                        background: 'rgba(239, 68, 68, 0.1)',
-                        color: '#ef4444',
-                        border: 'none',
-                        borderRadius: '4px',
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    {savedReihen.filter(r => r.fach === 'deutsch' || !r.fach).map((reihe) => (
+                      <div 
+                        key={reihe.id}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '0.5rem 0.75rem',
+                          background: 'rgba(59, 130, 246, 0.05)',
+                          border: '1px solid rgba(59, 130, 246, 0.2)',
+                          borderRadius: '6px',
+                          fontSize: '0.8rem'
+                        }}
+                      >
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: '500', marginBottom: '0.15rem' }}>
+                            {reihe.unterrichtsreihe?.titel || 'Ohne Titel'}
+                          </div>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                            Kl. {reihe.klassenstufe} • {NIVEAU_LABELS[reihe.niveau]?.name || reihe.niveau}
+                            {reihe.created_at && ` • ${new Date(reihe.created_at).toLocaleDateString('de-DE')}`}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.35rem' }}>
+                          <button
+                            onClick={() => loadSavedReihe({ ...reihe, fach: 'deutsch' })}
+                            style={{
+                              padding: '0.25rem 0.5rem',
+                              fontSize: '0.7rem',
+                              background: 'var(--primary)',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Laden
+                          </button>
+                          <button
+                            onClick={() => deleteSavedReihe(reihe.id, 'deutsch')}
+                            style={{
+                              padding: '0.25rem 0.5rem',
+                              fontSize: '0.7rem',
+                              background: 'rgba(239, 68, 68, 0.1)',
+                              color: '#ef4444',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Mathematik Reihen */}
+              {savedReihen.filter(r => r.fach === 'mathe').length > 0 && (
+                <div>
+                  <div style={{ 
+                    fontSize: '0.75rem', 
+                    fontWeight: '600', 
+                    color: '#22c55e',
+                    marginBottom: '0.4rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem'
+                  }}>
+                    📐 Mathematik ({savedReihen.filter(r => r.fach === 'mathe').length})
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    {savedReihen.filter(r => r.fach === 'mathe').map((reihe) => (
+                      <div 
+                        key={reihe.id}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '0.5rem 0.75rem',
+                          background: 'rgba(34, 197, 94, 0.05)',
+                          border: '1px solid rgba(34, 197, 94, 0.2)',
+                          borderRadius: '6px',
+                          fontSize: '0.8rem'
+                        }}
+                      >
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: '500', marginBottom: '0.15rem' }}>
+                            {reihe.unterrichtsreihe?.titel || 'Ohne Titel'}
+                          </div>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                            Kl. {reihe.klassenstufe} • {NIVEAU_LABELS[reihe.niveau]?.name || reihe.niveau}
+                            {reihe.created_at && ` • ${new Date(reihe.created_at).toLocaleDateString('de-DE')}`}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.35rem' }}>
+                          <button
+                            onClick={() => loadSavedReihe({ ...reihe, fach: 'mathe' })}
+                            style={{
+                              padding: '0.25rem 0.5rem',
+                              fontSize: '0.7rem',
+                              background: '#22c55e',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Laden
+                          </button>
+                          <button
+                            onClick={() => deleteSavedReihe(reihe.id, 'mathe')}
+                            style={{
+                              padding: '0.25rem 0.5rem',
+                              fontSize: '0.7rem',
+                              background: 'rgba(239, 68, 68, 0.1)',
+                              color: '#ef4444',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
                         cursor: 'pointer'
                       }}
                     >
