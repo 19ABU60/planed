@@ -173,6 +173,29 @@ PlanEd ist eine Web-Anwendung für Lehrer zur Verwaltung von Arbeitsplänen, die
 
 ## Changelog
 
+### 20.01.2026 - Schulbuch-Integration für KI-Unterrichtsreihen ✅
+- **Neues Feature:** Schulbuch-Dropdown bei der Unterrichtsreihen-Generierung
+- **Verfügbare Schulbücher:**
+  - Praxis Sprache 5, 6, 7, 8 (Westermann)
+  - Deutschbuch 5 (Cornelsen)
+  - "Ohne Schulbuchbezug" Option
+- **Funktionsweise:**
+  - KI generiert Unterrichtsreihen mit konkreten Seitenverweisen (z.B. "S. 52-53, Aufgabe 1-3")
+  - Schulbuch-Kapitel werden automatisch basierend auf Kompetenzbereich vorgeschlagen
+  - Jede Stunde enthält `schulbuch_seiten`-Feld mit Verweisen
+- **Neue API-Endpunkte:**
+  - `GET /api/lehrplan/schulbuecher` - Liste aller Schulbücher (filterbar nach Klassenstufe)
+  - `POST /api/lehrplan/unterrichtsreihe/generieren` - Erweitertes Feld `schulbuch_id`
+- **UI-Änderungen:**
+  - Neues Dropdown "Schulbuch:" neben der Stundenanzahl
+  - Violettes Info-Banner wenn Schulbuch gewählt
+  - Schulbuch-Badge bei generierter Reihe
+  - Seitenzahlen-Anzeige bei jeder Stunde (violett hervorgehoben)
+- **Test-Status:** ✅ Backend getestet - Seitenangaben werden korrekt generiert
+- **Dateien geändert:**
+  - `/app/backend/server.py` - Schulbuch-Daten, neuer Endpunkt, erweiterter Prompt
+  - `/app/frontend/src/pages/CurriculumPlannerPage.js` - Schulbuch-Dropdown und Anzeige
+
 ### 14.01.2026 - Unterrichtsreihen-Übertragung zu Arbeitsplan BUGFIX ✅
 - **Problem:** Generierte Unterrichtsreihen wurden in Arbeitsplan übertragen, aber nicht angezeigt
 - **Ursache:** Hardcodiertes `period: 1` in `handleSubmit` - Einträge wurden immer für die 1. Stunde erstellt, obwohl Klassen zu anderen Zeiten Unterricht haben
