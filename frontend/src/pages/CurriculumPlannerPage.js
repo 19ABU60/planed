@@ -1121,6 +1121,18 @@ const CurriculumPlannerPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Workplan Integration Modal */}
+      <WorkplanModal
+        isOpen={showWorkplanModal}
+        onClose={() => setShowWorkplanModal(false)}
+        unterrichtsreihe={unterrichtsreihe}
+        stunden={editedStunden}
+        token={token}
+        onSuccess={() => {
+          toast.success('Unterrichtsreihe wurde in den Arbeitsplan übernommen');
+        }}
+      />
     </div>
   );
 };
