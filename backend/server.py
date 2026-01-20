@@ -2519,9 +2519,34 @@ Antworte IMMER nur mit validem JSON, ohne Erklärungen."""
 @api_router.get("/lehrplan/unterrichtsreihen")
 async def get_saved_unterrichtsreihen(user_id: str = Depends(get_current_user)):
     """Gibt alle gespeicherten Unterrichtsreihen des Nutzers zurück"""
-    cursor = db.unterrichtsreihen.find({"user_id": user_id}, {"_id": 0})
-    reihen = await cursor.to_list(100)
+    cursor = db.unterrichtsreihen.find({"user_id": user_id})
+    reihen = []
+    async for doc in cursor:
+        reihen.append({
+            "id": str(doc["_id"]),
+            "klassenstufe": doc.get("klassenstufe"),
+            "kompetenzbereich": doc.get("kompetenzbereich"),
+            "thema_id": doc.get("thema_id"),
+            "niveau": doc.get("niveau"),
+            "unterrichtsreihe": doc.get("unterrichtsreihe"),
+            "created_at": doc.get("created_at")
+        })
     return {"unterrichtsreihen": reihen}
+
+@api_router.delete("/lehrplan/unterrichtsreihe/{reihe_id}")
+async def delete_unterrichtsreihe(reihe_id: str, user_id: str = Depends(get_current_user)):
+    """Löscht eine gespeicherte Unterrichtsreihe"""
+    from bson import ObjectId
+    try:
+        result = await db.unterrichtsreihen.delete_one({
+            "_id": ObjectId(reihe_id),
+            "user_id": user_id
+        })
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Unterrichtsreihe nicht gefunden")
+        return {"success": True, "message": "Unterrichtsreihe gelöscht"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # ============== ROOT ==============
 
