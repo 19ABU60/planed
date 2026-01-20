@@ -262,6 +262,9 @@ const CurriculumPlannerPage = () => {
   const [savedReihen, setSavedReihen] = useState([]);
   const [showSavedReihen, setShowSavedReihen] = useState(false);
   const [loadingSaved, setLoadingSaved] = useState(false);
+  
+  // Arbeitsplan-Integration Modal
+  const [showWorkplanModal, setShowWorkplanModal] = useState(false);
 
   // Lade LP-Struktur
   useEffect(() => {
