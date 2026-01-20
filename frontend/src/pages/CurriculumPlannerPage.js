@@ -811,6 +811,31 @@ const CurriculumPlannerPage = () => {
       {/* Auswahl-Bereich */}
       <div className="card" style={{ padding: '1rem', marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          {/* Fach-Auswahl */}
+          <div>
+            <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem' }}>
+              Fach
+            </label>
+            <select
+              value={selectedFach}
+              onChange={(e) => setSelectedFach(e.target.value)}
+              className="form-input"
+              data-testid="fach-select"
+              style={{ 
+                width: '130px', 
+                padding: '0.4rem', 
+                fontSize: '0.85rem',
+                background: selectedFach === 'deutsch' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(34, 197, 94, 0.1)',
+                borderColor: selectedFach === 'deutsch' ? 'rgba(59, 130, 246, 0.5)' : 'rgba(34, 197, 94, 0.5)'
+              }}
+            >
+              <option value="deutsch">🇩🇪 Deutsch</option>
+              <option value="mathe">📐 Mathematik</option>
+            </select>
+          </div>
+
+          <ChevronRight size={16} style={{ color: 'var(--text-muted)', marginBottom: '0.5rem' }} />
+
           {/* Klassenstufe */}
           <div>
             <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem' }}>
@@ -820,6 +845,7 @@ const CurriculumPlannerPage = () => {
               value={selectedKlasse}
               onChange={(e) => setSelectedKlasse(e.target.value)}
               className="form-input"
+              data-testid="klassenstufe-select"
               style={{ width: '100px', padding: '0.4rem', fontSize: '0.85rem' }}
             >
               <option value="">Wählen...</option>
