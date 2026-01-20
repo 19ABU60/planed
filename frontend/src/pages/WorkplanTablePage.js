@@ -284,7 +284,6 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
     setPendingFile(null);
     setImportPreview(null);
   };
-  };
 
   const navigateMonth = (direction) => {
     setCurrentMonth(prev => {
