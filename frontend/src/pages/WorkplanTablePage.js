@@ -766,6 +766,221 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
           </table>
         </div>
       )}
+      
+      {/* Excel Import Preview Modal */}
+      {showPreviewModal && importPreview && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '1rem'
+        }}>
+          <div style={{
+            background: 'var(--bg-paper)',
+            borderRadius: '12px',
+            maxWidth: '900px',
+            width: '100%',
+            maxHeight: '90vh',
+            overflow: 'auto',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: '1.25rem',
+              borderBottom: '1px solid var(--border-default)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              position: 'sticky',
+              top: 0,
+              background: 'var(--bg-paper)',
+              zIndex: 10
+            }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '600' }}>
+                  <FileSpreadsheet size={20} style={{ marginRight: '0.5rem', verticalAlign: 'middle' }} />
+                  Excel-Import Vorschau
+                </h3>
+                <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                  {importPreview.file_name}
+                </p>
+              </div>
+              <button
+                onClick={cancelImport}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--text-muted)',
+                  padding: '0.5rem'
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            {/* Summary */}
+            <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border-default)' }}>
+              <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Zeilen gesamt</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: '700' }}>{importPreview.total_rows}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Gültige Zeilen</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--success)' }}>{importPreview.valid_rows}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Status</div>
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '0.35rem',
+                    color: importPreview.has_date_column ? 'var(--success)' : 'var(--error)'
+                  }}>
+                    {importPreview.has_date_column ? <Check size={18} /> : <AlertCircle size={18} />}
+                    {importPreview.has_date_column ? 'Datum erkannt' : 'Keine Datum-Spalte'}
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Erkannte Spalten */}
+            <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border-default)' }}>
+              <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.9rem', fontWeight: '600' }}>Erkannte Spalten</h4>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                {importPreview.columns.map((col, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      padding: '0.35rem 0.75rem',
+                      borderRadius: '6px',
+                      fontSize: '0.8rem',
+                      background: col.detected_as ? 'rgba(34, 197, 94, 0.15)' : 'var(--bg-subtle)',
+                      border: col.detected_as ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid var(--border-default)',
+                      color: col.detected_as ? 'var(--success)' : 'var(--text-muted)'
+                    }}
+                  >
+                    <strong>{col.name || `Spalte ${col.column}`}</strong>
+                    {col.detected_as && (
+                      <span style={{ marginLeft: '0.35rem', opacity: 0.8 }}>
+                        → {col.detected_as === 'date' ? 'Datum' : 
+                           col.detected_as === 'topic' ? 'Thema' :
+                           col.detected_as === 'objective' ? 'Ziel' :
+                           col.detected_as === 'curriculum' ? 'Lehrplan' :
+                           col.detected_as === 'key_terms' ? 'Begriffe' :
+                           col.detected_as === 'teaching_units' ? 'UE' :
+                           col.detected_as === 'cancelled' ? 'Ausfall' : col.detected_as}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            {/* Vorschau-Tabelle */}
+            <div style={{ padding: '1rem 1.25rem' }}>
+              <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.9rem', fontWeight: '600' }}>
+                Datenvorschau (erste 10 Zeilen)
+              </h4>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ 
+                  width: '100%', 
+                  borderCollapse: 'collapse',
+                  fontSize: '0.8rem'
+                }}>
+                  <thead>
+                    <tr style={{ background: 'var(--bg-subtle)' }}>
+                      <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid var(--border-default)' }}>#</th>
+                      {importPreview.columns.map((col, idx) => (
+                        <th 
+                          key={idx} 
+                          style={{ 
+                            padding: '0.5rem', 
+                            textAlign: 'left', 
+                            borderBottom: '1px solid var(--border-default)',
+                            whiteSpace: 'nowrap',
+                            color: col.detected_as ? 'var(--success)' : 'inherit'
+                          }}
+                        >
+                          {col.name || `Spalte ${col.column}`}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {importPreview.preview_rows.map((row, rowIdx) => (
+                      <tr key={rowIdx} style={{ borderBottom: '1px solid var(--border-default)' }}>
+                        <td style={{ padding: '0.5rem', color: 'var(--text-muted)' }}>{row.row_number}</td>
+                        {importPreview.columns.map((col, colIdx) => (
+                          <td 
+                            key={colIdx} 
+                            style={{ 
+                              padding: '0.5rem',
+                              maxWidth: '200px',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
+                            {row.data[`col_${col.column}`] || ''}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            
+            {/* Footer */}
+            <div style={{
+              padding: '1rem 1.25rem',
+              borderTop: '1px solid var(--border-default)',
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '0.75rem',
+              position: 'sticky',
+              bottom: 0,
+              background: 'var(--bg-paper)'
+            }}>
+              <button
+                onClick={cancelImport}
+                className="btn btn-secondary"
+                style={{ padding: '0.6rem 1.25rem' }}
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={confirmImport}
+                className="btn btn-primary"
+                disabled={!importPreview.has_date_column || importing}
+                style={{ 
+                  padding: '0.6rem 1.25rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+                data-testid="confirm-import-btn"
+              >
+                {importing ? (
+                  <span className="spinner" style={{ width: '16px', height: '16px' }} />
+                ) : (
+                  <Check size={16} />
+                )}
+                {importPreview.valid_rows} Einträge importieren
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
