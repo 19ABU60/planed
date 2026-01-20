@@ -708,7 +708,7 @@ const CurriculumPlannerPage = () => {
             Unterrichtsplanung
           </h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-            Deutsch RS+ • Rheinland-Pfalz • Lehrplanbasiert
+            {selectedFach === 'deutsch' ? 'Deutsch' : 'Mathematik'} RS+ • Rheinland-Pfalz • Lehrplanbasiert
           </p>
         </div>
         {/* Gespeicherte Reihen Button */}
