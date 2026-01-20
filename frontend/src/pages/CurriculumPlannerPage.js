@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { 
   BookOpen, ChevronRight, Sparkles, FileText, HelpCircle, 
   Puzzle, ListChecks, RefreshCw, Download, Edit3, Trash2,
-  Plus, GripVertical, Check, X, Lightbulb, Target, Clock
+  Plus, GripVertical, Check, X, Lightbulb, Target, Clock,
+  Save, FolderOpen, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
@@ -41,6 +42,7 @@ const CurriculumPlannerPage = () => {
   
   // Generierte Inhalte
   const [unterrichtsreihe, setUnterrichtsreihe] = useState(null);
+  const [unterrichtsreiheId, setUnterrichtsreiheId] = useState(null);
   const [generatingReihe, setGeneratingReihe] = useState(false);
   
   // Material
@@ -51,6 +53,11 @@ const CurriculumPlannerPage = () => {
   // Bearbeitungsmodus
   const [editMode, setEditMode] = useState(false);
   const [editedStunden, setEditedStunden] = useState([]);
+  
+  // Gespeicherte Unterrichtsreihen
+  const [savedReihen, setSavedReihen] = useState([]);
+  const [showSavedReihen, setShowSavedReihen] = useState(false);
+  const [loadingSaved, setLoadingSaved] = useState(false);
 
   // Lade LP-Struktur
   useEffect(() => {
