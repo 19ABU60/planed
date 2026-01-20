@@ -2645,7 +2645,7 @@ Antworte IMMER nur mit validem JSON, ohne Erklärungen."""
         )
         
         # Parse JSON
-        import json
+        import json as json_lib
         response_text = response.strip()
         if response_text.startswith("```json"):
             response_text = response_text[7:]
