@@ -1572,39 +1572,6 @@ const CurriculumPlannerPage = () => {
                     Word
                   </button>
                   
-                  {/* LearningApps Button */}
-                  <button
-                    onClick={() => {
-                      const learningAppsUrls = {
-                        'quiz': 'https://learningapps.org/create.php?new=24',
-                        'lueckentext': 'https://learningapps.org/create.php?new=35',
-                        'zuordnung': 'https://learningapps.org/create.php?new=21',
-                        'raetsel': 'https://learningapps.org/create.php?new=32',
-                        'arbeitsblatt': 'https://learningapps.org/create.php?new=24'
-                      };
-                      const url = learningAppsUrls[generatedMaterial.typ] || 'https://learningapps.org/create.php';
-                      window.open(url, '_blank');
-                      toast.success('LearningApps geöffnet - erstellen Sie eine interaktive Version!');
-                    }}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.35rem',
-                      padding: '0.4rem 0.75rem',
-                      background: 'linear-gradient(135deg, #FF6B35, #F7931E)',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      fontSize: '0.8rem',
-                      fontWeight: '500',
-                      cursor: 'pointer'
-                    }}
-                    title="Interaktive Version auf LearningApps.org erstellen"
-                    data-testid="learningapps-btn"
-                  >
-                    🎮 Interaktiv
-                  </button>
-                  
                   {/* QR-Code Button */}
                   <button
                     onClick={async () => {
