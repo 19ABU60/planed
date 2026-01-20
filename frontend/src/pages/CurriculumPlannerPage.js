@@ -295,6 +295,9 @@ const CurriculumPlannerPage = () => {
   const [struktur, setStruktur] = useState(null);
   const [loading, setLoading] = useState(true);
   
+  // Fach-Auswahl
+  const [selectedFach, setSelectedFach] = useState('deutsch');
+  
   // Auswahl-State
   const [selectedKlasse, setSelectedKlasse] = useState('');
   const [selectedBereich, setSelectedBereich] = useState('');
@@ -339,14 +342,28 @@ const CurriculumPlannerPage = () => {
   // Arbeitsplan-Integration Modal
   const [showWorkplanModal, setShowWorkplanModal] = useState(false);
 
-  // Lade LP-Struktur und Schulbücher
+  // API-Pfade basierend auf Fach
+  const getApiPath = (endpoint) => {
+    const basePath = selectedFach === 'mathe' ? '/api/mathe' : '/api/lehrplan';
+    return `${API}${basePath}/${endpoint}`;
+  };
+
+  // Lade LP-Struktur basierend auf Fach
   useEffect(() => {
     const fetchStruktur = async () => {
+      setLoading(true);
       try {
-        const res = await axios.get(`${API}/api/lehrplan/struktur`, {
+        const apiPath = selectedFach === 'mathe' ? '/api/mathe/struktur' : '/api/lehrplan/struktur';
+        const res = await axios.get(`${API}${apiPath}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         setStruktur(res.data);
+        // Reset selections when changing subject
+        setSelectedKlasse('');
+        setSelectedBereich('');
+        setSelectedThema('');
+        setUnterrichtsreihe(null);
+        setAlternativen([]);
       } catch (err) {
         toast.error('Fehler beim Laden der Lehrplan-Struktur');
       } finally {
