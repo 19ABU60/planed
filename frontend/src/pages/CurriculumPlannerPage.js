@@ -355,7 +355,7 @@ const CurriculumPlannerPage = () => {
   // Lade Schulbücher wenn Klassenstufe gewählt
   useEffect(() => {
     const fetchSchulbuecher = async () => {
-      if (!selectedKlassenstufe) {
+      if (!selectedKlasse) {
         setSchulbuecher([]);
         return;
       }
@@ -363,7 +363,7 @@ const CurriculumPlannerPage = () => {
       try {
         const res = await axios.get(`${API}/api/lehrplan/schulbuecher`, {
           headers: { Authorization: `Bearer ${token}` },
-          params: { klassenstufe: selectedKlassenstufe }
+          params: { klassenstufe: selectedKlasse }
         });
         setSchulbuecher(res.data.schulbuecher || []);
       } catch (err) {
@@ -373,7 +373,7 @@ const CurriculumPlannerPage = () => {
       }
     };
     fetchSchulbuecher();
-  }, [selectedKlassenstufe, token]);
+  }, [selectedKlasse, token]);
 
   // Gespeicherte Unterrichtsreihen laden
   const fetchSavedReihen = async () => {
