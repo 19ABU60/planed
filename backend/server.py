@@ -2654,7 +2654,7 @@ Antworte IMMER nur mit validem JSON, ohne Erklärungen."""
         if response_text.endswith("```"):
             response_text = response_text[:-3]
         
-        material = json.loads(response_text.strip())
+        material = json_lib.loads(response_text.strip())
         
         return {
             "typ": request.material_typ,
