@@ -172,6 +172,74 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
     setSaving(false);
   };
 
+  // Excel Import
+  const handleExcelImport = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    if (!selectedClass) {
+      toast.error('Bitte zuerst eine Klasse auswählen');
+      return;
+    }
+    
+    // Check file type
+    const validTypes = [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-excel',
+      '.xlsx', '.xls'
+    ];
+    const isValidType = validTypes.some(t => file.type === t || file.name.endsWith('.xlsx') || file.name.endsWith('.xls'));
+    
+    if (!isValidType) {
+      toast.error('Bitte eine Excel-Datei (.xlsx oder .xls) auswählen');
+      return;
+    }
+    
+    setImporting(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+      const response = await fetch(`${API}/api/import/excel/${selectedClass}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.detail || 'Import fehlgeschlagen');
+      }
+      
+      toast.success(`${result.imported_count} Einträge importiert!`);
+      
+      // Reload data after import
+      const startDate = format(monthStart, 'yyyy-MM-dd');
+      const endDate = format(monthEnd, 'yyyy-MM-dd');
+      const refreshResponse = await authAxios.get(`/workplan/${selectedClass}?start=${startDate}&end=${endDate}`);
+      
+      const dataMap = {};
+      refreshResponse.data.forEach(item => {
+        const key = `${item.date}-${item.period}`;
+        dataMap[key] = item;
+      });
+      setWorkplanData(dataMap);
+      
+    } catch (error) {
+      toast.error('Import fehlgeschlagen: ' + error.message);
+      console.error('Import error:', error);
+    } finally {
+      setImporting(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   const navigateMonth = (direction) => {
     setCurrentMonth(prev => {
       const newDate = new Date(prev);
