@@ -2376,6 +2376,31 @@ async def get_thema_details(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@api_router.get("/lehrplan/schulbuecher")
+async def get_schulbuecher(
+    klassenstufe: Optional[str] = Query(None),
+    user_id: str = Depends(get_current_user)
+):
+    """Gibt verfügbare Schulbücher zurück, optional gefiltert nach Klassenstufe"""
+    try:
+        result = []
+        for buch_id, buch in SCHULBUECHER_DEUTSCH.items():
+            # Filter nach Klassenstufe wenn angegeben
+            if klassenstufe and buch["klassenstufe"] != "alle":
+                if klassenstufe not in buch["klassenstufe"]:
+                    continue
+            result.append({
+                "id": buch["id"],
+                "name": buch["name"],
+                "verlag": buch["verlag"],
+                "isbn": buch["isbn"],
+                "klassenstufe": buch["klassenstufe"],
+                "kapitel": list(buch["kapitel"].keys())
+            })
+        return {"schulbuecher": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @api_router.post("/lehrplan/unterrichtsreihe/generieren")
 async def generiere_unterrichtsreihe(
     request: UnterrichtsreiheRequest,
