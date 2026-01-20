@@ -2236,6 +2236,88 @@ LEHRPLAN_DEUTSCH_RLP = {
     }
 }
 
+# Schulbücher für Deutsch RS+ Rheinland-Pfalz
+SCHULBUECHER_DEUTSCH = {
+    "praxis_sprache_5": {
+        "id": "praxis_sprache_5",
+        "name": "Praxis Sprache 5",
+        "verlag": "Westermann",
+        "isbn": "978-3-14-122645-8",
+        "klassenstufe": "5/6",
+        "kapitel": {
+            "erzaehlen": {"name": "Erzählen", "seiten": "10-45", "themen": ["Erlebnisse erzählen", "Geschichten erfinden", "Bildergeschichten"]},
+            "berichten": {"name": "Berichten und Beschreiben", "seiten": "46-75", "themen": ["Unfallbericht", "Vorgangsbeschreibung", "Personenbeschreibung"]},
+            "rechtschreibung": {"name": "Richtig schreiben", "seiten": "180-220", "themen": ["Groß- und Kleinschreibung", "Dehnung und Schärfung", "s-Laute"]},
+            "grammatik": {"name": "Sprache untersuchen", "seiten": "140-179", "themen": ["Wortarten", "Satzglieder", "Zeitformen"]},
+            "lesen": {"name": "Lesen und Verstehen", "seiten": "76-110", "themen": ["Sachtexte", "Erzähltexte", "Gedichte"]}
+        }
+    },
+    "praxis_sprache_6": {
+        "id": "praxis_sprache_6",
+        "name": "Praxis Sprache 6",
+        "verlag": "Westermann",
+        "isbn": "978-3-14-122646-5",
+        "klassenstufe": "5/6",
+        "kapitel": {
+            "erzaehlen": {"name": "Erzählen und Gestalten", "seiten": "12-50", "themen": ["Fantasiegeschichten", "Nacherzählung", "Perspektivwechsel"]},
+            "berichten": {"name": "Informieren und Berichten", "seiten": "51-85", "themen": ["Zeitungsbericht", "Sachlicher Bericht", "Protokoll"]},
+            "rechtschreibung": {"name": "Richtig schreiben", "seiten": "190-235", "themen": ["Fremdwörter", "Getrennt- und Zusammenschreibung", "Zeichensetzung"]},
+            "grammatik": {"name": "Sprache untersuchen", "seiten": "150-189", "themen": ["Aktiv und Passiv", "Konjunktiv", "Nebensätze"]},
+            "lesen": {"name": "Lesen und Medien", "seiten": "86-120", "themen": ["Jugendbücher", "Sachtexte verstehen", "Medienkritik"]}
+        }
+    },
+    "praxis_sprache_7": {
+        "id": "praxis_sprache_7",
+        "name": "Praxis Sprache 7",
+        "verlag": "Westermann",
+        "isbn": "978-3-14-122647-2",
+        "klassenstufe": "7/8",
+        "kapitel": {
+            "argumentieren": {"name": "Argumentieren und Erörtern", "seiten": "10-55", "themen": ["Stellungnahme", "Pro-Contra", "Diskussion"]},
+            "beschreiben": {"name": "Beschreiben und Erklären", "seiten": "56-90", "themen": ["Inhaltsangabe", "Vorgangsbeschreibung", "Diagramme auswerten"]},
+            "rechtschreibung": {"name": "Richtig schreiben", "seiten": "200-240", "themen": ["Kommasetzung", "Zitieren", "Fachbegriffe"]},
+            "grammatik": {"name": "Sprache und Stil", "seiten": "160-199", "themen": ["Satzverknüpfungen", "Nominalstil", "Konjunktionen"]},
+            "lesen": {"name": "Literatur und Medien", "seiten": "91-130", "themen": ["Kurzgeschichten", "Balladen", "Filmanalyse"]}
+        }
+    },
+    "praxis_sprache_8": {
+        "id": "praxis_sprache_8",
+        "name": "Praxis Sprache 8",
+        "verlag": "Westermann",
+        "isbn": "978-3-14-122648-9",
+        "klassenstufe": "7/8",
+        "kapitel": {
+            "argumentieren": {"name": "Argumentieren und Überzeugen", "seiten": "12-60", "themen": ["Erörterung", "Leserbrief", "Debatte"]},
+            "analysieren": {"name": "Texte analysieren", "seiten": "61-100", "themen": ["Textanalyse", "Sprachliche Mittel", "Interpretation"]},
+            "rechtschreibung": {"name": "Richtig schreiben", "seiten": "210-245", "themen": ["Fremdwörter", "Fachsprache", "Korrekturlesen"]},
+            "grammatik": {"name": "Sprachbetrachtung", "seiten": "170-209", "themen": ["Sprachebenen", "Jugendsprache", "Sprachgeschichte"]},
+            "lesen": {"name": "Literatur verstehen", "seiten": "101-140", "themen": ["Novellen", "Drama", "Lyrik analysieren"]}
+        }
+    },
+    "deutschbuch_5": {
+        "id": "deutschbuch_5",
+        "name": "Deutschbuch 5",
+        "verlag": "Cornelsen",
+        "isbn": "978-3-06-062413-2",
+        "klassenstufe": "5/6",
+        "kapitel": {
+            "erzaehlen": {"name": "Erzählen", "seiten": "14-48", "themen": ["Erlebniserzählung", "Fantasiegeschichte", "Bildergeschichte"]},
+            "berichten": {"name": "Berichten", "seiten": "49-82", "themen": ["Bericht schreiben", "Beschreiben", "Informieren"]},
+            "rechtschreibung": {"name": "Rechtschreibung", "seiten": "200-245", "themen": ["Grundregeln", "Dehnung/Schärfung", "Groß/Klein"]},
+            "grammatik": {"name": "Grammatik", "seiten": "150-199", "themen": ["Wortarten", "Satzglieder", "Zeiten"]},
+            "lesen": {"name": "Lesen", "seiten": "83-120", "themen": ["Sachtexte", "Erzählungen", "Gedichte"]}
+        }
+    },
+    "kein_schulbuch": {
+        "id": "kein_schulbuch",
+        "name": "Ohne Schulbuchbezug",
+        "verlag": "",
+        "isbn": "",
+        "klassenstufe": "alle",
+        "kapitel": {}
+    }
+}
+
 # Pydantic Models für Unterrichtsplanung
 class UnterrichtsreiheRequest(BaseModel):
     klassenstufe: str
@@ -2243,6 +2325,7 @@ class UnterrichtsreiheRequest(BaseModel):
     thema_id: str
     niveau: str  # G, M, E
     stunden_anzahl: int = 6
+    schulbuch_id: Optional[str] = None  # Optional: Schulbuch-Referenz
 
 class MaterialRequest(BaseModel):
     thema: str
