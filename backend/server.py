@@ -1897,6 +1897,9 @@ from routes.faecher.mathe import router as mathe_router
 from routes.auth import router as auth_router
 from routes.lessons import router as lessons_router
 from routes.templates_todos import router as templates_todos_router
+from routes.statistics import router as statistics_router
+from routes.sharing import router as sharing_router
+from routes.research import router as research_router
 
 # Include routers
 app.include_router(deutsch_router)
@@ -1904,6 +1907,9 @@ app.include_router(mathe_router)
 app.include_router(auth_router)
 app.include_router(lessons_router)
 app.include_router(templates_todos_router)
+app.include_router(statistics_router)
+app.include_router(sharing_router)
+app.include_router(research_router)
 
 # ============== ROOT ==============
 
