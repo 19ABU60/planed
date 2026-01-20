@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Save, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Save, ChevronLeft, ChevronRight, Upload, FileSpreadsheet } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
+
+const API = process.env.REACT_APP_BACKEND_URL;
 
 const WEEKDAYS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 
