@@ -1406,6 +1406,164 @@ async def export_pdf(class_subject_id: str, user_id: str = Depends(get_current_u
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
 
+
+# ============== IMPORT ROUTES ==============
+
+@api_router.post("/import/excel/{class_subject_id}")
+async def import_excel(
+    class_subject_id: str, 
+    file: UploadFile = File(...),
+    user_id: str = Depends(get_current_user)
+):
+    """
+    Importiert einen Arbeitsplan aus einer Excel-Datei.
+    Erwartet Spalten: Datum, Stundenthema, Zielsetzung, Lehrplan, Begriffe, UE, Ausfall
+    """
+    from openpyxl import load_workbook
+    from io import BytesIO
+    
+    # Prüfe Klasse
+    class_info = await db.class_subjects.find_one({"id": class_subject_id, "user_id": user_id}, {"_id": 0})
+    if not class_info:
+        raise HTTPException(status_code=404, detail="Klasse nicht gefunden")
+    
+    # Lese Excel-Datei
+    try:
+        contents = await file.read()
+        wb = load_workbook(BytesIO(contents))
+        ws = wb.active
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Fehler beim Lesen der Excel-Datei: {str(e)}")
+    
+    # Finde Header-Zeile und Spalten-Mapping
+    header_row = 1
+    headers = {}
+    for col in range(1, ws.max_column + 1):
+        cell_value = str(ws.cell(row=header_row, column=col).value or "").lower().strip()
+        if "datum" in cell_value:
+            headers["date"] = col
+        elif "thema" in cell_value or "stundenthema" in cell_value:
+            headers["topic"] = col
+        elif "ziel" in cell_value:
+            headers["objective"] = col
+        elif "lehrplan" in cell_value or "curriculum" in cell_value:
+            headers["curriculum"] = col
+        elif "begriff" in cell_value or "key" in cell_value:
+            headers["key_terms"] = col
+        elif "ue" in cell_value or "einheit" in cell_value or "stunden" in cell_value:
+            headers["teaching_units"] = col
+        elif "ausfall" in cell_value or "cancel" in cell_value:
+            headers["cancelled"] = col
+    
+    if "date" not in headers:
+        raise HTTPException(status_code=400, detail="Spalte 'Datum' nicht gefunden. Bitte prüfen Sie die Excel-Datei.")
+    
+    # Importiere Zeilen
+    imported = 0
+    errors = []
+    
+    for row in range(2, ws.max_row + 1):
+        date_cell = ws.cell(row=row, column=headers["date"]).value
+        if not date_cell:
+            continue
+        
+        # Parse Datum
+        try:
+            if isinstance(date_cell, datetime):
+                date_str = date_cell.strftime("%Y-%m-%d")
+            elif isinstance(date_cell, str):
+                # Versuche verschiedene Formate
+                for fmt in ["%d.%m.%Y", "%d.%m.%y", "%Y-%m-%d", "%d/%m/%Y"]:
+                    try:
+                        date_str = datetime.strptime(date_cell.strip(), fmt).strftime("%Y-%m-%d")
+                        break
+                    except ValueError:
+                        continue
+                else:
+                    errors.append(f"Zeile {row}: Datum '{date_cell}' konnte nicht gelesen werden")
+                    continue
+            else:
+                errors.append(f"Zeile {row}: Ungültiges Datumsformat")
+                continue
+        except Exception as e:
+            errors.append(f"Zeile {row}: Fehler beim Parsen des Datums: {str(e)}")
+            continue
+        
+        # Hole Werte aus anderen Spalten
+        topic = str(ws.cell(row=row, column=headers.get("topic", 0)).value or "").strip() if headers.get("topic") else ""
+        objective = str(ws.cell(row=row, column=headers.get("objective", 0)).value or "").strip() if headers.get("objective") else ""
+        curriculum = str(ws.cell(row=row, column=headers.get("curriculum", 0)).value or "").strip() if headers.get("curriculum") else ""
+        key_terms = str(ws.cell(row=row, column=headers.get("key_terms", 0)).value or "").strip() if headers.get("key_terms") else ""
+        
+        # Teaching Units
+        teaching_units = 1
+        if headers.get("teaching_units"):
+            tu_val = ws.cell(row=row, column=headers["teaching_units"]).value
+            if tu_val:
+                try:
+                    teaching_units = int(tu_val)
+                except:
+                    pass
+        
+        # Cancelled
+        is_cancelled = False
+        if headers.get("cancelled"):
+            cancel_val = str(ws.cell(row=row, column=headers["cancelled"]).value or "").lower()
+            is_cancelled = cancel_val in ["x", "ja", "yes", "1", "true", "ausfall"]
+        
+        # Prüfe ob Eintrag existiert
+        existing = await db.lessons.find_one({
+            "class_subject_id": class_subject_id,
+            "user_id": user_id,
+            "date": date_str
+        })
+        
+        if existing:
+            # Update existierenden Eintrag
+            await db.lessons.update_one(
+                {"id": existing["id"]},
+                {"$set": {
+                    "topic": topic or existing.get("topic", ""),
+                    "objective": objective or existing.get("objective", ""),
+                    "curriculum_reference": curriculum or existing.get("curriculum_reference", ""),
+                    "key_terms": key_terms or existing.get("key_terms", ""),
+                    "teaching_units": teaching_units,
+                    "is_cancelled": is_cancelled,
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }}
+            )
+        else:
+            # Erstelle neuen Eintrag
+            lesson_doc = {
+                "id": str(uuid.uuid4()),
+                "user_id": user_id,
+                "class_subject_id": class_subject_id,
+                "date": date_str,
+                "period": None,
+                "topic": topic,
+                "objective": objective,
+                "curriculum_reference": curriculum,
+                "educational_standards": "",
+                "key_terms": key_terms,
+                "notes": "",
+                "teaching_units": teaching_units,
+                "is_cancelled": is_cancelled,
+                "cancellation_reason": "",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.lessons.insert_one(lesson_doc)
+        
+        imported += 1
+    
+    return {
+        "success": True,
+        "imported": imported,
+        "errors": errors[:10],  # Maximal 10 Fehler zurückgeben
+        "total_errors": len(errors)
+    }
+
+
 # ============== AI SUGGESTIONS ROUTE ==============
 
 @api_router.post("/ai/suggestions", response_model=AITopicSuggestionResponse)
