@@ -316,6 +316,12 @@ const CurriculumPlannerPage = () => {
   const [generatingReihe, setGeneratingReihe] = useState(false);
   const [currentSchulbuch, setCurrentSchulbuch] = useState(null);
   
+  // Alternative Unterrichtsreihen (temporär)
+  const [alternativen, setAlternativen] = useState([]);
+  const [activeAlternativeIndex, setActiveAlternativeIndex] = useState(0);
+  const [generatingAlternative, setGeneratingAlternative] = useState(false);
+  const [showAlternativeModal, setShowAlternativeModal] = useState(false);
+  
   // Material
   const [selectedMaterialTyp, setSelectedMaterialTyp] = useState('arbeitsblatt');
   const [generatedMaterial, setGeneratedMaterial] = useState(null);
