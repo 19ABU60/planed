@@ -1051,6 +1051,123 @@ async def export_pdf(class_subject_id: str, user_id: str = Depends(get_current_u
 
 # ============== IMPORT ROUTES ==============
 
+@api_router.post("/import/excel/preview")
+async def preview_excel_import(
+    file: UploadFile = File(...),
+    user_id: str = Depends(get_current_user)
+):
+    """
+    Vorschau des Excel-Imports ohne zu speichern.
+    Zeigt erkannte Spalten und Zeilen mit Beispieldaten.
+    """
+    from openpyxl import load_workbook
+    
+    try:
+        contents = await file.read()
+        wb = load_workbook(BytesIO(contents))
+        ws = wb.active
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Fehler beim Lesen der Excel-Datei: {str(e)}")
+    
+    # Finde Header-Zeile und Spalten-Mapping
+    header_row = 1
+    headers = {}
+    column_names = []
+    
+    for col in range(1, min(ws.max_column + 1, 20)):  # Max 20 Spalten
+        cell_value = str(ws.cell(row=header_row, column=col).value or "").strip()
+        cell_lower = cell_value.lower()
+        column_names.append(cell_value)
+        
+        # Versuche Spaltentyp zu erkennen
+        detected_type = None
+        if "datum" in cell_lower or "date" in cell_lower:
+            headers["date"] = col
+            detected_type = "date"
+        elif "thema" in cell_lower or "stundenthema" in cell_lower or "topic" in cell_lower:
+            headers["topic"] = col
+            detected_type = "topic"
+        elif "ziel" in cell_lower or "objective" in cell_lower:
+            headers["objective"] = col
+            detected_type = "objective"
+        elif "lehrplan" in cell_lower or "curriculum" in cell_lower or "standard" in cell_lower:
+            headers["curriculum"] = col
+            detected_type = "curriculum"
+        elif "begriff" in cell_lower or "key" in cell_lower:
+            headers["key_terms"] = col
+            detected_type = "key_terms"
+        elif "ue" in cell_lower or "einheit" in cell_lower or "stunden" in cell_lower:
+            headers["teaching_units"] = col
+            detected_type = "teaching_units"
+        elif "ausfall" in cell_lower or "cancel" in cell_lower:
+            headers["cancelled"] = col
+            detected_type = "cancelled"
+    
+    # Lese Beispielzeilen (max 10)
+    preview_rows = []
+    row_count = 0
+    valid_rows = 0
+    
+    for row in range(2, min(ws.max_row + 1, 52)):  # Max 50 Datenzeilen prüfen
+        row_data = {}
+        has_data = False
+        
+        for col in range(1, min(ws.max_column + 1, 20)):
+            cell_value = ws.cell(row=row, column=col).value
+            if cell_value is not None:
+                has_data = True
+                # Format datetime
+                if isinstance(cell_value, datetime):
+                    cell_value = cell_value.strftime("%d.%m.%Y")
+                row_data[f"col_{col}"] = str(cell_value)[:100]  # Max 100 Zeichen
+        
+        if has_data:
+            row_count += 1
+            # Prüfe ob gültiges Datum
+            if headers.get("date"):
+                date_val = ws.cell(row=row, column=headers["date"]).value
+                if date_val:
+                    valid_rows += 1
+            
+            if len(preview_rows) < 10:
+                preview_rows.append({
+                    "row_number": row,
+                    "data": row_data
+                })
+    
+    # Erstelle Spalten-Info
+    columns_info = []
+    for idx, name in enumerate(column_names, 1):
+        detected = None
+        for key, col in headers.items():
+            if col == idx:
+                detected = key
+                break
+        columns_info.append({
+            "column": idx,
+            "name": name,
+            "detected_as": detected
+        })
+    
+    return {
+        "file_name": file.filename,
+        "total_rows": row_count,
+        "valid_rows": valid_rows,
+        "columns": columns_info,
+        "detected_columns": {
+            "date": headers.get("date"),
+            "topic": headers.get("topic"),
+            "objective": headers.get("objective"),
+            "curriculum": headers.get("curriculum"),
+            "key_terms": headers.get("key_terms"),
+            "teaching_units": headers.get("teaching_units"),
+            "cancelled": headers.get("cancelled")
+        },
+        "has_date_column": "date" in headers,
+        "preview_rows": preview_rows
+    }
+
+
 @api_router.post("/import/excel/{class_subject_id}")
 async def import_excel(
     class_subject_id: str, 
