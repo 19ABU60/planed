@@ -83,12 +83,36 @@ const WorkplanModal = ({ isOpen, onClose, unterrichtsreihe, stunden, token, onSu
     }
   }, [selectedClass, classes]);
 
-  // Hilfsfunktion: Hole die erste Stunde aus dem Stundenplan für einen Wochentag
-  const getFirstPeriodForDay = (schedule, dayIndex) => {
+  // Hilfsfunktion: Generiere alle geplanten Unterrichtsstunden ab Startdatum
+  const getScheduledSlots = (schedule, start, count) => {
     const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    const dayName = days[dayIndex];
-    const periods = schedule?.[dayName] || [];
-    return periods.length > 0 ? periods[0] : 1;
+    const slots = [];
+    const currentDate = new Date(start);
+    
+    // Maximal 52 Wochen vorausschauen
+    const maxDays = 365;
+    let daysChecked = 0;
+    
+    while (slots.length < count && daysChecked < maxDays) {
+      const dayIndex = currentDate.getDay();
+      const dayName = days[dayIndex];
+      const periods = schedule?.[dayName] || [];
+      
+      // Füge alle Stunden dieses Tages hinzu
+      for (const period of periods) {
+        if (slots.length >= count) break;
+        slots.push({
+          date: currentDate.toISOString().split('T')[0],
+          period: period
+        });
+      }
+      
+      // Nächster Tag
+      currentDate.setDate(currentDate.getDate() + 1);
+      daysChecked++;
+    }
+    
+    return slots;
   };
 
   const handleSubmit = async () => {
@@ -97,21 +121,29 @@ const WorkplanModal = ({ isOpen, onClose, unterrichtsreihe, stunden, token, onSu
       return;
     }
 
+    // Prüfe ob Schedule vorhanden
+    if (!selectedClassData?.schedule || Object.keys(selectedClassData.schedule).length === 0) {
+      toast.error('Kein Stundenplan für diese Klasse hinterlegt');
+      return;
+    }
+
     setLoading(true);
     try {
+      // Hole alle geplanten Zeitslots basierend auf dem Stundenplan der Klasse
+      const scheduledSlots = getScheduledSlots(selectedClassData.schedule, startDate, stunden.length);
+      
+      if (scheduledSlots.length < stunden.length) {
+        toast.error('Nicht genug Unterrichtsstunden im Stundenplan gefunden');
+        setLoading(false);
+        return;
+      }
+
       // Erstelle Workplan-Einträge für jede Stunde
       const entries = stunden.map((stunde, index) => {
-        // Berechne Datum (eine Woche pro Stunde)
-        const date = new Date(startDate);
-        date.setDate(date.getDate() + (index * 7));
-        
-        // Hole die richtige Stundennummer aus dem Stundenplan
-        const dayOfWeek = date.getDay();
-        const period = getFirstPeriodForDay(selectedClassData?.schedule, dayOfWeek);
-        
+        const slot = scheduledSlots[index];
         return {
-          date: date.toISOString().split('T')[0],
-          period: period,
+          date: slot.date,
+          period: slot.period,
           unterrichtseinheit: unterrichtsreihe?.titel || '',
           lehrplan: `Stunde ${stunde.nummer}: ${stunde.titel}`,
           stundenthema: stunde.inhalt?.substring(0, 200) || ''
@@ -119,6 +151,7 @@ const WorkplanModal = ({ isOpen, onClose, unterrichtsreihe, stunden, token, onSu
       });
 
       console.log('Sending entries:', entries);
+      console.log('Schedule used:', selectedClassData?.schedule);
       console.log('To class:', selectedClass);
 
       // Speichere alle Einträge
