@@ -1941,13 +1941,11 @@ async def translate_text(text: str = "", target_lang: str = "de", user_id: str =
 
 # ============== LEHRPLAN-BASIERTE UNTERRICHTSPLANUNG ==============
 
-# Lehrplan Datenbank für Deutsch RS+ RLP
-LEHRPLAN_DEUTSCH_RLP = {
-    "5/6": {
-        "sprechen_zuhoeren": {
-            "name": "Sprechen & Zuhören",
-            "themen": [
-                {
+# Import der Fach-Daten aus Modulen
+from data.lehrplan_deutsch_rlp import LEHRPLAN_DEUTSCH_RLP
+from data.schulbuecher_deutsch import SCHULBUECHER_DEUTSCH
+
+# Pydantic Models für Unterrichtsplanung (bleiben hier wegen Abhängigkeiten)
                     "id": "gespraechsregeln",
                     "name": "Gesprächsregeln & aktiv zuhören",
                     "G": "Gesprächsregeln einhalten; aktiv zuhören; kurze Beiträge",
