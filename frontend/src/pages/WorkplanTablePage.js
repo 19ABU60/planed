@@ -28,6 +28,9 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [importPreview, setImportPreview] = useState(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [pendingFile, setPendingFile] = useState(null);
   const fileInputRef = useRef(null);
   
   // Column resize state
