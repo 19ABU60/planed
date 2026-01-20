@@ -29,6 +29,7 @@ const MATERIAL_TYPEN = [
 const WorkplanModal = ({ isOpen, onClose, unterrichtsreihe, stunden, token, onSuccess }) => {
   const [classes, setClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState('');
+  const [selectedClassData, setSelectedClassData] = useState(null);
   const [startDate, setStartDate] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingClasses, setLoadingClasses] = useState(true);
@@ -74,6 +75,22 @@ const WorkplanModal = ({ isOpen, onClose, unterrichtsreihe, stunden, token, onSu
     }
   }, [isOpen, token]);
 
+  // Wenn Klasse gewählt wird, speichere die Klassendaten
+  useEffect(() => {
+    if (selectedClass) {
+      const classData = classes.find(c => c.id === selectedClass);
+      setSelectedClassData(classData);
+    }
+  }, [selectedClass, classes]);
+
+  // Hilfsfunktion: Hole die erste Stunde aus dem Stundenplan für einen Wochentag
+  const getFirstPeriodForDay = (schedule, dayIndex) => {
+    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayName = days[dayIndex];
+    const periods = schedule?.[dayName] || [];
+    return periods.length > 0 ? periods[0] : 1;
+  };
+
   const handleSubmit = async () => {
     if (!selectedClass || !startDate) {
       toast.error('Bitte Klasse und Startdatum wählen');
@@ -84,13 +101,17 @@ const WorkplanModal = ({ isOpen, onClose, unterrichtsreihe, stunden, token, onSu
     try {
       // Erstelle Workplan-Einträge für jede Stunde
       const entries = stunden.map((stunde, index) => {
-        // Berechne Datum (eine Woche pro Stunde als Vereinfachung)
+        // Berechne Datum (eine Woche pro Stunde)
         const date = new Date(startDate);
         date.setDate(date.getDate() + (index * 7));
         
+        // Hole die richtige Stundennummer aus dem Stundenplan
+        const dayOfWeek = date.getDay();
+        const period = getFirstPeriodForDay(selectedClassData?.schedule, dayOfWeek);
+        
         return {
           date: date.toISOString().split('T')[0],
-          period: 1, // Standard: 1. Stunde
+          period: period,
           unterrichtseinheit: unterrichtsreihe?.titel || '',
           lehrplan: `Stunde ${stunde.nummer}: ${stunde.titel}`,
           stundenthema: stunde.inhalt?.substring(0, 200) || ''
