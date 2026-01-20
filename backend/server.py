@@ -2537,7 +2537,6 @@ Wichtig:
         if response_text.endswith("```"):
             response_text = response_text[:-3]
         
-        import json as json_lib
         unterrichtsreihe = json_lib.loads(response_text.strip())
         
         # Speichere in Datenbank
