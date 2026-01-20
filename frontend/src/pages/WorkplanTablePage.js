@@ -21,12 +21,14 @@ const MAX_WIDTH = 600;
 const DEFAULT_ROW_HEIGHT = 50;
 
 const WorkplanTablePage = ({ classes, schoolYears }) => {
-  const { authAxios } = useAuth();
+  const { authAxios, token } = useAuth();
   const [selectedClass, setSelectedClass] = useState(classes[0]?.id || '');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [workplanData, setWorkplanData] = useState({});
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef(null);
   
   // Column resize state
   const [columnWidths, setColumnWidths] = useState(() => {
