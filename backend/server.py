@@ -34,6 +34,10 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
+# Set database for services module
+from services.auth import set_database
+set_database(db)
+
 # JWT Configuration
 JWT_SECRET = os.environ.get('JWT_SECRET', 'planed-secret-key-2025')
 JWT_ALGORITHM = "HS256"
