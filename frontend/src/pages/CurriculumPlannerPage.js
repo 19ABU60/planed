@@ -404,11 +404,21 @@ const CurriculumPlannerPage = () => {
   const fetchSavedReihen = async () => {
     setLoadingSaved(true);
     try {
-      const apiPath = selectedFach === 'mathe' ? '/api/mathe/unterrichtsreihen' : '/api/lehrplan/unterrichtsreihen';
-      const res = await axios.get(`${API}${apiPath}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setSavedReihen(res.data.unterrichtsreihen || []);
+      // Lade Reihen von beiden Fächern
+      const [deutschRes, matheRes] = await Promise.all([
+        axios.get(`${API}/api/lehrplan/unterrichtsreihen`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }).catch(() => ({ data: { unterrichtsreihen: [] } })),
+        axios.get(`${API}/api/mathe/unterrichtsreihen`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }).catch(() => ({ data: { unterrichtsreihen: [] } }))
+      ]);
+      
+      // Füge Fach-Info hinzu
+      const deutschReihen = (deutschRes.data.unterrichtsreihen || []).map(r => ({ ...r, fach: 'deutsch' }));
+      const matheReihen = (matheRes.data.unterrichtsreihen || []).map(r => ({ ...r, fach: 'mathe' }));
+      
+      setSavedReihen([...deutschReihen, ...matheReihen]);
     } catch (err) {
       console.error('Fehler beim Laden der gespeicherten Reihen');
     } finally {
@@ -418,17 +428,24 @@ const CurriculumPlannerPage = () => {
 
   // Gespeicherte Reihe laden
   const loadSavedReihe = (reihe) => {
-    setSelectedKlasse(reihe.klassenstufe);
+    // Zuerst das Fach setzen
+    const fach = reihe.fach || 'deutsch';
+    setSelectedFach(fach);
+    
+    // Dann die Auswahl setzen (mit kleiner Verzögerung, damit Struktur geladen wird)
     setTimeout(() => {
-      setSelectedBereich(reihe.kompetenzbereich);
+      setSelectedKlasse(reihe.klassenstufe);
       setTimeout(() => {
-        setSelectedThema(reihe.thema_id);
-        setSelectedNiveau(reihe.niveau);
-        setUnterrichtsreihe(reihe.unterrichtsreihe);
-        setUnterrichtsreiheId(reihe.id);
-        setEditedStunden(reihe.unterrichtsreihe?.stunden || []);
-        setShowSavedReihen(false);
-        toast.success('Unterrichtsreihe geladen');
+        setSelectedBereich(reihe.kompetenzbereich);
+        setTimeout(() => {
+          setSelectedThema(reihe.thema_id);
+          setSelectedNiveau(reihe.niveau);
+          setUnterrichtsreihe(reihe.unterrichtsreihe);
+          setUnterrichtsreiheId(reihe.id);
+          setEditedStunden(reihe.unterrichtsreihe?.stunden || []);
+          setShowSavedReihen(false);
+          toast.success(`${fach === 'mathe' ? 'Mathe' : 'Deutsch'}-Unterrichtsreihe geladen`);
+        }, 100);
       }, 100);
     }, 100);
   };
