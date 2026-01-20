@@ -419,12 +419,16 @@ async def delete_unterrichtsreihe(reihe_id: str, user_id: str = Depends(get_curr
 
 from fastapi.responses import StreamingResponse
 from io import BytesIO
+from pydantic import BaseModel as PydanticBaseModel
+
+class WordExportRequest(PydanticBaseModel):
+    material_typ: str
+    titel: str
+    inhalt: dict
 
 @router.post("/material/export/word")
 async def export_material_to_word(
-    material_typ: str,
-    titel: str,
-    inhalt: dict,
+    request: WordExportRequest,
     user_id: str = Depends(get_current_user)
 ):
     """
@@ -435,6 +439,10 @@ async def export_material_to_word(
     from docx.shared import Inches, Pt, Cm
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.enum.style import WD_STYLE_TYPE
+    
+    material_typ = request.material_typ
+    titel = request.titel
+    inhalt = request.inhalt
     
     doc = Document()
     
