@@ -497,6 +497,15 @@ const CurriculumPlannerPage = () => {
       setUnterrichtsreiheId(res.data.id);
       setCurrentSchulbuch(res.data.schulbuch);
       setEditedStunden(res.data.unterrichtsreihe.stunden || []);
+      // Speichere als erste Alternative
+      setAlternativen([{
+        id: res.data.id,
+        schulbuch: res.data.schulbuch,
+        schulbuch_id: selectedSchulbuch,
+        unterrichtsreihe: res.data.unterrichtsreihe,
+        stunden: res.data.unterrichtsreihe.stunden || []
+      }]);
+      setActiveAlternativeIndex(0);
       // Aktualisiere gespeicherte Liste
       fetchSavedReihen();
       toast.success('Unterrichtsreihe erstellt und gespeichert!');
@@ -505,6 +514,102 @@ const CurriculumPlannerPage = () => {
     } finally {
       setGeneratingReihe(false);
     }
+  };
+
+  // Alternative Unterrichtsreihe mit anderem Schulbuch generieren
+  const generiereAlternative = async (alternativeSchulbuchId) => {
+    if (!selectedKlasse || !selectedBereich || !selectedThema) {
+      toast.error('Bitte alle Felder auswählen');
+      return;
+    }
+    
+    // Prüfe ob max. 4 Alternativen
+    if (alternativen.length >= 4) {
+      toast.error('Maximal 4 Alternativen möglich. Bitte eine löschen.');
+      return;
+    }
+    
+    // Prüfe ob dieses Schulbuch schon verwendet wurde
+    if (alternativen.some(a => a.schulbuch_id === alternativeSchulbuchId)) {
+      toast.error('Dieses Schulbuch wurde bereits verwendet');
+      return;
+    }
+    
+    setGeneratingAlternative(true);
+    setShowAlternativeModal(false);
+    
+    try {
+      const res = await axios.post(
+        `${API}/api/lehrplan/unterrichtsreihe/generieren`,
+        {
+          klassenstufe: selectedKlasse,
+          kompetenzbereich: selectedBereich,
+          thema_id: selectedThema,
+          niveau: selectedNiveau,
+          stunden_anzahl: stundenAnzahl,
+          schulbuch_id: alternativeSchulbuchId
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      const neueAlternative = {
+        id: res.data.id,
+        schulbuch: res.data.schulbuch,
+        schulbuch_id: alternativeSchulbuchId,
+        unterrichtsreihe: res.data.unterrichtsreihe,
+        stunden: res.data.unterrichtsreihe.stunden || []
+      };
+      
+      const neueAlternativen = [...alternativen, neueAlternative];
+      setAlternativen(neueAlternativen);
+      
+      // Wechsle zur neuen Alternative
+      const neuerIndex = neueAlternativen.length - 1;
+      setActiveAlternativeIndex(neuerIndex);
+      setUnterrichtsreihe(neueAlternative.unterrichtsreihe);
+      setCurrentSchulbuch(neueAlternative.schulbuch);
+      setEditedStunden(neueAlternative.stunden);
+      
+      fetchSavedReihen();
+      toast.success(`Alternative mit ${res.data.schulbuch || 'ohne Schulbuch'} erstellt!`);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Fehler bei der Generierung');
+    } finally {
+      setGeneratingAlternative(false);
+    }
+  };
+
+  // Zwischen Alternativen wechseln
+  const wechsleZuAlternative = (index) => {
+    if (index < 0 || index >= alternativen.length) return;
+    
+    const alt = alternativen[index];
+    setActiveAlternativeIndex(index);
+    setUnterrichtsreihe(alt.unterrichtsreihe);
+    setUnterrichtsreiheId(alt.id);
+    setCurrentSchulbuch(alt.schulbuch);
+    setEditedStunden(alt.stunden);
+    setSelectedSchulbuch(alt.schulbuch_id);
+  };
+
+  // Alternative löschen
+  const loescheAlternative = (index) => {
+    if (alternativen.length <= 1) {
+      toast.error('Mindestens eine Version muss erhalten bleiben');
+      return;
+    }
+    
+    const neueAlternativen = alternativen.filter((_, i) => i !== index);
+    setAlternativen(neueAlternativen);
+    
+    // Wenn die aktive gelöscht wurde, zur ersten wechseln
+    if (index === activeAlternativeIndex) {
+      wechsleZuAlternative(0);
+    } else if (index < activeAlternativeIndex) {
+      setActiveAlternativeIndex(activeAlternativeIndex - 1);
+    }
+    
+    toast.success('Alternative entfernt');
   };
 
   // Material generieren
