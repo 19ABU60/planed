@@ -190,8 +190,11 @@ const CurriculumPlannerPage = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setUnterrichtsreihe(res.data.unterrichtsreihe);
+      setUnterrichtsreiheId(res.data.id);
       setEditedStunden(res.data.unterrichtsreihe.stunden || []);
-      toast.success('Unterrichtsreihe erstellt!');
+      // Aktualisiere gespeicherte Liste
+      fetchSavedReihen();
+      toast.success('Unterrichtsreihe erstellt und gespeichert!');
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Fehler bei der Generierung');
     } finally {
