@@ -501,8 +501,11 @@ const CurriculumPlannerPage = () => {
     
     setGeneratingReihe(true);
     try {
+      const apiPath = selectedFach === 'mathe' 
+        ? '/api/mathe/unterrichtsreihe/generieren' 
+        : '/api/lehrplan/unterrichtsreihe/generieren';
       const res = await axios.post(
-        `${API}/api/lehrplan/unterrichtsreihe/generieren`,
+        `${API}${apiPath}`,
         {
           klassenstufe: selectedKlasse,
           kompetenzbereich: selectedBereich,
