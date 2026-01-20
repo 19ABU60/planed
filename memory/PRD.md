@@ -175,10 +175,14 @@ PlanEd ist eine Web-Anwendung für Lehrer zur Verwaltung von Arbeitsplänen, die
 
 ### 20.01.2026 - Schulbuch-Integration für KI-Unterrichtsreihen ✅
 - **Neues Feature:** Schulbuch-Dropdown bei der Unterrichtsreihen-Generierung
-- **Verfügbare Schulbücher:**
-  - Praxis Sprache 5, 6, 7, 8 (Westermann)
-  - Deutschbuch 5 (Cornelsen)
-  - "Ohne Schulbuchbezug" Option
+- **31 Schulbücher integriert:**
+  | Verlag | Reihe | Klassenstufen |
+  |--------|-------|---------------|
+  | Westermann | Praxis Sprache | 5-10 |
+  | Schroedel | Wortstark | 5-10 |
+  | Schöningh | P.A.U.L. D. | 5-10 |
+  | Klett | Deutsch kompetent | 5-10 |
+  | Cornelsen | Deutschbuch | 5-10 |
 - **Funktionsweise:**
   - KI generiert Unterrichtsreihen mit konkreten Seitenverweisen (z.B. "S. 52-53, Aufgabe 1-3")
   - Schulbuch-Kapitel werden automatisch basierend auf Kompetenzbereich vorgeschlagen
