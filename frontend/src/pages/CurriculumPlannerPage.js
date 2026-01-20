@@ -266,14 +266,111 @@ const CurriculumPlannerPage = () => {
   return (
     <div className="page-content">
       {/* Header */}
-      <div style={{ marginBottom: '1.5rem' }}>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '0.25rem' }}>
-          Unterrichtsplanung
-        </h2>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-          Deutsch RS+ • Rheinland-Pfalz • Lehrplanbasiert
-        </p>
+      <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '0.25rem' }}>
+            Unterrichtsplanung
+          </h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+            Deutsch RS+ • Rheinland-Pfalz • Lehrplanbasiert
+          </p>
+        </div>
+        {/* Gespeicherte Reihen Button */}
+        <button
+          onClick={() => setShowSavedReihen(!showSavedReihen)}
+          style={{
+            padding: '0.4rem 0.75rem',
+            fontSize: '0.75rem',
+            background: showSavedReihen ? 'var(--primary)' : 'var(--bg-subtle)',
+            color: showSavedReihen ? 'white' : 'var(--text-default)',
+            border: '1px solid var(--border-default)',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.35rem'
+          }}
+        >
+          <FolderOpen size={14} />
+          Meine Reihen ({savedReihen.length})
+          {showSavedReihen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </button>
       </div>
+
+      {/* Gespeicherte Unterrichtsreihen (aufklappbar) */}
+      {showSavedReihen && (
+        <div className="card" style={{ padding: '1rem', marginBottom: '1rem' }}>
+          <h4 style={{ fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.75rem' }}>
+            Gespeicherte Unterrichtsreihen
+          </h4>
+          {loadingSaved ? (
+            <div style={{ textAlign: 'center', padding: '1rem' }}>
+              <RefreshCw size={20} className="spin" />
+            </div>
+          ) : savedReihen.length === 0 ? (
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', padding: '1rem' }}>
+              Noch keine Unterrichtsreihen gespeichert.
+            </p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '250px', overflowY: 'auto' }}>
+              {savedReihen.map((reihe) => (
+                <div 
+                  key={reihe.id}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '0.5rem 0.75rem',
+                    background: 'var(--bg-subtle)',
+                    borderRadius: '6px',
+                    fontSize: '0.8rem'
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: '500', marginBottom: '0.15rem' }}>
+                      {reihe.unterrichtsreihe?.titel || 'Ohne Titel'}
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                      Kl. {reihe.klassenstufe} • {NIVEAU_LABELS[reihe.niveau]?.name || reihe.niveau}
+                      {reihe.created_at && ` • ${new Date(reihe.created_at).toLocaleDateString('de-DE')}`}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.35rem' }}>
+                    <button
+                      onClick={() => loadSavedReihe(reihe)}
+                      style={{
+                        padding: '0.25rem 0.5rem',
+                        fontSize: '0.7rem',
+                        background: 'var(--primary)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Laden
+                    </button>
+                    <button
+                      onClick={() => deleteSavedReihe(reihe.id)}
+                      style={{
+                        padding: '0.25rem 0.5rem',
+                        fontSize: '0.7rem',
+                        background: 'rgba(239, 68, 68, 0.1)',
+                        color: '#ef4444',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Auswahl-Bereich */}
       <div className="card" style={{ padding: '1rem', marginBottom: '1.5rem' }}>
