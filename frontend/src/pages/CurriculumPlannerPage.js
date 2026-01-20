@@ -1554,6 +1554,92 @@ const CurriculumPlannerPage = () => {
                     <Download size={14} />
                     Word
                   </button>
+                  
+                  {/* LearningApps Button */}
+                  <button
+                    onClick={() => {
+                      const learningAppsUrls = {
+                        'quiz': 'https://learningapps.org/create.php?new=24',
+                        'lueckentext': 'https://learningapps.org/create.php?new=35',
+                        'zuordnung': 'https://learningapps.org/create.php?new=21',
+                        'raetsel': 'https://learningapps.org/create.php?new=32',
+                        'arbeitsblatt': 'https://learningapps.org/create.php?new=24'
+                      };
+                      const url = learningAppsUrls[generatedMaterial.typ] || 'https://learningapps.org/create.php';
+                      window.open(url, '_blank');
+                      toast.success('LearningApps geöffnet - erstellen Sie eine interaktive Version!');
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      padding: '0.4rem 0.75rem',
+                      background: 'linear-gradient(135deg, #FF6B35, #F7931E)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '0.8rem',
+                      fontWeight: '500',
+                      cursor: 'pointer'
+                    }}
+                    title="Interaktive Version auf LearningApps.org erstellen"
+                    data-testid="learningapps-btn"
+                  >
+                    🎮 Interaktiv
+                  </button>
+                  
+                  {/* QR-Code Button */}
+                  <button
+                    onClick={async () => {
+                      try {
+                        // Generiere eine URL für das Material (Placeholder - könnte später auf gespeichertes Material zeigen)
+                        const materialUrl = `${window.location.origin}/shared-material/${Date.now()}`;
+                        
+                        const authToken = localStorage.getItem('planed_token');
+                        const response = await fetch(`${API}/api/lehrplan/material/qrcode?url=${encodeURIComponent(materialUrl)}&titel=${encodeURIComponent(generatedMaterial.material.titel || 'Material')}`, {
+                          method: 'POST',
+                          headers: {
+                            'Authorization': `Bearer ${authToken}`
+                          }
+                        });
+                        
+                        if (response.ok) {
+                          const blob = await response.blob();
+                          const url = window.URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `QRCode_${generatedMaterial.material.titel || 'Material'}.png`;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          window.URL.revokeObjectURL(url);
+                          toast.success('QR-Code heruntergeladen! Fügen Sie ihn in Ihr Material ein.');
+                        } else {
+                          toast.error('QR-Code Generierung fehlgeschlagen');
+                        }
+                      } catch (error) {
+                        console.error('QR error:', error);
+                        toast.error('Fehler: ' + error.message);
+                      }
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      padding: '0.4rem 0.75rem',
+                      background: 'var(--bg-default)',
+                      color: 'var(--text-default)',
+                      border: '1px solid var(--border-default)',
+                      borderRadius: '6px',
+                      fontSize: '0.8rem',
+                      fontWeight: '500',
+                      cursor: 'pointer'
+                    }}
+                    title="QR-Code für mobile Nutzung (iPad/Tablet)"
+                    data-testid="qrcode-btn"
+                  >
+                    📱 QR-Code
+                  </button>
                 </div>
 
                 {/* Arbeitsblatt */}
