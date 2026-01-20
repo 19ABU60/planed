@@ -165,10 +165,16 @@ PlanEd ist eine Web-Anwendung für Lehrer zur Verwaltung von Arbeitsplänen, die
 - [x] Auth-Routes ausgelagert
 - [x] Lessons/Workplan-Routes ausgelagert
 - [x] Templates/Todos-Routes ausgelagert
+- [x] Statistics-Routes ausgelagert
+- [x] Sharing/Notifications-Routes ausgelagert
+- [x] Research-Routes ausgelagert
+- [x] **Backend-Refactoring ABGESCHLOSSEN** (server.py: 1378 Zeilen)
 
-### Phase 1.5 (Backend-Refactoring - Fortsetzung)
-- [ ] Weitere Routes auslagern (Holidays, Comments, Statistics, Research)
-- [ ] Ziel: server.py unter 1500 Zeilen
+### Phase 2 (Mittlere Priorität)
+- [ ] PWA Auto-Update-Benachrichtigung (Safari-Caching-Problem)
+- [ ] E-Mail-Benachrichtigungen
+- [ ] Materialien mit Lektionen verknüpfen
+- [ ] Kommentare für geteilte Pläne
 
 ### Phase 2 (Mittlere Priorität)
 - [ ] PWA Auto-Update-Benachrichtigung (Safari-Caching-Problem)
