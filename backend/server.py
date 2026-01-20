@@ -2564,7 +2564,7 @@ Wichtig:
             }
         }
         
-    except json.JSONDecodeError as e:
+    except json_lib.JSONDecodeError as e:
         logger.error(f"JSON Parse error: {e}")
         raise HTTPException(status_code=500, detail="Fehler beim Parsen der KI-Antwort")
     except asyncio.TimeoutError:
@@ -2664,7 +2664,7 @@ Antworte IMMER nur mit validem JSON, ohne Erklärungen."""
             "material": material
         }
         
-    except json.JSONDecodeError as e:
+    except json_lib.JSONDecodeError as e:
         logger.error(f"JSON Parse error: {e}")
         raise HTTPException(status_code=500, detail="Fehler beim Parsen der KI-Antwort")
     except asyncio.TimeoutError:
