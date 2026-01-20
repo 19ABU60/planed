@@ -968,6 +968,23 @@ const CurriculumPlannerPage = () => {
                           <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', margin: '0.25rem 0' }}>
                             {stunde.inhalt?.substring(0, 150)}...
                           </p>
+                          {/* Schulbuch-Seiten anzeigen */}
+                          {stunde.schulbuch_seiten && (
+                            <div style={{ 
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                              padding: '0.15rem 0.4rem',
+                              background: 'rgba(139, 92, 246, 0.15)',
+                              borderRadius: '3px',
+                              fontSize: '0.65rem',
+                              color: 'var(--primary)',
+                              marginBottom: '0.25rem'
+                            }}>
+                              <BookOpen size={10} />
+                              {stunde.schulbuch_seiten}
+                            </div>
+                          )}
                           {stunde.methoden?.length > 0 && (
                             <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
                               {stunde.methoden.map((m, i) => (
