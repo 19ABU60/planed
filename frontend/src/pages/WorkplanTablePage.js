@@ -447,6 +447,36 @@ const WorkplanTablePage = ({ classes, schoolYears }) => {
             ↺ Reset
           </button>
           
+          {/* Excel Import Button */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept=".xlsx,.xls"
+            onChange={handleExcelImport}
+            style={{ display: 'none' }}
+            data-testid="excel-import-input"
+          />
+          <button 
+            className="btn btn-secondary"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importing || !selectedClass}
+            style={{ 
+              fontSize: '0.85rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem'
+            }}
+            title="Excel-Datei importieren"
+            data-testid="excel-import-btn"
+          >
+            {importing ? (
+              <span className="spinner" style={{ width: '16px', height: '16px' }} />
+            ) : (
+              <FileSpreadsheet size={16} />
+            )}
+            Excel Import
+          </button>
+          
           <button className="btn btn-primary" onClick={saveWorkplan} disabled={saving} data-testid="save-workplan-btn">
             {saving ? <span className="spinner" /> : <Save size={18} />} Speichern
           </button>
