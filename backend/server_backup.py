@@ -1,0 +1,3083 @@
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, UploadFile, File, status, Query
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from dotenv import load_dotenv
+from starlette.middleware.cors import CORSMiddleware
+from motor.motor_asyncio import AsyncIOMotorClient
+from fastapi.responses import StreamingResponse
+import os
+import logging
+from pathlib import Path
+from pydantic import BaseModel, Field, EmailStr
+from typing import List, Optional, Dict, Any
+import uuid
+from datetime import datetime, timezone, timedelta, date
+import jwt
+import bcrypt
+from io import BytesIO
+import httpx
+import asyncio
+
+# Document exports
+from docx import Document
+from docx.shared import Inches, Pt
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from reportlab.lib.units import cm
+
+ROOT_DIR = Path(__file__).parent
+load_dotenv(ROOT_DIR / '.env')
+
+# MongoDB connection
+mongo_url = os.environ['MONGO_URL']
+client = AsyncIOMotorClient(mongo_url)
+db = client[os.environ['DB_NAME']]
+
+# JWT Configuration
+JWT_SECRET = os.environ.get('JWT_SECRET', 'planed-secret-key-2025')
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRATION_HOURS = 24
+
+# Invitation Code for Registration
+INVITATION_CODE = os.environ.get('INVITATION_CODE', 'LASP2026')
+
+# Create the main app
+app = FastAPI(title="PlanEd API", version="2.0.0")
+
+# Create a router with the /api prefix
+api_router = APIRouter(prefix="/api")
+
+# Security
+security = HTTPBearer()
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+# ============== GERMAN SCHOOL HOLIDAYS DATA ==============
+GERMAN_HOLIDAYS_2025_2026 = {
+    "bayern": [
+        {"name": "Herbstferien 2025", "start": "2025-10-27", "end": "2025-10-31"},
+        {"name": "Weihnachtsferien 2025/26", "start": "2025-12-22", "end": "2026-01-05"},
+        {"name": "Winterferien 2026", "start": "2026-02-16", "end": "2026-02-20"},
+        {"name": "Osterferien 2026", "start": "2026-03-30", "end": "2026-04-10"},
+        {"name": "Pfingstferien 2026", "start": "2026-05-26", "end": "2026-06-05"},
+        {"name": "Sommerferien 2026", "start": "2026-07-27", "end": "2026-09-07"},
+    ],
+    "nrw": [
+        {"name": "Herbstferien 2025", "start": "2025-10-13", "end": "2025-10-25"},
+        {"name": "Weihnachtsferien 2025/26", "start": "2025-12-22", "end": "2026-01-06"},
+        {"name": "Osterferien 2026", "start": "2026-03-30", "end": "2026-04-11"},
+        {"name": "Pfingstferien 2026", "start": "2026-05-26", "end": "2026-05-26"},
+        {"name": "Sommerferien 2026", "start": "2026-06-29", "end": "2026-08-11"},
+    ],
+    "berlin": [
+        {"name": "Herbstferien 2025", "start": "2025-10-20", "end": "2025-11-01"},
+        {"name": "Weihnachtsferien 2025/26", "start": "2025-12-22", "end": "2026-01-02"},
+        {"name": "Winterferien 2026", "start": "2026-02-02", "end": "2026-02-07"},
+        {"name": "Osterferien 2026", "start": "2026-03-30", "end": "2026-04-10"},
+        {"name": "Pfingstferien 2026", "start": "2026-05-15", "end": "2026-05-15"},
+        {"name": "Sommerferien 2026", "start": "2026-07-09", "end": "2026-08-21"},
+    ],
+    "baden-wuerttemberg": [
+        {"name": "Herbstferien 2025", "start": "2025-10-27", "end": "2025-10-30"},
+        {"name": "Weihnachtsferien 2025/26", "start": "2025-12-22", "end": "2026-01-05"},
+        {"name": "Osterferien 2026", "start": "2026-04-06", "end": "2026-04-17"},
+        {"name": "Pfingstferien 2026", "start": "2026-05-26", "end": "2026-06-06"},
+        {"name": "Sommerferien 2026", "start": "2026-07-30", "end": "2026-09-12"},
+    ],
+    "hessen": [
+        {"name": "Herbstferien 2025", "start": "2025-10-06", "end": "2025-10-18"},
+        {"name": "Weihnachtsferien 2025/26", "start": "2025-12-22", "end": "2026-01-10"},
+        {"name": "Osterferien 2026", "start": "2026-04-06", "end": "2026-04-18"},
+        {"name": "Sommerferien 2026", "start": "2026-07-06", "end": "2026-08-14"},
+    ],
+    "sachsen": [
+        {"name": "Herbstferien 2025", "start": "2025-10-20", "end": "2025-11-01"},
+        {"name": "Weihnachtsferien 2025/26", "start": "2025-12-22", "end": "2026-01-03"},
+        {"name": "Winterferien 2026", "start": "2026-02-09", "end": "2026-02-21"},
+        {"name": "Osterferien 2026", "start": "2026-04-03", "end": "2026-04-11"},
+        {"name": "Pfingstferien 2026", "start": "2026-05-15", "end": "2026-05-15"},
+        {"name": "Sommerferien 2026", "start": "2026-06-27", "end": "2026-08-08"},
+    ],
+    "niedersachsen": [
+        {"name": "Herbstferien 2025", "start": "2025-10-20", "end": "2025-10-31"},
+        {"name": "Weihnachtsferien 2025/26", "start": "2025-12-22", "end": "2026-01-05"},
+        {"name": "Osterferien 2026", "start": "2026-03-23", "end": "2026-04-04"},
+        {"name": "Pfingstferien 2026", "start": "2026-05-22", "end": "2026-05-22"},
+        {"name": "Sommerferien 2026", "start": "2026-07-16", "end": "2026-08-26"},
+    ],
+    "hamburg": [
+        {"name": "Herbstferien 2025", "start": "2025-10-20", "end": "2025-10-31"},
+        {"name": "Weihnachtsferien 2025/26", "start": "2025-12-22", "end": "2026-01-02"},
+        {"name": "Frühjahrsferien 2026", "start": "2026-02-02", "end": "2026-02-13"},
+        {"name": "Osterferien 2026", "start": "2026-03-06", "end": "2026-03-20"},
+        {"name": "Pfingstferien 2026", "start": "2026-05-11", "end": "2026-05-15"},
+        {"name": "Sommerferien 2026", "start": "2026-07-23", "end": "2026-09-02"},
+    ],
+    "rheinland-pfalz": [
+        {"name": "Herbstferien 2025", "start": "2025-10-13", "end": "2025-10-24"},
+        {"name": "Weihnachtsferien 2025/26", "start": "2025-12-22", "end": "2026-01-06"},
+        {"name": "Osterferien 2026", "start": "2026-03-23", "end": "2026-04-06"},
+        {"name": "Pfingstferien 2026", "start": "2026-06-02", "end": "2026-06-10"},
+        {"name": "Sommerferien 2026", "start": "2026-07-06", "end": "2026-08-14"},
+    ],
+}
+
+GERMAN_PUBLIC_HOLIDAYS_2025_2026 = [
+    {"name": "Neujahr", "date": "2025-01-01"},
+    {"name": "Karfreitag", "date": "2025-04-18"},
+    {"name": "Ostermontag", "date": "2025-04-21"},
+    {"name": "Tag der Arbeit", "date": "2025-05-01"},
+    {"name": "Christi Himmelfahrt", "date": "2025-05-29"},
+    {"name": "Pfingstmontag", "date": "2025-06-09"},
+    {"name": "Tag der Deutschen Einheit", "date": "2025-10-03"},
+    {"name": "1. Weihnachtstag", "date": "2025-12-25"},
+    {"name": "2. Weihnachtstag", "date": "2025-12-26"},
+    {"name": "Neujahr", "date": "2026-01-01"},
+    {"name": "Karfreitag", "date": "2026-04-03"},
+    {"name": "Ostermontag", "date": "2026-04-06"},
+    {"name": "Tag der Arbeit", "date": "2026-05-01"},
+    {"name": "Christi Himmelfahrt", "date": "2026-05-14"},
+    {"name": "Pfingstmontag", "date": "2026-05-25"},
+    {"name": "Tag der Deutschen Einheit", "date": "2026-10-03"},
+    {"name": "1. Weihnachtstag", "date": "2026-12-25"},
+    {"name": "2. Weihnachtstag", "date": "2026-12-26"},
+]
+
+BUNDESLAENDER = [
+    {"id": "bayern", "name": "Bayern"},
+    {"id": "nrw", "name": "Nordrhein-Westfalen"},
+    {"id": "berlin", "name": "Berlin"},
+    {"id": "baden-wuerttemberg", "name": "Baden-Württemberg"},
+    {"id": "hessen", "name": "Hessen"},
+    {"id": "sachsen", "name": "Sachsen"},
+    {"id": "niedersachsen", "name": "Niedersachsen"},
+    {"id": "hamburg", "name": "Hamburg"},
+    {"id": "rheinland-pfalz", "name": "Rheinland-Pfalz"},
+]
+
+# ============== MODELS ==============
+
+class UserCreate(BaseModel):
+    email: EmailStr
+    password: str
+    name: str
+    invitation_code: str
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+class UserResponse(BaseModel):
+    id: str
+    email: str
+    name: str
+    created_at: str
+    bundesland: Optional[str] = "rheinland-pfalz"
+    theme: Optional[str] = "dark"
+
+class UserSettingsUpdate(BaseModel):
+    name: Optional[str] = None
+    bundesland: Optional[str] = None
+    theme: Optional[str] = None
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserResponse
+
+class SchoolYearCreate(BaseModel):
+    name: str
+    semester: str
+    start_date: str
+    end_date: str
+
+class SchoolYearResponse(BaseModel):
+    id: str
+    user_id: str
+    name: str
+    semester: str
+    start_date: str
+    end_date: str
+    created_at: str
+
+class ClassSubjectCreate(BaseModel):
+    name: str
+    subject: str
+    color: str = "#3b82f6"
+    hours_per_week: int = 4
+    school_year_id: str
+    schedule: Optional[Dict[str, List[int]]] = None  # e.g. {"monday": [3, 4], "wednesday": [1]}
+
+class ClassSubjectResponse(BaseModel):
+    id: str
+    user_id: str
+    name: str
+    subject: str
+    color: str
+    hours_per_week: int
+    school_year_id: str
+    created_at: str
+    schedule: Optional[Dict[str, List[int]]] = None
+
+class LessonCreate(BaseModel):
+    class_subject_id: str
+    date: str
+    period: Optional[int] = None  # Stundennummer (1-10)
+    topic: str = ""
+    objective: str = ""
+    curriculum_reference: str = ""
+    educational_standards: str = ""
+    key_terms: str = ""
+    notes: str = ""
+    teaching_units: int = 1
+    is_cancelled: bool = False
+    cancellation_reason: str = ""
+
+class LessonResponse(BaseModel):
+    id: str
+    user_id: str
+    class_subject_id: str
+    date: str
+    period: Optional[int] = None
+    topic: str
+    objective: str
+    curriculum_reference: str
+    educational_standards: str
+    key_terms: str
+    notes: str
+    teaching_units: int
+    is_cancelled: bool
+    cancellation_reason: str
+    created_at: str
+    updated_at: str
+
+class LessonUpdate(BaseModel):
+    topic: Optional[str] = None
+    objective: Optional[str] = None
+    curriculum_reference: Optional[str] = None
+    educational_standards: Optional[str] = None
+    key_terms: Optional[str] = None
+    notes: Optional[str] = None
+    teaching_units: Optional[int] = None
+    is_cancelled: Optional[bool] = None
+    cancellation_reason: Optional[str] = None
+    date: Optional[str] = None
+    period: Optional[int] = None
+
+class WorkplanEntry(BaseModel):
+    date: str
+    period: int
+    unterrichtseinheit: Optional[str] = ""
+    lehrplan: Optional[str] = ""
+    stundenthema: Optional[str] = ""
+    class_subject_id: Optional[str] = None
+
+class WorkplanBulkSave(BaseModel):
+    entries: List[WorkplanEntry]
+
+class BatchLessonCreate(BaseModel):
+    class_subject_id: str
+    dates: List[str]
+    topic: str = ""
+    objective: str = ""
+    curriculum_reference: str = ""
+    teaching_units: int = 1
+
+class HolidayCreate(BaseModel):
+    school_year_id: str
+    start_date: str
+    end_date: str
+    name: str
+
+class HolidayResponse(BaseModel):
+    id: str
+    user_id: str
+    school_year_id: str
+    start_date: str
+    end_date: str
+    name: str
+
+class StatisticsResponse(BaseModel):
+    total_available_hours: int
+    used_hours: int
+    remaining_hours: int
+    hours_by_weekday: Dict[str, int]
+    cancelled_hours: int
+    completion_percentage: float
+    topics_covered: int
+    hours_per_week: int
+    school_weeks: int
+    holiday_weeks: int
+    semester_name: str
+    upcoming_lessons: List[Dict[str, Any]] = []
+    workplan_entries_count: int = 0
+
+class AITopicSuggestionRequest(BaseModel):
+    subject: str
+    grade: str
+    curriculum_topic: str
+    previous_topics: List[str] = []
+
+class AITopicSuggestionResponse(BaseModel):
+    suggestions: List[Dict[str, str]]
+
+# Sharing Models
+class ShareCreate(BaseModel):
+    class_subject_id: str
+    shared_with_email: EmailStr
+    can_edit: bool = False
+
+class ShareResponse(BaseModel):
+    id: str
+    class_subject_id: str
+    owner_id: str
+    owner_name: str
+    shared_with_id: str
+    shared_with_email: str
+    can_edit: bool
+    created_at: str
+
+class SharedClassResponse(BaseModel):
+    id: str
+    name: str
+    subject: str
+    color: str
+    hours_per_week: int
+    school_year_id: str
+    owner_name: str
+    owner_email: str
+    can_edit: bool
+
+# Notification Models
+class NotificationResponse(BaseModel):
+    id: str
+    user_id: str
+    type: str
+    title: str
+    message: str
+    class_name: str
+    from_user_name: str
+    is_read: bool
+    created_at: str
+
+# Template Models
+class TemplateCreate(BaseModel):
+    name: str
+    subject: str
+    topic: str
+    objective: str = ""
+    curriculum_reference: str = ""
+    educational_standards: str = ""
+    key_terms: str = ""
+    notes: str = ""
+    teaching_units: int = 1
+
+class TemplateResponse(BaseModel):
+    id: str
+    user_id: str
+    name: str
+    subject: str
+    topic: str
+    objective: str
+    curriculum_reference: str
+    educational_standards: str
+    key_terms: str
+    notes: str
+    teaching_units: int
+    created_at: str
+    use_count: int
+
+# Comment Models
+class CommentCreate(BaseModel):
+    lesson_id: str
+    text: str
+
+class CommentResponse(BaseModel):
+    id: str
+    lesson_id: str
+    user_id: str
+    user_name: str
+    text: str
+    created_at: str
+
+# To-Do Models
+class TodoCreate(BaseModel):
+    title: str
+    description: str = ""
+    due_date: Optional[str] = None
+    class_subject_id: Optional[str] = None
+    lesson_id: Optional[str] = None
+    priority: str = "medium"
+
+class TodoResponse(BaseModel):
+    id: str
+    user_id: str
+    title: str
+    description: str
+    due_date: Optional[str]
+    class_subject_id: Optional[str]
+    lesson_id: Optional[str]
+    priority: str
+    is_completed: bool
+    created_at: str
+
+class TodoUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    due_date: Optional[str] = None
+    priority: Optional[str] = None
+    is_completed: Optional[bool] = None
+
+# History Models
+class HistoryResponse(BaseModel):
+    id: str
+    user_id: str
+    user_name: str
+    action: str
+    entity_type: str
+    entity_id: str
+    details: str
+    created_at: str
+
+# ============== AUTH HELPERS ==============
+
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+def verify_password(password: str, hashed: str) -> bool:
+    return bcrypt.checkpw(password.encode(), hashed.encode())
+
+def create_token(user_id: str, email: str) -> str:
+    payload = {
+        "user_id": user_id,
+        "email": email,
+        "exp": datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRATION_HOURS)
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    try:
+        payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        user_id = payload.get("user_id")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        return user_id
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+# Helper to create notifications
+async def create_notification(user_id: str, notification_type: str, title: str, message: str, class_name: str, from_user_name: str):
+    doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "type": notification_type,
+        "title": title,
+        "message": message,
+        "class_name": class_name,
+        "from_user_name": from_user_name,
+        "is_read": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.notifications.insert_one(doc)
+    return doc
+
+# Helper to log history
+async def log_history(user_id: str, action: str, entity_type: str, entity_id: str, details: str):
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "name": 1})
+    doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "user_name": user.get("name", "Unbekannt") if user else "Unbekannt",
+        "action": action,
+        "entity_type": entity_type,
+        "entity_id": entity_id,
+        "details": details,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.history.insert_one(doc)
+
+# ============== AUTH ROUTES ==============
+
+@api_router.post("/auth/register", response_model=TokenResponse)
+async def register(user: UserCreate):
+    # Verify invitation code
+    if user.invitation_code != INVITATION_CODE:
+        raise HTTPException(status_code=403, detail="Ungültiger Einladungs-Code")
+    
+    existing = await db.users.find_one({"email": user.email})
+    if existing:
+        raise HTTPException(status_code=400, detail="E-Mail bereits registriert")
+    
+    user_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    
+    user_doc = {
+        "id": user_id,
+        "email": user.email,
+        "password": hash_password(user.password),
+        "name": user.name,
+        "bundesland": "rheinland-pfalz",
+        "theme": "dark",
+        "created_at": now
+    }
+    await db.users.insert_one(user_doc)
+    
+    token = create_token(user_id, user.email)
+    return TokenResponse(
+        access_token=token,
+        user=UserResponse(id=user_id, email=user.email, name=user.name, created_at=now, bundesland="rheinland-pfalz", theme="dark")
+    )
+
+@api_router.post("/auth/login", response_model=TokenResponse)
+async def login(credentials: UserLogin):
+    user = await db.users.find_one({"email": credentials.email}, {"_id": 0})
+    if not user or not verify_password(credentials.password, user["password"]):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    token = create_token(user["id"], user["email"])
+    return TokenResponse(
+        access_token=token,
+        user=UserResponse(
+            id=user["id"], 
+            email=user["email"], 
+            name=user["name"], 
+            created_at=user["created_at"],
+            bundesland=user.get("bundesland", "bayern"),
+            theme=user.get("theme", "dark")
+        )
+    )
+
+@api_router.get("/auth/me", response_model=UserResponse)
+async def get_me(user_id: str = Depends(get_current_user)):
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return UserResponse(**user)
+
+@api_router.put("/auth/settings", response_model=UserResponse)
+async def update_settings(data: UserSettingsUpdate, user_id: str = Depends(get_current_user)):
+    update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    if update_data:
+        await db.users.update_one({"id": user_id}, {"$set": update_data})
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
+    return UserResponse(**user)
+
+# ============== GERMAN HOLIDAYS ROUTES ==============
+
+@api_router.get("/holidays/bundeslaender")
+async def get_bundeslaender():
+    return BUNDESLAENDER
+
+@api_router.get("/holidays/school-holidays/{bundesland}")
+async def get_school_holidays(bundesland: str):
+    if bundesland not in GERMAN_HOLIDAYS_2025_2026:
+        raise HTTPException(status_code=404, detail="Bundesland nicht gefunden")
+    return GERMAN_HOLIDAYS_2025_2026[bundesland]
+
+@api_router.get("/holidays/public-holidays")
+async def get_public_holidays():
+    return GERMAN_PUBLIC_HOLIDAYS_2025_2026
+
+# ============== SCHOOL YEAR ROUTES ==============
+
+@api_router.post("/school-years", response_model=SchoolYearResponse)
+async def create_school_year(data: SchoolYearCreate, user_id: str = Depends(get_current_user)):
+    doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "name": data.name,
+        "semester": data.semester,
+        "start_date": data.start_date,
+        "end_date": data.end_date,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.school_years.insert_one(doc)
+    await log_history(user_id, "create", "school_year", doc["id"], f"Schuljahr {data.name} erstellt")
+    return SchoolYearResponse(**doc)
+
+@api_router.get("/school-years", response_model=List[SchoolYearResponse])
+async def get_school_years(user_id: str = Depends(get_current_user)):
+    years = await db.school_years.find({"user_id": user_id}, {"_id": 0}).to_list(100)
+    return [SchoolYearResponse(**y) for y in years]
+
+@api_router.delete("/school-years/{year_id}")
+async def delete_school_year(year_id: str, user_id: str = Depends(get_current_user)):
+    result = await db.school_years.delete_one({"id": year_id, "user_id": user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="School year not found")
+    await db.class_subjects.delete_many({"school_year_id": year_id, "user_id": user_id})
+    return {"status": "deleted"}
+
+# ============== CLASS/SUBJECT ROUTES ==============
+
+@api_router.post("/classes", response_model=ClassSubjectResponse)
+async def create_class(data: ClassSubjectCreate, user_id: str = Depends(get_current_user)):
+    doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "name": data.name,
+        "subject": data.subject,
+        "color": data.color,
+        "hours_per_week": data.hours_per_week,
+        "school_year_id": data.school_year_id,
+        "schedule": data.schedule or {},
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.class_subjects.insert_one(doc)
+    await log_history(user_id, "create", "class", doc["id"], f"Klasse {data.name} - {data.subject} erstellt")
+    return ClassSubjectResponse(**doc)
+
+@api_router.get("/classes", response_model=List[ClassSubjectResponse])
+async def get_classes(school_year_id: Optional[str] = None, user_id: str = Depends(get_current_user)):
+    query = {"user_id": user_id}
+    if school_year_id:
+        query["school_year_id"] = school_year_id
+    classes = await db.class_subjects.find(query, {"_id": 0}).to_list(100)
+    return [ClassSubjectResponse(**c) for c in classes]
+
+@api_router.put("/classes/{class_id}", response_model=ClassSubjectResponse)
+async def update_class(class_id: str, data: ClassSubjectCreate, user_id: str = Depends(get_current_user)):
+    update_data = data.model_dump()
+    result = await db.class_subjects.update_one(
+        {"id": class_id, "user_id": user_id},
+        {"$set": update_data}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Class not found")
+    updated = await db.class_subjects.find_one({"id": class_id}, {"_id": 0})
+    return ClassSubjectResponse(**updated)
+
+@api_router.delete("/classes/{class_id}")
+async def delete_class(class_id: str, user_id: str = Depends(get_current_user)):
+    result = await db.class_subjects.delete_one({"id": class_id, "user_id": user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Class not found")
+    await db.lessons.delete_many({"class_subject_id": class_id, "user_id": user_id})
+    return {"status": "deleted"}
+
+# ============== LESSON ROUTES ==============
+
+@api_router.post("/lessons", response_model=LessonResponse)
+async def create_lesson(data: LessonCreate, user_id: str = Depends(get_current_user)):
+    now = datetime.now(timezone.utc).isoformat()
+    doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "class_subject_id": data.class_subject_id,
+        "date": data.date,
+        "period": data.period,
+        "topic": data.topic,
+        "objective": data.objective,
+        "curriculum_reference": data.curriculum_reference,
+        "educational_standards": data.educational_standards,
+        "key_terms": data.key_terms,
+        "notes": data.notes,
+        "teaching_units": data.teaching_units,
+        "is_cancelled": data.is_cancelled,
+        "cancellation_reason": data.cancellation_reason,
+        "created_at": now,
+        "updated_at": now
+    }
+    await db.lessons.insert_one(doc)
+    
+    # Log history
+    class_info = await db.class_subjects.find_one({"id": data.class_subject_id}, {"_id": 0})
+    if class_info:
+        period_str = f" ({data.period}. Std.)" if data.period else ""
+        await log_history(user_id, "create", "lesson", doc["id"], f"Stunde am {data.date}{period_str} für {class_info['name']} erstellt")
+    
+    return LessonResponse(**doc)
+
+@api_router.post("/lessons/batch", response_model=List[LessonResponse])
+async def create_batch_lessons(data: BatchLessonCreate, user_id: str = Depends(get_current_user)):
+    """Create multiple lessons at once"""
+    now = datetime.now(timezone.utc).isoformat()
+    lessons = []
+    
+    for date_str in data.dates:
+        doc = {
+            "id": str(uuid.uuid4()),
+            "user_id": user_id,
+            "class_subject_id": data.class_subject_id,
+            "date": date_str,
+            "topic": data.topic,
+            "objective": data.objective,
+            "curriculum_reference": data.curriculum_reference,
+            "educational_standards": "",
+            "key_terms": "",
+            "notes": "",
+            "teaching_units": data.teaching_units,
+            "is_cancelled": False,
+            "cancellation_reason": "",
+            "created_at": now,
+            "updated_at": now
+        }
+        await db.lessons.insert_one(doc)
+        lessons.append(LessonResponse(**doc))
+    
+    return lessons
+
+# ============== WORKPLAN TABLE ROUTES ==============
+
+@api_router.get("/workplan/{class_id}")
+async def get_workplan(
+    class_id: str,
+    start: str = Query(...),
+    end: str = Query(...),
+    user_id: str = Depends(get_current_user)
+):
+    """Get workplan entries for a class in date range"""
+    query = {
+        "class_subject_id": class_id,
+        "date": {"$gte": start, "$lte": end}
+    }
+    entries = await db.workplan.find(query, {"_id": 0}).sort([("date", 1), ("period", 1)]).to_list(1000)
+    return entries
+
+@api_router.post("/workplan/{class_id}/bulk")
+async def save_workplan_bulk(
+    class_id: str,
+    data: WorkplanBulkSave,
+    user_id: str = Depends(get_current_user)
+):
+    """Save multiple workplan entries at once"""
+    now = datetime.now(timezone.utc).isoformat()
+    
+    for entry in data.entries:
+        # Upsert each entry
+        filter_query = {
+            "class_subject_id": class_id,
+            "date": entry.date,
+            "period": entry.period
+        }
+        
+        update_doc = {
+            "$set": {
+                "class_subject_id": class_id,
+                "date": entry.date,
+                "period": entry.period,
+                "unterrichtseinheit": entry.unterrichtseinheit or "",
+                "lehrplan": entry.lehrplan or "",
+                "stundenthema": entry.stundenthema or "",
+                "updated_at": now,
+                "updated_by": user_id
+            },
+            "$setOnInsert": {
+                "id": str(uuid.uuid4()),
+                "created_at": now,
+                "created_by": user_id
+            }
+        }
+        
+        await db.workplan.update_one(filter_query, update_doc, upsert=True)
+    
+    return {"status": "success", "count": len(data.entries)}
+
+@api_router.get("/lessons", response_model=List[LessonResponse])
+async def get_lessons(
+    class_subject_id: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    user_id: str = Depends(get_current_user)
+):
+    query = {"user_id": user_id}
+    if class_subject_id:
+        query["class_subject_id"] = class_subject_id
+    if start_date:
+        query["date"] = {"$gte": start_date}
+    if end_date:
+        if "date" in query:
+            query["date"]["$lte"] = end_date
+        else:
+            query["date"] = {"$lte": end_date}
+    lessons = await db.lessons.find(query, {"_id": 0}).sort("date", 1).to_list(1000)
+    return [LessonResponse(**l) for l in lessons]
+
+@api_router.post("/lessons/{lesson_id}/copy", response_model=LessonResponse)
+async def copy_lesson(lesson_id: str, new_date: str = Query(...), user_id: str = Depends(get_current_user)):
+    """Copy an existing lesson to a new date"""
+    original = await db.lessons.find_one({"id": lesson_id, "user_id": user_id}, {"_id": 0})
+    if not original:
+        raise HTTPException(status_code=404, detail="Stunde nicht gefunden")
+    
+    now = datetime.now(timezone.utc).isoformat()
+    doc = {
+        **original,
+        "id": str(uuid.uuid4()),
+        "date": new_date,
+        "created_at": now,
+        "updated_at": now
+    }
+    await db.lessons.insert_one(doc)
+    return LessonResponse(**doc)
+
+@api_router.put("/lessons/{lesson_id}", response_model=LessonResponse)
+async def update_lesson(lesson_id: str, data: LessonUpdate, user_id: str = Depends(get_current_user)):
+    update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    result = await db.lessons.update_one(
+        {"id": lesson_id, "user_id": user_id},
+        {"$set": update_data}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Stunde nicht gefunden")
+    updated = await db.lessons.find_one({"id": lesson_id}, {"_id": 0})
+    
+    # Send notifications to users who have this class shared
+    class_info = await db.class_subjects.find_one({"id": updated["class_subject_id"]}, {"_id": 0})
+    if class_info:
+        shares = await db.shares.find({"class_subject_id": updated["class_subject_id"]}, {"_id": 0}).to_list(100)
+        current_user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
+        class_display = f"{class_info['name']} - {class_info['subject']}"
+        
+        for share in shares:
+            await create_notification(
+                user_id=share["shared_with_id"],
+                notification_type="share_edit",
+                title="Arbeitsplan aktualisiert",
+                message=f"{current_user['name']} hat eine Stunde im Arbeitsplan '{class_display}' geändert",
+                class_name=class_display,
+                from_user_name=current_user["name"]
+            )
+        
+        await log_history(user_id, "update", "lesson", lesson_id, f"Stunde am {updated['date']} bearbeitet")
+    
+    return LessonResponse(**updated)
+
+@api_router.delete("/lessons/{lesson_id}")
+async def delete_lesson(lesson_id: str, user_id: str = Depends(get_current_user)):
+    result = await db.lessons.delete_one({"id": lesson_id, "user_id": user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Stunde nicht gefunden")
+    return {"status": "deleted"}
+
+# ============== TEMPLATE ROUTES ==============
+
+@api_router.post("/templates", response_model=TemplateResponse)
+async def create_template(data: TemplateCreate, user_id: str = Depends(get_current_user)):
+    doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "name": data.name,
+        "subject": data.subject,
+        "topic": data.topic,
+        "objective": data.objective,
+        "curriculum_reference": data.curriculum_reference,
+        "educational_standards": data.educational_standards,
+        "key_terms": data.key_terms,
+        "notes": data.notes,
+        "teaching_units": data.teaching_units,
+        "use_count": 0,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.templates.insert_one(doc)
+    return TemplateResponse(**doc)
+
+@api_router.get("/templates", response_model=List[TemplateResponse])
+async def get_templates(subject: Optional[str] = None, user_id: str = Depends(get_current_user)):
+    query = {"user_id": user_id}
+    if subject:
+        query["subject"] = subject
+    templates = await db.templates.find(query, {"_id": 0}).sort("use_count", -1).to_list(100)
+    return [TemplateResponse(**t) for t in templates]
+
+@api_router.post("/templates/{template_id}/use", response_model=TemplateResponse)
+async def use_template(template_id: str, user_id: str = Depends(get_current_user)):
+    """Increment use count and return template"""
+    await db.templates.update_one(
+        {"id": template_id, "user_id": user_id},
+        {"$inc": {"use_count": 1}}
+    )
+    template = await db.templates.find_one({"id": template_id}, {"_id": 0})
+    if not template:
+        raise HTTPException(status_code=404, detail="Vorlage nicht gefunden")
+    return TemplateResponse(**template)
+
+@api_router.delete("/templates/{template_id}")
+async def delete_template(template_id: str, user_id: str = Depends(get_current_user)):
+    result = await db.templates.delete_one({"id": template_id, "user_id": user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Vorlage nicht gefunden")
+    return {"status": "deleted"}
+
+# ============== TODO ROUTES ==============
+
+@api_router.post("/todos", response_model=TodoResponse)
+async def create_todo(data: TodoCreate, user_id: str = Depends(get_current_user)):
+    doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "title": data.title,
+        "description": data.description,
+        "due_date": data.due_date,
+        "class_subject_id": data.class_subject_id,
+        "lesson_id": data.lesson_id,
+        "priority": data.priority,
+        "is_completed": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.todos.insert_one(doc)
+    return TodoResponse(**doc)
+
+@api_router.get("/todos", response_model=List[TodoResponse])
+async def get_todos(
+    completed: Optional[bool] = None,
+    class_subject_id: Optional[str] = None,
+    user_id: str = Depends(get_current_user)
+):
+    query = {"user_id": user_id}
+    if completed is not None:
+        query["is_completed"] = completed
+    if class_subject_id:
+        query["class_subject_id"] = class_subject_id
+    todos = await db.todos.find(query, {"_id": 0}).sort("due_date", 1).to_list(100)
+    return [TodoResponse(**t) for t in todos]
+
+@api_router.put("/todos/{todo_id}", response_model=TodoResponse)
+async def update_todo(todo_id: str, data: TodoUpdate, user_id: str = Depends(get_current_user)):
+    update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    result = await db.todos.update_one(
+        {"id": todo_id, "user_id": user_id},
+        {"$set": update_data}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Aufgabe nicht gefunden")
+    updated = await db.todos.find_one({"id": todo_id}, {"_id": 0})
+    return TodoResponse(**updated)
+
+@api_router.delete("/todos/{todo_id}")
+async def delete_todo(todo_id: str, user_id: str = Depends(get_current_user)):
+    result = await db.todos.delete_one({"id": todo_id, "user_id": user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Aufgabe nicht gefunden")
+    return {"status": "deleted"}
+
+# ============== COMMENT ROUTES ==============
+
+@api_router.post("/comments", response_model=CommentResponse)
+async def create_comment(data: CommentCreate, user_id: str = Depends(get_current_user)):
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "name": 1})
+    doc = {
+        "id": str(uuid.uuid4()),
+        "lesson_id": data.lesson_id,
+        "user_id": user_id,
+        "user_name": user.get("name", "Unbekannt") if user else "Unbekannt",
+        "text": data.text,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.comments.insert_one(doc)
+    return CommentResponse(**doc)
+
+@api_router.get("/comments/{lesson_id}", response_model=List[CommentResponse])
+async def get_comments(lesson_id: str, user_id: str = Depends(get_current_user)):
+    comments = await db.comments.find({"lesson_id": lesson_id}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return [CommentResponse(**c) for c in comments]
+
+@api_router.delete("/comments/{comment_id}")
+async def delete_comment(comment_id: str, user_id: str = Depends(get_current_user)):
+    result = await db.comments.delete_one({"id": comment_id, "user_id": user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Kommentar nicht gefunden")
+    return {"status": "deleted"}
+
+# ============== HISTORY ROUTES ==============
+
+@api_router.get("/history", response_model=List[HistoryResponse])
+async def get_history(
+    entity_type: Optional[str] = None,
+    entity_id: Optional[str] = None,
+    limit: int = 50,
+    user_id: str = Depends(get_current_user)
+):
+    query = {"user_id": user_id}
+    if entity_type:
+        query["entity_type"] = entity_type
+    if entity_id:
+        query["entity_id"] = entity_id
+    history = await db.history.find(query, {"_id": 0}).sort("created_at", -1).to_list(limit)
+    return [HistoryResponse(**h) for h in history]
+
+@api_router.get("/history/class/{class_subject_id}", response_model=List[HistoryResponse])
+async def get_class_history(class_subject_id: str, user_id: str = Depends(get_current_user)):
+    """Get history for a specific class (including shared)"""
+    # Get lessons for this class
+    lessons = await db.lessons.find({"class_subject_id": class_subject_id}, {"id": 1, "_id": 0}).to_list(1000)
+    lesson_ids = [l["id"] for l in lessons]
+    
+    history = await db.history.find({
+        "$or": [
+            {"entity_type": "class", "entity_id": class_subject_id},
+            {"entity_type": "lesson", "entity_id": {"$in": lesson_ids}}
+        ]
+    }, {"_id": 0}).sort("created_at", -1).to_list(100)
+    
+    return [HistoryResponse(**h) for h in history]
+
+# ============== SEARCH ROUTES ==============
+
+@api_router.get("/search")
+async def global_search(q: str = Query(..., min_length=2), user_id: str = Depends(get_current_user)):
+    """Search across lessons, classes, and templates"""
+    results = {
+        "lessons": [],
+        "classes": [],
+        "templates": [],
+        "todos": []
+    }
+    
+    # Search lessons
+    lessons = await db.lessons.find({
+        "user_id": user_id,
+        "$or": [
+            {"topic": {"$regex": q, "$options": "i"}},
+            {"key_terms": {"$regex": q, "$options": "i"}},
+            {"notes": {"$regex": q, "$options": "i"}}
+        ]
+    }, {"_id": 0}).limit(10).to_list(10)
+    results["lessons"] = lessons
+    
+    # Search classes
+    classes = await db.class_subjects.find({
+        "user_id": user_id,
+        "$or": [
+            {"name": {"$regex": q, "$options": "i"}},
+            {"subject": {"$regex": q, "$options": "i"}}
+        ]
+    }, {"_id": 0}).limit(5).to_list(5)
+    results["classes"] = classes
+    
+    # Search templates
+    templates = await db.templates.find({
+        "user_id": user_id,
+        "$or": [
+            {"name": {"$regex": q, "$options": "i"}},
+            {"topic": {"$regex": q, "$options": "i"}},
+            {"subject": {"$regex": q, "$options": "i"}}
+        ]
+    }, {"_id": 0}).limit(5).to_list(5)
+    results["templates"] = templates
+    
+    # Search todos
+    todos = await db.todos.find({
+        "user_id": user_id,
+        "title": {"$regex": q, "$options": "i"}
+    }, {"_id": 0}).limit(5).to_list(5)
+    results["todos"] = todos
+    
+    return results
+
+# ============== HOLIDAY ROUTES ==============
+
+@api_router.post("/holidays", response_model=HolidayResponse)
+async def create_holiday(data: HolidayCreate, user_id: str = Depends(get_current_user)):
+    doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "school_year_id": data.school_year_id,
+        "start_date": data.start_date,
+        "end_date": data.end_date,
+        "name": data.name
+    }
+    await db.holidays.insert_one(doc)
+    return HolidayResponse(**doc)
+
+@api_router.get("/holidays", response_model=List[HolidayResponse])
+async def get_holidays(school_year_id: Optional[str] = None, user_id: str = Depends(get_current_user)):
+    query = {"user_id": user_id}
+    if school_year_id:
+        query["school_year_id"] = school_year_id
+    holidays = await db.holidays.find(query, {"_id": 0}).to_list(100)
+    return [HolidayResponse(**h) for h in holidays]
+
+@api_router.delete("/holidays/{holiday_id}")
+async def delete_holiday(holiday_id: str, user_id: str = Depends(get_current_user)):
+    result = await db.holidays.delete_one({"id": holiday_id, "user_id": user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Holiday not found")
+    return {"status": "deleted"}
+
+# ============== STATISTICS ROUTES ==============
+
+@api_router.get("/statistics/{class_subject_id}", response_model=StatisticsResponse)
+async def get_statistics(class_subject_id: str, user_id: str = Depends(get_current_user)):
+    class_info = await db.class_subjects.find_one({"id": class_subject_id, "user_id": user_id}, {"_id": 0})
+    if not class_info:
+        raise HTTPException(status_code=404, detail="Class not found")
+    
+    school_year = await db.school_years.find_one({"id": class_info["school_year_id"]}, {"_id": 0})
+    if not school_year:
+        raise HTTPException(status_code=404, detail="School year not found")
+    
+    # Calculate hours per week from schedule
+    schedule = class_info.get("schedule", {})
+    hours_per_week = 0
+    for day, periods in schedule.items():
+        if isinstance(periods, list):
+            hours_per_week += len(periods)
+    
+    # If no schedule, fallback to hours_per_week field or default
+    if hours_per_week == 0:
+        hours_per_week = class_info.get("hours_per_week", 3)
+    
+    # Calculate school weeks
+    start = datetime.fromisoformat(school_year["start_date"])
+    end = datetime.fromisoformat(school_year["end_date"])
+    total_weeks = (end - start).days // 7
+    
+    # Get holidays in this school year
+    holidays = await db.holidays.find({
+        "user_id": user_id,
+        "school_year_id": school_year["id"]
+    }, {"_id": 0}).to_list(100)
+    
+    # Calculate holiday weeks (approximate)
+    holiday_days = 0
+    for holiday in holidays:
+        h_start = datetime.fromisoformat(holiday["start_date"])
+        h_end = datetime.fromisoformat(holiday["end_date"])
+        holiday_days += (h_end - h_start).days + 1
+    holiday_weeks = holiday_days // 7
+    
+    # Effective school weeks
+    school_weeks = total_weeks - holiday_weeks
+    
+    # Total available hours in semester
+    total_available = school_weeks * hours_per_week
+    
+    # Get lessons
+    lessons = await db.lessons.find({"class_subject_id": class_subject_id, "user_id": user_id}, {"_id": 0}).to_list(1000)
+    
+    # Get workplan entries
+    workplan_entries = await db.workplan.find({"class_subject_id": class_subject_id}, {"_id": 0}).to_list(1000)
+    workplan_with_content = [w for w in workplan_entries if w.get("unterrichtseinheit") or w.get("lehrplan") or w.get("stundenthema")]
+    
+    # Count used hours (lessons + workplan entries without duplicates)
+    lesson_dates_periods = set()
+    for l in lessons:
+        if not l.get("is_cancelled", False):
+            key = f"{l['date']}-{l.get('period', 0)}"
+            lesson_dates_periods.add(key)
+    
+    # Hours from lessons
+    used_hours = len(lesson_dates_periods)
+    
+    # Add workplan entries that don't have a corresponding lesson
+    for w in workplan_with_content:
+        key = f"{w['date']}-{w.get('period', 0)}"
+        if key not in lesson_dates_periods:
+            used_hours += 1
+    
+    cancelled_hours = len([l for l in lessons if l.get("is_cancelled", False)])
+    
+    # Count unique teaching units (Unterrichtseinheiten)
+    unterrichtseinheiten = set()
+    for w in workplan_with_content:
+        if w.get("unterrichtseinheit"):
+            unterrichtseinheiten.add(w["unterrichtseinheit"].strip().lower())
+    for l in lessons:
+        if l.get("topic") and not l.get("is_cancelled", False):
+            unterrichtseinheiten.add(l["topic"].strip().lower())
+    topics_covered = len(unterrichtseinheiten)
+    
+    # Hours by weekday
+    weekday_names = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
+    hours_by_weekday = {day: 0 for day in weekday_names}
+    
+    for lesson in lessons:
+        if not lesson.get("is_cancelled", False):
+            try:
+                date = datetime.fromisoformat(lesson["date"])
+                weekday = weekday_names[date.weekday()]
+                hours_by_weekday[weekday] += 1
+            except:
+                pass
+    
+    for wp in workplan_with_content:
+        try:
+            date = datetime.fromisoformat(wp["date"])
+            weekday = weekday_names[date.weekday()]
+            hours_by_weekday[weekday] += 1
+        except:
+            pass
+    
+    # Completion percentage
+    completion_percentage = (used_hours / total_available * 100) if total_available > 0 else 0
+    
+    # Upcoming lessons (next 5)
+    today = datetime.now(timezone.utc).date().isoformat()
+    upcoming = []
+    
+    # Combine lessons and workplan entries
+    all_entries = []
+    for l in lessons:
+        if l["date"] >= today and not l.get("is_cancelled", False):
+            all_entries.append({
+                "date": l["date"],
+                "period": l.get("period"),
+                "topic": l.get("topic", ""),
+                "source": "lesson"
+            })
+    for w in workplan_with_content:
+        if w["date"] >= today:
+            all_entries.append({
+                "date": w["date"],
+                "period": w.get("period"),
+                "topic": w.get("unterrichtseinheit", ""),
+                "source": "workplan"
+            })
+    
+    # Sort by date and period, take first 5
+    all_entries.sort(key=lambda x: (x["date"], x.get("period") or 99))
+    upcoming = all_entries[:5]
+    
+    return StatisticsResponse(
+        total_available_hours=total_available,
+        used_hours=used_hours,
+        remaining_hours=max(0, total_available - used_hours - cancelled_hours),
+        hours_by_weekday=hours_by_weekday,
+        cancelled_hours=cancelled_hours,
+        completion_percentage=round(min(100, completion_percentage), 1),
+        topics_covered=topics_covered,
+        hours_per_week=hours_per_week,
+        school_weeks=school_weeks,
+        holiday_weeks=holiday_weeks,
+        semester_name=school_year.get("semester", school_year.get("name", "Schuljahr")),
+        upcoming_lessons=upcoming,
+        workplan_entries_count=len(workplan_with_content)
+    )
+
+# ============== EXPORT ROUTES ==============
+
+@api_router.get("/export/excel/{class_subject_id}")
+async def export_excel(class_subject_id: str, user_id: str = Depends(get_current_user)):
+    class_info = await db.class_subjects.find_one({"id": class_subject_id, "user_id": user_id}, {"_id": 0})
+    if not class_info:
+        raise HTTPException(status_code=404, detail="Class not found")
+    
+    lessons = await db.lessons.find({"class_subject_id": class_subject_id, "user_id": user_id}, {"_id": 0}).sort("date", 1).to_list(1000)
+    
+    wb = Workbook()
+    ws = wb.active
+    ws.title = f"{class_info['name']} - {class_info['subject']}"
+    
+    header_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF")
+    
+    headers = ["Datum", "Tag", "Ausfall", "Stundenthema", "Zielsetzung", "Lehrplan", "Begriffe", "UE"]
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+    
+    weekday_names = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+    for row, lesson in enumerate(lessons, 2):
+        date = datetime.fromisoformat(lesson["date"])
+        ws.cell(row=row, column=1, value=date.strftime("%d.%m.%Y"))
+        ws.cell(row=row, column=2, value=weekday_names[date.weekday()])
+        ws.cell(row=row, column=3, value="x" if lesson["is_cancelled"] else "")
+        ws.cell(row=row, column=4, value=lesson["topic"])
+        ws.cell(row=row, column=5, value=lesson["objective"])
+        ws.cell(row=row, column=6, value=lesson["curriculum_reference"])
+        ws.cell(row=row, column=7, value=lesson["key_terms"])
+        ws.cell(row=row, column=8, value=lesson["teaching_units"])
+    
+    for col in ws.columns:
+        max_length = max(len(str(cell.value or "")) for cell in col)
+        ws.column_dimensions[col[0].column_letter].width = min(max_length + 2, 50)
+    
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    filename = f"Arbeitsplan_{class_info['name']}_{class_info['subject']}.xlsx"
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+@api_router.get("/export/word/{class_subject_id}")
+async def export_word(class_subject_id: str, user_id: str = Depends(get_current_user)):
+    class_info = await db.class_subjects.find_one({"id": class_subject_id, "user_id": user_id}, {"_id": 0})
+    if not class_info:
+        raise HTTPException(status_code=404, detail="Class not found")
+    
+    school_year = await db.school_years.find_one({"id": class_info["school_year_id"]}, {"_id": 0})
+    lessons = await db.lessons.find({"class_subject_id": class_subject_id, "user_id": user_id}, {"_id": 0}).sort("date", 1).to_list(1000)
+    
+    doc = Document()
+    
+    title = doc.add_heading(f"Arbeitsplan: {class_info['name']} - {class_info['subject']}", 0)
+    if school_year:
+        doc.add_paragraph(f"Schuljahr: {school_year['name']} ({school_year['semester']})")
+    
+    doc.add_paragraph("")
+    
+    table = doc.add_table(rows=1, cols=6)
+    table.style = 'Table Grid'
+    
+    headers = ["Datum", "Thema", "Zielsetzung", "Lehrplan", "Begriffe", "UE"]
+    header_cells = table.rows[0].cells
+    for i, header in enumerate(headers):
+        header_cells[i].text = header
+        header_cells[i].paragraphs[0].runs[0].bold = True
+    
+    weekday_names = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+    for lesson in lessons:
+        row_cells = table.add_row().cells
+        date = datetime.fromisoformat(lesson["date"])
+        row_cells[0].text = f"{date.strftime('%d.%m')} ({weekday_names[date.weekday()]})"
+        row_cells[1].text = lesson["topic"] + (" [AUSFALL]" if lesson["is_cancelled"] else "")
+        row_cells[2].text = lesson["objective"]
+        row_cells[3].text = lesson["curriculum_reference"]
+        row_cells[4].text = lesson["key_terms"]
+        row_cells[5].text = str(lesson["teaching_units"])
+    
+    output = BytesIO()
+    doc.save(output)
+    output.seek(0)
+    
+    filename = f"Arbeitsplan_{class_info['name']}_{class_info['subject']}.docx"
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+@api_router.get("/export/pdf/{class_subject_id}")
+async def export_pdf(class_subject_id: str, user_id: str = Depends(get_current_user)):
+    class_info = await db.class_subjects.find_one({"id": class_subject_id, "user_id": user_id}, {"_id": 0})
+    if not class_info:
+        raise HTTPException(status_code=404, detail="Class not found")
+    
+    lessons = await db.lessons.find({"class_subject_id": class_subject_id, "user_id": user_id}, {"_id": 0}).sort("date", 1).to_list(1000)
+    
+    output = BytesIO()
+    c = canvas.Canvas(output, pagesize=A4)
+    width, height = A4
+    
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(2*cm, height - 2*cm, f"Arbeitsplan: {class_info['name']} - {class_info['subject']}")
+    
+    y = height - 4*cm
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(2*cm, y, "Datum")
+    c.drawString(4*cm, y, "Thema")
+    c.drawString(12*cm, y, "UE")
+    
+    c.setFont("Helvetica", 9)
+    y -= 0.7*cm
+    
+    weekday_names = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+    for lesson in lessons:
+        if y < 2*cm:
+            c.showPage()
+            y = height - 2*cm
+            c.setFont("Helvetica", 9)
+        
+        date = datetime.fromisoformat(lesson["date"])
+        date_str = f"{date.strftime('%d.%m')} ({weekday_names[date.weekday()]})"
+        topic = lesson["topic"][:50] + "..." if len(lesson["topic"]) > 50 else lesson["topic"]
+        if lesson["is_cancelled"]:
+            topic = "[AUSFALL] " + topic
+        
+        c.drawString(2*cm, y, date_str)
+        c.drawString(4*cm, y, topic)
+        c.drawString(12*cm, y, str(lesson["teaching_units"]))
+        y -= 0.5*cm
+    
+    c.save()
+    output.seek(0)
+    
+    filename = f"Arbeitsplan_{class_info['name']}_{class_info['subject']}.pdf"
+    return StreamingResponse(
+        output,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+# ============== AI SUGGESTIONS ROUTE ==============
+
+@api_router.post("/ai/suggestions", response_model=AITopicSuggestionResponse)
+async def get_ai_suggestions(data: AITopicSuggestionRequest, user_id: str = Depends(get_current_user)):
+    import asyncio
+    import json
+    import re
+    
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        
+        api_key = os.environ.get('EMERGENT_LLM_KEY')
+        if not api_key:
+            raise HTTPException(status_code=500, detail="AI service not configured")
+        
+        chat = LlmChat(
+            api_key=api_key,
+            session_id=f"planed-{user_id}-{uuid.uuid4()}",
+            system_message="""Du bist ein erfahrener Lehrer und Lehrplanexperte. 
+            Erstelle konkrete, praxisnahe Unterrichtsvorschläge basierend auf dem deutschen Lehrplan.
+            Antworte immer auf Deutsch und strukturiere deine Vorschläge klar."""
+        ).with_model("gemini", "gemini-3-flash-preview")
+        
+        prompt = f"""Erstelle 3 Unterrichtsthemen-Vorschläge für:
+        Fach: {data.subject}
+        Klassenstufe: {data.grade}
+        Lehrplanthema: {data.curriculum_topic}
+        {"Bereits behandelte Themen: " + ", ".join(data.previous_topics[:3]) if data.previous_topics else ""}
+        
+        Antworte NUR mit einem JSON-Array: [{{"topic": "...", "objective": "...", "key_terms": "..."}}]"""
+        
+        try:
+            response = await asyncio.wait_for(
+                chat.send_message(UserMessage(text=prompt)),
+                timeout=25.0
+            )
+        except asyncio.TimeoutError:
+            return AITopicSuggestionResponse(suggestions=[
+                {"topic": f"Einführung in {data.curriculum_topic}", "objective": "Grundlagen verstehen", "key_terms": data.subject},
+                {"topic": f"Vertiefung: {data.curriculum_topic}", "objective": "Anwendung üben", "key_terms": "Übung, Praxis"},
+                {"topic": f"Zusammenfassung {data.curriculum_topic}", "objective": "Wissen festigen", "key_terms": "Wiederholung"}
+            ])
+        
+        json_match = re.search(r'\[.*\]', response, re.DOTALL)
+        if json_match:
+            try:
+                suggestions = json.loads(json_match.group())
+            except json.JSONDecodeError:
+                suggestions = [{"topic": "Vorschlag konnte nicht generiert werden", "objective": "", "key_terms": ""}]
+        else:
+            suggestions = [{"topic": "Vorschlag konnte nicht generiert werden", "objective": "", "key_terms": ""}]
+        
+        return AITopicSuggestionResponse(suggestions=suggestions[:5])
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"AI suggestion error: {e}")
+        return AITopicSuggestionResponse(suggestions=[
+            {"topic": f"Thema zu {data.curriculum_topic}", "objective": "Lernziele definieren", "key_terms": data.subject}
+        ])
+
+# ============== DOCUMENT MANAGEMENT ==============
+
+@api_router.post("/documents/upload")
+async def upload_document(
+    class_subject_id: str,
+    lesson_id: Optional[str] = None,
+    file: UploadFile = File(...),
+    user_id: str = Depends(get_current_user)
+):
+    allowed_types = [".docx", ".doc", ".pdf", ".jpg", ".jpeg", ".png"]
+    file_ext = Path(file.filename).suffix.lower()
+    if file_ext not in allowed_types:
+        raise HTTPException(status_code=400, detail=f"File type not allowed. Allowed: {allowed_types}")
+    
+    content = await file.read()
+    
+    doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "class_subject_id": class_subject_id,
+        "lesson_id": lesson_id,
+        "filename": file.filename,
+        "content_type": file.content_type,
+        "size": len(content),
+        "content": content,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.documents.insert_one(doc)
+    
+    return {"id": doc["id"], "filename": file.filename, "size": len(content)}
+
+@api_router.get("/documents")
+async def get_documents(
+    class_subject_id: Optional[str] = None,
+    lesson_id: Optional[str] = None,
+    user_id: str = Depends(get_current_user)
+):
+    query = {"user_id": user_id}
+    if class_subject_id:
+        query["class_subject_id"] = class_subject_id
+    if lesson_id:
+        query["lesson_id"] = lesson_id
+    
+    docs = await db.documents.find(query, {"_id": 0, "content": 0}).to_list(100)
+    return docs
+
+@api_router.get("/documents/{doc_id}/download")
+async def download_document(doc_id: str, user_id: str = Depends(get_current_user)):
+    doc = await db.documents.find_one({"id": doc_id, "user_id": user_id})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    return StreamingResponse(
+        BytesIO(doc["content"]),
+        media_type=doc["content_type"],
+        headers={"Content-Disposition": f"attachment; filename={doc['filename']}"}
+    )
+
+@api_router.delete("/documents/{doc_id}")
+async def delete_document(doc_id: str, user_id: str = Depends(get_current_user)):
+    result = await db.documents.delete_one({"id": doc_id, "user_id": user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return {"status": "deleted"}
+
+# ============== SHARING ROUTES ==============
+
+@api_router.post("/shares", response_model=ShareResponse)
+async def share_class(data: ShareCreate, user_id: str = Depends(get_current_user)):
+    class_info = await db.class_subjects.find_one({"id": data.class_subject_id, "user_id": user_id}, {"_id": 0})
+    if not class_info:
+        raise HTTPException(status_code=404, detail="Klasse nicht gefunden")
+    
+    target_user = await db.users.find_one({"email": data.shared_with_email}, {"_id": 0, "password": 0})
+    if not target_user:
+        raise HTTPException(status_code=404, detail="Benutzer mit dieser E-Mail nicht gefunden")
+    
+    if target_user["id"] == user_id:
+        raise HTTPException(status_code=400, detail="Sie können nicht mit sich selbst teilen")
+    
+    existing = await db.shares.find_one({
+        "class_subject_id": data.class_subject_id,
+        "shared_with_id": target_user["id"]
+    })
+    if existing:
+        raise HTTPException(status_code=400, detail="Bereits mit diesem Benutzer geteilt")
+    
+    owner = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
+    
+    share_doc = {
+        "id": str(uuid.uuid4()),
+        "class_subject_id": data.class_subject_id,
+        "owner_id": user_id,
+        "owner_name": owner["name"],
+        "shared_with_id": target_user["id"],
+        "shared_with_email": data.shared_with_email,
+        "can_edit": data.can_edit,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.shares.insert_one(share_doc)
+    
+    class_display = f"{class_info['name']} - {class_info['subject']}"
+    permission = "Bearbeitung" if data.can_edit else "Nur Ansicht"
+    await create_notification(
+        user_id=target_user["id"],
+        notification_type="share_new",
+        title="Neuer Arbeitsplan geteilt",
+        message=f"{owner['name']} hat den Arbeitsplan '{class_display}' mit Ihnen geteilt ({permission})",
+        class_name=class_display,
+        from_user_name=owner["name"]
+    )
+    
+    return ShareResponse(**share_doc)
+
+@api_router.get("/shares/my-shares", response_model=List[ShareResponse])
+async def get_my_shares(user_id: str = Depends(get_current_user)):
+    shares = await db.shares.find({"owner_id": user_id}, {"_id": 0}).to_list(100)
+    return [ShareResponse(**s) for s in shares]
+
+@api_router.get("/shares/shared-with-me", response_model=List[SharedClassResponse])
+async def get_shared_with_me(user_id: str = Depends(get_current_user)):
+    shares = await db.shares.find({"shared_with_id": user_id}, {"_id": 0}).to_list(100)
+    
+    shared_classes = []
+    for share in shares:
+        class_info = await db.class_subjects.find_one({"id": share["class_subject_id"]}, {"_id": 0})
+        if class_info:
+            owner = await db.users.find_one({"id": share["owner_id"]}, {"_id": 0, "password": 0})
+            shared_classes.append(SharedClassResponse(
+                id=class_info["id"],
+                name=class_info["name"],
+                subject=class_info["subject"],
+                color=class_info["color"],
+                hours_per_week=class_info["hours_per_week"],
+                school_year_id=class_info["school_year_id"],
+                owner_name=owner["name"] if owner else "Unbekannt",
+                owner_email=owner["email"] if owner else "",
+                can_edit=share["can_edit"]
+            ))
+    
+    return shared_classes
+
+@api_router.delete("/shares/{share_id}")
+async def remove_share(share_id: str, user_id: str = Depends(get_current_user)):
+    result = await db.shares.delete_one({"id": share_id, "owner_id": user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Freigabe nicht gefunden")
+    return {"status": "deleted"}
+
+@api_router.get("/shares/class/{class_subject_id}", response_model=List[ShareResponse])
+async def get_class_shares(class_subject_id: str, user_id: str = Depends(get_current_user)):
+    class_info = await db.class_subjects.find_one({"id": class_subject_id, "user_id": user_id}, {"_id": 0})
+    if not class_info:
+        raise HTTPException(status_code=404, detail="Klasse nicht gefunden")
+    
+    shares = await db.shares.find({"class_subject_id": class_subject_id}, {"_id": 0}).to_list(100)
+    return [ShareResponse(**s) for s in shares]
+
+# ============== NOTIFICATION ROUTES ==============
+
+@api_router.get("/notifications", response_model=List[NotificationResponse])
+async def get_notifications(user_id: str = Depends(get_current_user)):
+    notifications = await db.notifications.find(
+        {"user_id": user_id}, 
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(50)
+    return [NotificationResponse(**n) for n in notifications]
+
+@api_router.get("/notifications/unread-count")
+async def get_unread_count(user_id: str = Depends(get_current_user)):
+    count = await db.notifications.count_documents({"user_id": user_id, "is_read": False})
+    return {"count": count}
+
+@api_router.put("/notifications/{notification_id}/read")
+async def mark_as_read(notification_id: str, user_id: str = Depends(get_current_user)):
+    result = await db.notifications.update_one(
+        {"id": notification_id, "user_id": user_id},
+        {"$set": {"is_read": True}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Benachrichtigung nicht gefunden")
+    return {"status": "read"}
+
+@api_router.put("/notifications/read-all")
+async def mark_all_as_read(user_id: str = Depends(get_current_user)):
+    await db.notifications.update_many(
+        {"user_id": user_id, "is_read": False},
+        {"$set": {"is_read": True}}
+    )
+    return {"status": "all_read"}
+
+@api_router.delete("/notifications/{notification_id}")
+async def delete_notification(notification_id: str, user_id: str = Depends(get_current_user)):
+    result = await db.notifications.delete_one({"id": notification_id, "user_id": user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Benachrichtigung nicht gefunden")
+    return {"status": "deleted"}
+
+# ============== RESEARCH API ==============
+
+@api_router.get("/research/images")
+async def search_images(query: str, user_id: str = Depends(get_current_user)):
+    """Search for educational images using Wikimedia Commons API (free, no API key required)"""
+    try:
+        results = []
+        
+        # Wikimedia requires a User-Agent header
+        headers = {
+            "User-Agent": "PlanEd/2.0 (Educational Teacher Planning Tool; contact@planed.app)"
+        }
+        
+        async with httpx.AsyncClient(headers=headers) as http_client:
+            # Use Wikimedia Commons API - completely free, no API key needed
+            response = await http_client.get(
+                "https://commons.wikimedia.org/w/api.php",
+                params={
+                    "action": "query",
+                    "format": "json",
+                    "generator": "search",
+                    "gsrsearch": f"filetype:bitmap {query}",
+                    "gsrlimit": 15,
+                    "gsrnamespace": 6,
+                    "prop": "imageinfo",
+                    "iiprop": "url|extmetadata|size",
+                    "iiurlwidth": 400
+                },
+                timeout=15.0
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                pages = data.get("query", {}).get("pages", {})
+                
+                for page_id, page in pages.items():
+                    if "imageinfo" in page and page.get("imageinfo"):
+                        info = page["imageinfo"][0]
+                        extmeta = info.get("extmetadata", {})
+                        
+                        # Get description
+                        desc = extmeta.get("ImageDescription", {}).get("value", "")
+                        if desc:
+                            # Strip HTML tags
+                            import re
+                            desc = re.sub('<[^<]+?>', '', desc)[:100]
+                        else:
+                            desc = page.get("title", "").replace("File:", "").replace("_", " ")
+                        
+                        # Get author
+                        author = extmeta.get("Artist", {}).get("value", "")
+                        if author:
+                            author = re.sub('<[^<]+?>', '', author)[:50]
+                        else:
+                            author = "Wikimedia Commons"
+                        
+                        results.append({
+                            "id": str(page_id),
+                            "url": info.get("descriptionurl", info.get("url", "")),
+                            "thumb": info.get("thumburl", info.get("url", "")),
+                            "description": desc,
+                            "author": author,
+                            "download_url": info.get("url", ""),
+                            "source": "Wikimedia Commons"
+                        })
+            
+            # Fallback if no results: provide direct search links
+            if not results:
+                from urllib.parse import quote
+                url_encoded_query = quote(query)
+                hyphen_query = query.replace(" ", "-").lower()
+                plus_query = query.replace(" ", "+")
+                results = [
+                    {
+                        "id": "search-wikimedia",
+                        "url": f"https://commons.wikimedia.org/w/index.php?search={url_encoded_query}&title=Special:MediaSearch&type=image",
+                        "thumb": None,
+                        "description": f"Auf Wikimedia Commons nach '{query}' suchen",
+                        "author": "Wikimedia Commons",
+                        "download_url": f"https://commons.wikimedia.org/w/index.php?search={url_encoded_query}&title=Special:MediaSearch&type=image",
+                        "source": "Wikimedia Commons",
+                        "is_link": True
+                    },
+                    {
+                        "id": "search-pixabay",
+                        "url": f"https://pixabay.com/images/search/{url_encoded_query}/",
+                        "thumb": None,
+                        "description": f"Auf Pixabay nach '{query}' suchen",
+                        "author": "Pixabay",
+                        "download_url": f"https://pixabay.com/images/search/{url_encoded_query}/",
+                        "source": "Pixabay",
+                        "is_link": True
+                    },
+                    {
+                        "id": "search-unsplash",
+                        "url": f"https://unsplash.com/s/photos/{hyphen_query}",
+                        "thumb": None,
+                        "description": f"Auf Unsplash nach '{query}' suchen",
+                        "author": "Unsplash",
+                        "download_url": f"https://unsplash.com/s/photos/{hyphen_query}",
+                        "source": "Unsplash",
+                        "is_link": True
+                    }
+                ]
+        
+        return {"results": results, "total": len(results)}
+    except Exception as e:
+        logger.error(f"Image search error: {e}")
+        return {"results": [], "total": 0, "error": str(e)}
+
+@api_router.get("/research/videos")
+async def search_videos(query: str, user_id: str = Depends(get_current_user)):
+    """Search for educational YouTube videos using web scraping fallback"""
+    try:
+        results = []
+        
+        # Try YouTube Data API first
+        api_key = os.environ.get("YOUTUBE_API_KEY", "")
+        if api_key:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    "https://www.googleapis.com/youtube/v3/search",
+                    params={
+                        "part": "snippet",
+                        "q": f"{query} Unterricht Schule",
+                        "type": "video",
+                        "maxResults": 10,
+                        "relevanceLanguage": "de",
+                        "safeSearch": "strict",
+                        "key": api_key
+                    },
+                    timeout=10.0
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    for item in data.get("items", []):
+                        results.append({
+                            "id": item["id"]["videoId"],
+                            "title": item["snippet"]["title"],
+                            "description": item["snippet"]["description"][:200],
+                            "thumbnail": item["snippet"]["thumbnails"]["medium"]["url"],
+                            "channel": item["snippet"]["channelTitle"],
+                            "url": f"https://www.youtube.com/watch?v={item['id']['videoId']}",
+                            "source": "YouTube"
+                        })
+        
+        # If no API key or no results, provide helpful message
+        if not results:
+            # Return curated educational channel suggestions
+            educational_channels = [
+                {"name": "simpleclub", "topic": "Mathematik, Physik, Chemie"},
+                {"name": "MrWissen2go", "topic": "Geschichte, Politik"},
+                {"name": "Duden Learnattack", "topic": "Alle Fächer"},
+                {"name": "TheSimpleClub", "topic": "MINT-Fächer"},
+                {"name": "musstewissen", "topic": "Deutsch, Mathe, Chemie"},
+            ]
+            
+            return {
+                "results": [],
+                "total": 0,
+                "message": "YouTube-Suche benötigt API-Key. Empfohlene Bildungskanäle:",
+                "suggestions": educational_channels,
+                "search_url": f"https://www.youtube.com/results?search_query={query.replace(' ', '+')}+Unterricht"
+            }
+        
+        return {"results": results, "total": len(results)}
+    except Exception as e:
+        logger.error(f"Video search error: {e}")
+        return {"results": [], "total": 0, "error": str(e)}
+
+@api_router.get("/research/papers")
+async def search_academic_papers(query: str, source: str = "semantic_scholar", user_id: str = Depends(get_current_user)):
+    """Search for academic papers from Semantic Scholar or OpenAlex"""
+    try:
+        async with httpx.AsyncClient() as client:
+            results = []
+            
+            if source == "semantic_scholar":
+                response = await client.get(
+                    "https://api.semanticscholar.org/graph/v1/paper/search",
+                    params={
+                        "query": query,
+                        "limit": 10,
+                        "fields": "title,abstract,authors,year,url,citationCount,openAccessPdf"
+                    },
+                    timeout=15.0
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    for paper in data.get("data", []):
+                        results.append({
+                            "id": paper.get("paperId", ""),
+                            "title": paper.get("title", ""),
+                            "abstract": paper.get("abstract", "")[:500] if paper.get("abstract") else "",
+                            "authors": ", ".join([a.get("name", "") for a in paper.get("authors", [])[:3]]),
+                            "year": paper.get("year"),
+                            "citations": paper.get("citationCount", 0),
+                            "url": paper.get("url", ""),
+                            "pdf_url": paper.get("openAccessPdf", {}).get("url") if paper.get("openAccessPdf") else None,
+                            "source": "Semantic Scholar"
+                        })
+            
+            elif source == "openalex":
+                response = await client.get(
+                    "https://api.openalex.org/works",
+                    params={
+                        "search": query,
+                        "per_page": 10,
+                        "sort": "cited_by_count:desc"
+                    },
+                    headers={"User-Agent": "PlanEd-App/1.0"},
+                    timeout=15.0
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    for work in data.get("results", []):
+                        abstract = ""
+                        if work.get("abstract_inverted_index"):
+                            # Reconstruct abstract from inverted index
+                            inv_idx = work["abstract_inverted_index"]
+                            words = [(word, min(positions)) for word, positions in inv_idx.items()]
+                            words.sort(key=lambda x: x[1])
+                            abstract = " ".join([w[0] for w in words])[:500]
+                        
+                        results.append({
+                            "id": work.get("id", "").split("/")[-1],
+                            "title": work.get("title", ""),
+                            "abstract": abstract,
+                            "authors": ", ".join([a.get("author", {}).get("display_name", "") for a in work.get("authorships", [])[:3]]),
+                            "year": work.get("publication_year"),
+                            "citations": work.get("cited_by_count", 0),
+                            "url": work.get("doi", "") if work.get("doi") else work.get("id", ""),
+                            "pdf_url": work.get("open_access", {}).get("oa_url"),
+                            "source": "OpenAlex"
+                        })
+            
+            return {"results": results, "total": len(results)}
+    except Exception as e:
+        logger.error(f"Academic search error: {e}")
+        return {"results": [], "total": 0, "error": str(e)}
+
+@api_router.post("/research/translate")
+async def translate_text(text: str = "", target_lang: str = "de", user_id: str = Depends(get_current_user)):
+    """Translate text to German using AI"""
+    if not text:
+        return {"translated": "", "error": "No text provided"}
+    
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        
+        # Use Emergent LLM key for translation
+        emergent_key = os.environ.get("EMERGENT_MODEL_API_KEY", "") or os.environ.get("EMERGENT_LLM_KEY", "")
+        if not emergent_key:
+            return {"translated": text, "error": "Translation service not configured"}
+        
+        chat = LlmChat(
+            api_key=emergent_key,
+            session_id=f"translate-{user_id}",
+            system_message="Du bist ein professioneller Übersetzer für wissenschaftliche Texte. Übersetze Texte präzise ins Deutsche. Behalte Fachbegriffe bei, wenn sie im Deutschen üblich sind. Antworte NUR mit der Übersetzung, ohne Erklärungen oder zusätzliche Kommentare."
+        ).with_model("gemini", "gemini-2.0-flash")
+        
+        prompt = f"Übersetze folgenden wissenschaftlichen Abstract ins Deutsche:\n\n{text[:2000]}"
+        
+        response = await asyncio.wait_for(
+            chat.send_message(UserMessage(text=prompt)),
+            timeout=30.0
+        )
+        
+        return {"translated": response, "original": text[:500]}
+    except asyncio.TimeoutError:
+        return {"translated": text, "error": "Translation timeout"}
+    except Exception as e:
+        logger.error(f"Translation error: {e}")
+        return {"translated": text, "error": str(e)}
+
+# ============== LEHRPLAN-BASIERTE UNTERRICHTSPLANUNG ==============
+
+# Lehrplan Datenbank für Deutsch RS+ RLP
+LEHRPLAN_DEUTSCH_RLP = {
+    "5/6": {
+        "sprechen_zuhoeren": {
+            "name": "Sprechen & Zuhören",
+            "themen": [
+                {
+                    "id": "gespraechsregeln",
+                    "name": "Gesprächsregeln & aktiv zuhören",
+                    "G": "Gesprächsregeln einhalten; aktiv zuhören; kurze Beiträge",
+                    "M": "Gespräche strukturieren; Gesprächsbeiträge begründen",
+                    "E": "Argumentativ in Kleingruppen diskutieren; moderieren (einfach)"
+                },
+                {
+                    "id": "praesentieren",
+                    "name": "Präsentieren & Vortragen",
+                    "G": "Kurze Vorträge mit Stichwortzettel; Nachfragen stellen",
+                    "M": "Präsentieren mit klarer Gliederung und Medienstützen",
+                    "E": "Rollen- und Gesprächsstrategien reflektieren"
+                }
+            ]
+        },
+        "lesen": {
+            "name": "Lesen – mit Texten & Medien umgehen",
+            "themen": [
+                {
+                    "id": "texte_verstehen",
+                    "name": "Texte verstehen",
+                    "G": "Einfache Sach- und literarische Texte verstehen (Kernaussagen)",
+                    "M": "Lesestrategien selbstständiger anwenden; Textsorten unterscheiden",
+                    "E": "Komplexere Texte erschließen; Figuren/Handlungen deuten"
+                },
+                {
+                    "id": "lesestrategien",
+                    "name": "Lesestrategien anwenden",
+                    "G": "Lesestrategien unter Anleitung (Markieren, Fragen, Zusammenfassen)",
+                    "M": "Einfache Deutungen/Interpretationsansätze formulieren",
+                    "E": "Informationen aus mehreren Texten vergleichen"
+                }
+            ]
+        },
+        "schreiben": {
+            "name": "Schreiben",
+            "themen": [
+                {
+                    "id": "erzaehlen_berichten",
+                    "name": "Erzählen & Berichten",
+                    "G": "Erzählungen, Berichte über Erlebnisse; Beschreiben",
+                    "M": "Zusammenfassen (kurz); adressatengerecht schreiben",
+                    "E": "Erste Stellungnahmen/Argumentationen; kreative Schreibformen"
+                },
+                {
+                    "id": "ueberarbeiten",
+                    "name": "Texte überarbeiten",
+                    "G": "Texte mit einfachen Kriterien überarbeiten (Inhalt/Ordnung)",
+                    "M": "Überarbeiten: sprachliche Richtigkeit und Verständlichkeit",
+                    "E": "Quellen/Belege in einfacher Form einbinden"
+                }
+            ]
+        },
+        "sprache": {
+            "name": "Sprache untersuchen",
+            "themen": [
+                {
+                    "id": "rechtschreibung",
+                    "name": "Rechtschreibung & Zeichensetzung",
+                    "G": "Grundlegende RS/ZS: Groß-/Kleinschreibung, Punkt/Komma",
+                    "M": "Wortarten/Satzglieder anwenden; Rechtschreibstrategien",
+                    "E": "Rechtschreibung weitgehend sicher; eigene Fehleranalyse"
+                },
+                {
+                    "id": "grammatik",
+                    "name": "Grammatik & Wortarten",
+                    "G": "Wörterbuch nutzen; Wortarten-Grundlagen",
+                    "M": "Texte und Satzbau variieren; Wirkung sprachlicher Mittel beschreiben",
+                    "E": "Eigenständige Recherche; Quellen grob bewerten"
+                }
+            ]
+        },
+        "digital": {
+            "name": "Digitale Medien & Methoden",
+            "themen": [
+                {
+                    "id": "digital_schreiben",
+                    "name": "Digital schreiben & recherchieren",
+                    "G": "Texte digital schreiben und einfach formatieren",
+                    "M": "Kurze Präsentationen (Folien/Plakat) mit Bild-/Textquellen",
+                    "E": "Produktive Beiträge (Blogpost/Audio) mit Regeln zu Bild/Ton"
+                },
+                {
+                    "id": "recherche",
+                    "name": "Recherche & Quellen",
+                    "G": "Recherche mit Vorgaben; Quellen nennen (Basis)",
+                    "M": "Notizen führen",
+                    "E": "Eigenständige Recherche; Quellen grob bewerten"
+                }
+            ]
+        }
+    },
+    "7/8": {
+        "sprechen_zuhoeren": {
+            "name": "Sprechen & Zuhören",
+            "themen": [
+                {
+                    "id": "diskutieren",
+                    "name": "Diskutieren & Argumentieren",
+                    "G": "Sachbezogen sprechen; einfache Diskussionen führen",
+                    "M": "Argumente entwickeln und begründen; Gesprächsprotokoll",
+                    "E": "Moderieren/Leiten; Debatte mit Rede-/Gegenrede"
+                },
+                {
+                    "id": "praesentieren_78",
+                    "name": "Präsentieren & Feedback",
+                    "G": "Referat/Präsentation mit Hilfen; Feedback annehmen",
+                    "M": "Feedback geben; Präsentation zunehmend frei",
+                    "E": "Rhetorische Mittel im Sprechen gezielt einsetzen"
+                }
+            ]
+        },
+        "lesen": {
+            "name": "Lesen – mit Texten & Medien umgehen",
+            "themen": [
+                {
+                    "id": "textanalyse",
+                    "name": "Textanalyse",
+                    "G": "Längere Texte verstehen; Aufbau/Absichten erkennen",
+                    "M": "Analyse von Sach- und literarischen Texten (Perspektive, Mittel)",
+                    "E": "Anspruchsvolle Texte deuten; Deutungsansätze begründen"
+                },
+                {
+                    "id": "medienkritik",
+                    "name": "Medienkritik",
+                    "G": "Informationen entnehmen; einfache Analyse (Wer? Was? Warum?)",
+                    "M": "Medienkritische Grundfragen (Absicht, Wirkung, Zielgruppe)",
+                    "E": "Medien/Genres vergleichen (Text–Film–Online-Artikel)"
+                }
+            ]
+        },
+        "schreiben": {
+            "name": "Schreiben",
+            "themen": [
+                {
+                    "id": "zusammenfassen_beschreiben",
+                    "name": "Zusammenfassen & Beschreiben",
+                    "G": "Zusammenfassung, Bericht, Personen-/Vorgangsbeschreibung",
+                    "M": "Erörterung (Grundformen); einfache Textanalyse",
+                    "E": "Fundierte Erörterung; Analyse/Interpretation mit Belegen"
+                },
+                {
+                    "id": "argumentieren",
+                    "name": "Argumentieren",
+                    "G": "Pro/Contra mit Stützsätzen; Überarbeiten nach Vorlage",
+                    "M": "Vorstufe materialgestütztes Schreiben (Material auswählen/belegen)",
+                    "E": "Materialgestütztes Argumentieren (stringent, quellengestützt)"
+                }
+            ]
+        },
+        "sprache": {
+            "name": "Sprache untersuchen",
+            "themen": [
+                {
+                    "id": "grammatik_78",
+                    "name": "Grammatik & Stil",
+                    "G": "RS/ZS systematisch festigen; Zeiten/Konjunktiv-Grundlagen",
+                    "M": "Satzgefüge/indirekte Rede; Zeichensetzung bei Nebensätzen",
+                    "E": "Sprachvarietäten/Manipulation erkennen; Stil bewusst variieren"
+                },
+                {
+                    "id": "stilmittel",
+                    "name": "Stilmittel & Wortbildung",
+                    "G": "Stilmittel benennen (Grundstock)",
+                    "M": "Wortbildung; Register/Stil situationsangemessen",
+                    "E": "Eigenständige Fehleranalyse und gezielte Korrektur"
+                }
+            ]
+        },
+        "digital": {
+            "name": "Digitale Medien & Methoden",
+            "themen": [
+                {
+                    "id": "kollaboration",
+                    "name": "Kollaboratives Arbeiten",
+                    "G": "Textlayout (Absätze, Überschriften); einfache Visualisierung",
+                    "M": "Kollaboratives Schreiben/Überarbeiten (z.B. geteilte Dokumente)",
+                    "E": "Eigenständige Medienprojekte (Podcast/Video) inkl. Reflexion"
+                },
+                {
+                    "id": "quellen_78",
+                    "name": "Quellen & Urheberrecht",
+                    "G": "Recherche mit Leitfragen; Quellen angeben",
+                    "M": "Quellen prüfen (Autor, Datum, Intention); korrekt zitieren (Basis)",
+                    "E": "Urheberrecht/Datenschutz anwenden; Quellenkritik vertieft"
+                }
+            ]
+        }
+    },
+    "9/10": {
+        "sprechen_zuhoeren": {
+            "name": "Sprechen & Zuhören",
+            "themen": [
+                {
+                    "id": "berufskommunikation",
+                    "name": "Kommunikation in Schule & Beruf",
+                    "G": "Präsentieren mit Hilfen; Gespräche in Schule/Beruf üben",
+                    "M": "Diskutieren/argumentieren; Präsentationen mediengestützt",
+                    "E": "Debatten/Dispute souverän führen; rhetorische Strategien"
+                },
+                {
+                    "id": "rhetorik",
+                    "name": "Rhetorik & Gesprächsführung",
+                    "G": "Ziele/Adressaten berücksichtigen (Basis)",
+                    "M": "Gesprächsleitung und adressatengerechte Rhetorik",
+                    "E": "Kommunikation reflektieren und zielgerichtet steuern"
+                }
+            ]
+        },
+        "lesen": {
+            "name": "Lesen – mit Texten & Medien umgehen",
+            "themen": [
+                {
+                    "id": "sachtexte_beruf",
+                    "name": "Sachtexte für Alltag & Beruf",
+                    "G": "Zentrale Aussagen erfassen; Arbeitsaufträge textnah bearbeiten",
+                    "M": "Literarische Interpretation; Analyse argumentativer Texte",
+                    "E": "Komplexe literarische & pragmatische Texte mehrperspektivisch deuten"
+                },
+                {
+                    "id": "medienanalyse",
+                    "name": "Medienanalyse",
+                    "G": "Sachtexte zu Alltag/Beruf verstehen und nutzen",
+                    "M": "Informationen bewerten; Kontextwissen angemessen nutzen",
+                    "E": "Medienanalyse (Film/Podcast/Online) kritisch vergleichen"
+                }
+            ]
+        },
+        "schreiben": {
+            "name": "Schreiben",
+            "themen": [
+                {
+                    "id": "bewerbung",
+                    "name": "Bewerbung & formelle Texte",
+                    "G": "Bewerbung (Lebenslauf/Anschreiben); Bericht/Protokoll",
+                    "M": "Materialgestütztes Schreiben (MSA-nah); Analyse/Interpretation",
+                    "E": "Anspruchsvolle Interpretation/Analyse; stringente Argumentation"
+                },
+                {
+                    "id": "eroerterung",
+                    "name": "Erörterung & Kommentar",
+                    "G": "Einfache Erörterung; Überarbeiten mit Checkliste",
+                    "M": "Erörterung/Kommentar; adressatengerechte Sachtexte",
+                    "E": "Materialgestützte Erörterung mit Belegen; kreative Transformation + Reflexion"
+                }
+            ]
+        },
+        "sprache": {
+            "name": "Sprache untersuchen",
+            "themen": [
+                {
+                    "id": "sprachreflexion",
+                    "name": "Sprachreflexion",
+                    "G": "RS/ZS weitgehend sicher; Konnektoren für Textzusammenhang",
+                    "M": "Stil/Wirkung; Satzbauvarianten; Sprachreflexion",
+                    "E": "Stilistische Feinarbeit; Sprachkritik (Medien/Politik/Werbung)"
+                },
+                {
+                    "id": "normen_varietaeten",
+                    "name": "Normen & Varietäten",
+                    "G": "Grammatik zur Korrektur; Verständlichkeit sichern",
+                    "M": "Normen vs. Varietäten unterscheiden; Fehler vermeiden",
+                    "E": "Eigenständige Revision; sprachliche Präzision sichern"
+                }
+            ]
+        },
+        "digital": {
+            "name": "Digitale Medien & Methoden",
+            "themen": [
+                {
+                    "id": "beruf_digital",
+                    "name": "Digitale Bewerbung & Recherche",
+                    "G": "Bewerbungsunterlagen digital; Recherche zu Ausbildung/Beruf",
+                    "M": "Recherche & Zitieren; Tools für Planung/Überarbeitung",
+                    "E": "Forschungs-/Medienprojekte selbstständig planen, umsetzen, publizieren"
+                },
+                {
+                    "id": "ki_tools",
+                    "name": "KI-Tools & Quellenkritik",
+                    "G": "Seriöse Quellen erkennen (Basis)",
+                    "M": "Urheberrecht/Datenschutz; reflektierter Einsatz von KI-Tools",
+                    "E": "Quellenbewertung vertieft; Recht/Ethik/KI kritisch anwenden"
+                }
+            ]
+        }
+    }
+}
+
+# Schulbücher für Deutsch RS+ Rheinland-Pfalz
+SCHULBUECHER_DEUTSCH = {
+    # ==================== WESTERMANN - Praxis Sprache ====================
+    "praxis_sprache_5": {
+        "id": "praxis_sprache_5",
+        "name": "Praxis Sprache 5",
+        "verlag": "Westermann",
+        "isbn": "978-3-14-122645-8",
+        "klassenstufe": "5/6",
+        "kapitel": {
+            "erzaehlen": {"name": "Erzählen", "seiten": "10-45", "themen": ["Erlebnisse erzählen", "Geschichten erfinden", "Bildergeschichten"]},
+            "berichten": {"name": "Berichten und Beschreiben", "seiten": "46-75", "themen": ["Unfallbericht", "Vorgangsbeschreibung", "Personenbeschreibung"]},
+            "rechtschreibung": {"name": "Richtig schreiben", "seiten": "180-220", "themen": ["Groß- und Kleinschreibung", "Dehnung und Schärfung", "s-Laute"]},
+            "grammatik": {"name": "Sprache untersuchen", "seiten": "140-179", "themen": ["Wortarten", "Satzglieder", "Zeitformen"]},
+            "lesen": {"name": "Lesen und Verstehen", "seiten": "76-110", "themen": ["Sachtexte", "Erzähltexte", "Gedichte"]}
+        }
+    },
+    "praxis_sprache_6": {
+        "id": "praxis_sprache_6",
+        "name": "Praxis Sprache 6",
+        "verlag": "Westermann",
+        "isbn": "978-3-14-122646-5",
+        "klassenstufe": "5/6",
+        "kapitel": {
+            "erzaehlen": {"name": "Erzählen und Gestalten", "seiten": "12-50", "themen": ["Fantasiegeschichten", "Nacherzählung", "Perspektivwechsel"]},
+            "berichten": {"name": "Informieren und Berichten", "seiten": "51-85", "themen": ["Zeitungsbericht", "Sachlicher Bericht", "Protokoll"]},
+            "rechtschreibung": {"name": "Richtig schreiben", "seiten": "190-235", "themen": ["Fremdwörter", "Getrennt- und Zusammenschreibung", "Zeichensetzung"]},
+            "grammatik": {"name": "Sprache untersuchen", "seiten": "150-189", "themen": ["Aktiv und Passiv", "Konjunktiv", "Nebensätze"]},
+            "lesen": {"name": "Lesen und Medien", "seiten": "86-120", "themen": ["Jugendbücher", "Sachtexte verstehen", "Medienkritik"]}
+        }
+    },
+    "praxis_sprache_7": {
+        "id": "praxis_sprache_7",
+        "name": "Praxis Sprache 7",
+        "verlag": "Westermann",
+        "isbn": "978-3-14-122647-2",
+        "klassenstufe": "7/8",
+        "kapitel": {
+            "argumentieren": {"name": "Argumentieren und Erörtern", "seiten": "10-55", "themen": ["Stellungnahme", "Pro-Contra", "Diskussion"]},
+            "beschreiben": {"name": "Beschreiben und Erklären", "seiten": "56-90", "themen": ["Inhaltsangabe", "Vorgangsbeschreibung", "Diagramme auswerten"]},
+            "rechtschreibung": {"name": "Richtig schreiben", "seiten": "200-240", "themen": ["Kommasetzung", "Zitieren", "Fachbegriffe"]},
+            "grammatik": {"name": "Sprache und Stil", "seiten": "160-199", "themen": ["Satzverknüpfungen", "Nominalstil", "Konjunktionen"]},
+            "lesen": {"name": "Literatur und Medien", "seiten": "91-130", "themen": ["Kurzgeschichten", "Balladen", "Filmanalyse"]}
+        }
+    },
+    "praxis_sprache_8": {
+        "id": "praxis_sprache_8",
+        "name": "Praxis Sprache 8",
+        "verlag": "Westermann",
+        "isbn": "978-3-14-122648-9",
+        "klassenstufe": "7/8",
+        "kapitel": {
+            "argumentieren": {"name": "Argumentieren und Überzeugen", "seiten": "12-60", "themen": ["Erörterung", "Leserbrief", "Debatte"]},
+            "analysieren": {"name": "Texte analysieren", "seiten": "61-100", "themen": ["Textanalyse", "Sprachliche Mittel", "Interpretation"]},
+            "rechtschreibung": {"name": "Richtig schreiben", "seiten": "210-245", "themen": ["Fremdwörter", "Fachsprache", "Korrekturlesen"]},
+            "grammatik": {"name": "Sprachbetrachtung", "seiten": "170-209", "themen": ["Sprachebenen", "Jugendsprache", "Sprachgeschichte"]},
+            "lesen": {"name": "Literatur verstehen", "seiten": "101-140", "themen": ["Novellen", "Drama", "Lyrik analysieren"]}
+        }
+    },
+    "praxis_sprache_9": {
+        "id": "praxis_sprache_9",
+        "name": "Praxis Sprache 9",
+        "verlag": "Westermann",
+        "isbn": "978-3-14-122649-6",
+        "klassenstufe": "9/10",
+        "kapitel": {
+            "argumentieren": {"name": "Erörtern und Debattieren", "seiten": "10-50", "themen": ["Dialektische Erörterung", "Kommentar", "Debatte"]},
+            "analysieren": {"name": "Texte analysieren", "seiten": "51-95", "themen": ["Sachtextanalyse", "Redeanalyse", "Filmkritik"]},
+            "rechtschreibung": {"name": "Richtig schreiben", "seiten": "200-235", "themen": ["Wissenschaftliches Schreiben", "Zitierregeln", "Quellenarbeit"]},
+            "grammatik": {"name": "Sprache reflektieren", "seiten": "160-199", "themen": ["Sprachkritik", "Manipulation durch Sprache", "Fachsprachen"]},
+            "lesen": {"name": "Literatur und Gesellschaft", "seiten": "96-140", "themen": ["Romane", "Dramen", "Gegenwartsliteratur"]}
+        }
+    },
+    "praxis_sprache_10": {
+        "id": "praxis_sprache_10",
+        "name": "Praxis Sprache 10",
+        "verlag": "Westermann",
+        "isbn": "978-3-14-122650-2",
+        "klassenstufe": "9/10",
+        "kapitel": {
+            "argumentieren": {"name": "Erörtern und Bewerten", "seiten": "10-55", "themen": ["Literarische Erörterung", "Essay", "Rezension"]},
+            "analysieren": {"name": "Textanalyse vertieft", "seiten": "56-100", "themen": ["Gedichtinterpretation", "Dramenanalyse", "Romananalyse"]},
+            "rechtschreibung": {"name": "Richtig schreiben", "seiten": "205-240", "themen": ["Prüfungsvorbereitung", "Stilübungen", "Fehleranalyse"]},
+            "grammatik": {"name": "Sprache und Kommunikation", "seiten": "165-204", "themen": ["Kommunikationsmodelle", "Rhetorik", "Gesprächsanalyse"]},
+            "lesen": {"name": "Literaturepochen", "seiten": "101-145", "themen": ["Aufklärung bis Gegenwart", "Epochenvergleich", "Werkvergleich"]}
+        }
+    },
+    # ==================== SCHROEDEL/WESTERMANN - Wortstark ====================
+    "wortstark_5": {
+        "id": "wortstark_5",
+        "name": "Wortstark 5",
+        "verlag": "Schroedel",
+        "isbn": "978-3-507-48205-1",
+        "klassenstufe": "5/6",
+        "kapitel": {
+            "erzaehlen": {"name": "Erzählen und Erfinden", "seiten": "8-42", "themen": ["Erlebniserzählung", "Märchen", "Abenteuergeschichte"]},
+            "berichten": {"name": "Berichten und Beschreiben", "seiten": "43-78", "themen": ["Bericht", "Tierbeschreibung", "Wegbeschreibung"]},
+            "rechtschreibung": {"name": "Rechtschreibtraining", "seiten": "175-215", "themen": ["Lautprinzip", "Silben", "Wortbausteine"]},
+            "grammatik": {"name": "Sprache erforschen", "seiten": "130-174", "themen": ["Nomen", "Verben", "Adjektive", "Satzarten"]},
+            "lesen": {"name": "Lesen und Verstehen", "seiten": "79-110", "themen": ["Kinderbücher", "Sachtexte", "Gedichte"]}
+        }
+    },
+    "wortstark_6": {
+        "id": "wortstark_6",
+        "name": "Wortstark 6",
+        "verlag": "Schroedel",
+        "isbn": "978-3-507-48206-8",
+        "klassenstufe": "5/6",
+        "kapitel": {
+            "erzaehlen": {"name": "Erzählen und Gestalten", "seiten": "10-48", "themen": ["Nacherzählung", "Reizwortgeschichte", "Perspektive"]},
+            "berichten": {"name": "Informieren und Berichten", "seiten": "49-85", "themen": ["Unfallbericht", "Protokoll", "Vorgangsbeschreibung"]},
+            "rechtschreibung": {"name": "Rechtschreibtraining", "seiten": "180-225", "themen": ["Dehnung/Schärfung", "s-Laute", "Zeichensetzung"]},
+            "grammatik": {"name": "Sprache erforschen", "seiten": "140-179", "themen": ["Tempus", "Kasus", "Satzglieder"]},
+            "lesen": {"name": "Lesen und Medien", "seiten": "86-120", "themen": ["Jugendbuch", "Zeitung", "Internet"]}
+        }
+    },
+    "wortstark_7": {
+        "id": "wortstark_7",
+        "name": "Wortstark 7",
+        "verlag": "Schroedel",
+        "isbn": "978-3-507-48207-5",
+        "klassenstufe": "7/8",
+        "kapitel": {
+            "argumentieren": {"name": "Argumentieren und Diskutieren", "seiten": "8-50", "themen": ["Begründete Stellungnahme", "Pro-Contra", "Leserbrief"]},
+            "beschreiben": {"name": "Beschreiben und Erklären", "seiten": "51-88", "themen": ["Inhaltsangabe", "Personencharakterisierung", "Diagramme"]},
+            "rechtschreibung": {"name": "Rechtschreibtraining", "seiten": "190-230", "themen": ["Fremdwörter", "Komma", "Groß/Klein"]},
+            "grammatik": {"name": "Sprache untersuchen", "seiten": "150-189", "themen": ["Aktiv/Passiv", "Konjunktiv", "Gliedsätze"]},
+            "lesen": {"name": "Texte verstehen", "seiten": "89-125", "themen": ["Kurzgeschichten", "Balladen", "Sachtexte"]}
+        }
+    },
+    "wortstark_8": {
+        "id": "wortstark_8",
+        "name": "Wortstark 8",
+        "verlag": "Schroedel",
+        "isbn": "978-3-507-48208-2",
+        "klassenstufe": "7/8",
+        "kapitel": {
+            "argumentieren": {"name": "Erörtern und Überzeugen", "seiten": "10-55", "themen": ["Lineare Erörterung", "Kommentar", "Appell"]},
+            "analysieren": {"name": "Texte analysieren", "seiten": "56-98", "themen": ["Textanalyse", "Interpretation", "Sprachliche Mittel"]},
+            "rechtschreibung": {"name": "Rechtschreibtraining", "seiten": "195-235", "themen": ["Wissenschaftliche Begriffe", "Zitate", "Korrektur"]},
+            "grammatik": {"name": "Sprache reflektieren", "seiten": "155-194", "themen": ["Sprachebenen", "Stilmittel", "Sprachgeschichte"]},
+            "lesen": {"name": "Literatur entdecken", "seiten": "99-140", "themen": ["Novelle", "Drama", "Lyrik"]}
+        }
+    },
+    "wortstark_9": {
+        "id": "wortstark_9",
+        "name": "Wortstark 9",
+        "verlag": "Schroedel",
+        "isbn": "978-3-507-48209-9",
+        "klassenstufe": "9/10",
+        "kapitel": {
+            "argumentieren": {"name": "Erörtern und Debattieren", "seiten": "8-52", "themen": ["Dialektische Erörterung", "Debatte", "Essay"]},
+            "analysieren": {"name": "Textanalyse vertieft", "seiten": "53-100", "themen": ["Redeanalyse", "Werbung analysieren", "Filmanalyse"]},
+            "rechtschreibung": {"name": "Rechtschreibtraining", "seiten": "200-238", "themen": ["Prüfungsvorbereitung", "Fehlertypen", "Selbstkorrektur"]},
+            "grammatik": {"name": "Sprache und Gesellschaft", "seiten": "158-199", "themen": ["Sprachkritik", "Manipulation", "Mehrsprachigkeit"]},
+            "lesen": {"name": "Literatur und Zeit", "seiten": "101-145", "themen": ["Gegenwartsliteratur", "Klassiker", "Literaturkritik"]}
+        }
+    },
+    "wortstark_10": {
+        "id": "wortstark_10",
+        "name": "Wortstark 10",
+        "verlag": "Schroedel",
+        "isbn": "978-3-507-48210-5",
+        "klassenstufe": "9/10",
+        "kapitel": {
+            "argumentieren": {"name": "Erörtern auf hohem Niveau", "seiten": "10-55", "themen": ["Literarische Erörterung", "Rezension", "Facharbeit"]},
+            "analysieren": {"name": "Interpretation vertieft", "seiten": "56-105", "themen": ["Gedichtvergleich", "Dramenszene", "Romankapitel"]},
+            "rechtschreibung": {"name": "Abschlusstraining", "seiten": "205-240", "themen": ["Prüfungsformate", "Zeitmanagement", "Überarbeitung"]},
+            "grammatik": {"name": "Sprache und Beruf", "seiten": "160-204", "themen": ["Bewerbung", "Fachsprache", "Präsentation"]},
+            "lesen": {"name": "Literaturepochen", "seiten": "106-150", "themen": ["Epochenüberblick", "Werkvergleich", "Literaturgeschichte"]}
+        }
+    },
+    # ==================== SCHÖNINGH - P.A.U.L. D. ====================
+    "paul_d_5": {
+        "id": "paul_d_5",
+        "name": "P.A.U.L. D. 5",
+        "verlag": "Schöningh",
+        "isbn": "978-3-14-028020-1",
+        "klassenstufe": "5/6",
+        "kapitel": {
+            "erzaehlen": {"name": "Erzählen", "seiten": "12-52", "themen": ["Erlebniserzählung", "Fantasiegeschichte", "Bildergeschichte"]},
+            "berichten": {"name": "Berichten und Beschreiben", "seiten": "53-92", "themen": ["Bericht", "Gegenstandsbeschreibung", "Tiersteckbrief"]},
+            "rechtschreibung": {"name": "Richtig schreiben", "seiten": "200-250", "themen": ["Laute und Buchstaben", "Groß-/Kleinschreibung", "Zeichensetzung"]},
+            "grammatik": {"name": "Sprache untersuchen", "seiten": "150-199", "themen": ["Wortarten", "Satzglieder", "Zeitformen"]},
+            "lesen": {"name": "Lesen - Umgang mit Texten", "seiten": "93-130", "themen": ["Erzähltexte", "Sachtexte", "Gedichte"]}
+        }
+    },
+    "paul_d_6": {
+        "id": "paul_d_6",
+        "name": "P.A.U.L. D. 6",
+        "verlag": "Schöningh",
+        "isbn": "978-3-14-028021-8",
+        "klassenstufe": "5/6",
+        "kapitel": {
+            "erzaehlen": {"name": "Erzählen und Gestalten", "seiten": "10-55", "themen": ["Nacherzählung", "Perspektivwechsel", "Innerer Monolog"]},
+            "berichten": {"name": "Informieren", "seiten": "56-98", "themen": ["Unfallbericht", "Vorgangsbeschreibung", "Protokoll"]},
+            "rechtschreibung": {"name": "Richtig schreiben", "seiten": "210-260", "themen": ["Dehnung/Schärfung", "s-Laute", "Fremdwörter"]},
+            "grammatik": {"name": "Sprache untersuchen", "seiten": "160-209", "themen": ["Tempus", "Kasus", "Satzreihe/Satzgefüge"]},
+            "lesen": {"name": "Lesen - Umgang mit Texten", "seiten": "99-140", "themen": ["Jugendbuch", "Fabeln", "Balladen"]}
+        }
+    },
+    "paul_d_7": {
+        "id": "paul_d_7",
+        "name": "P.A.U.L. D. 7",
+        "verlag": "Schöningh",
+        "isbn": "978-3-14-028022-5",
+        "klassenstufe": "7/8",
+        "kapitel": {
+            "argumentieren": {"name": "Argumentieren und Erörtern", "seiten": "8-55", "themen": ["Begründete Stellungnahme", "Leserbrief", "Diskussion"]},
+            "beschreiben": {"name": "Informieren und Beschreiben", "seiten": "56-100", "themen": ["Inhaltsangabe", "Personenbeschreibung", "Diagrammauswertung"]},
+            "rechtschreibung": {"name": "Richtig schreiben", "seiten": "215-260", "themen": ["Kommasetzung", "Getrennt-/Zusammenschreibung", "Zitieren"]},
+            "grammatik": {"name": "Sprache untersuchen", "seiten": "165-214", "themen": ["Aktiv/Passiv", "Konjunktiv", "Adverbialsätze"]},
+            "lesen": {"name": "Lesen - Umgang mit Texten", "seiten": "101-145", "themen": ["Kurzgeschichten", "Balladen", "Sachtextanalyse"]}
+        }
+    },
+    "paul_d_8": {
+        "id": "paul_d_8",
+        "name": "P.A.U.L. D. 8",
+        "verlag": "Schöningh",
+        "isbn": "978-3-14-028023-2",
+        "klassenstufe": "7/8",
+        "kapitel": {
+            "argumentieren": {"name": "Erörtern", "seiten": "10-60", "themen": ["Lineare Erörterung", "Dialektische Erörterung", "Kommentar"]},
+            "analysieren": {"name": "Analysieren und Interpretieren", "seiten": "61-110", "themen": ["Textanalyse", "Interpretation", "Sprachliche Mittel"]},
+            "rechtschreibung": {"name": "Richtig schreiben", "seiten": "220-265", "themen": ["Fachbegriffe", "Korrekturlesen", "Stilübungen"]},
+            "grammatik": {"name": "Sprache reflektieren", "seiten": "170-219", "themen": ["Sprachebenen", "Jugendsprache", "Sprachgeschichte"]},
+            "lesen": {"name": "Lesen - Umgang mit Texten", "seiten": "111-155", "themen": ["Novelle", "Drama", "Lyrik"]}
+        }
+    },
+    "paul_d_9": {
+        "id": "paul_d_9",
+        "name": "P.A.U.L. D. 9",
+        "verlag": "Schöningh",
+        "isbn": "978-3-14-028024-9",
+        "klassenstufe": "9/10",
+        "kapitel": {
+            "argumentieren": {"name": "Erörtern und Debattieren", "seiten": "8-58", "themen": ["Textgebundene Erörterung", "Essay", "Debatte"]},
+            "analysieren": {"name": "Analysieren vertieft", "seiten": "59-112", "themen": ["Redeanalyse", "Werbung", "Filmanalyse"]},
+            "rechtschreibung": {"name": "Richtig schreiben", "seiten": "225-268", "themen": ["Wissenschaftliches Schreiben", "Quellenangaben", "Prüfungsvorbereitung"]},
+            "grammatik": {"name": "Sprache und Gesellschaft", "seiten": "175-224", "themen": ["Sprachkritik", "Manipulation", "Kommunikationsanalyse"]},
+            "lesen": {"name": "Lesen - Umgang mit Texten", "seiten": "113-160", "themen": ["Gegenwartsliteratur", "Klassiker", "Epochen"]}
+        }
+    },
+    "paul_d_10": {
+        "id": "paul_d_10",
+        "name": "P.A.U.L. D. 10",
+        "verlag": "Schöningh",
+        "isbn": "978-3-14-028025-6",
+        "klassenstufe": "9/10",
+        "kapitel": {
+            "argumentieren": {"name": "Erörtern auf Prüfungsniveau", "seiten": "10-62", "themen": ["Literarische Erörterung", "Materialgestütztes Schreiben", "Rezension"]},
+            "analysieren": {"name": "Interpretation vertieft", "seiten": "63-118", "themen": ["Gedichtvergleich", "Dramenanalyse", "Romananalyse"]},
+            "rechtschreibung": {"name": "Abschlusstraining", "seiten": "230-270", "themen": ["Prüfungsformate", "Zeitmanagement", "Fehleranalyse"]},
+            "grammatik": {"name": "Sprache und Beruf", "seiten": "180-229", "themen": ["Bewerbung", "Fachsprache", "Rhetorik"]},
+            "lesen": {"name": "Literaturgeschichte", "seiten": "119-165", "themen": ["Epochenüberblick", "Werkvergleich", "Literaturkritik"]}
+        }
+    },
+    # ==================== KLETT - Deutsch kompetent ====================
+    "deutsch_kompetent_5": {
+        "id": "deutsch_kompetent_5",
+        "name": "Deutsch kompetent 5",
+        "verlag": "Klett",
+        "isbn": "978-3-12-316001-2",
+        "klassenstufe": "5/6",
+        "kapitel": {
+            "erzaehlen": {"name": "Erzählen", "seiten": "14-55", "themen": ["Erlebniserzählung", "Bildergeschichte", "Fantasieerzählung"]},
+            "berichten": {"name": "Berichten und Beschreiben", "seiten": "56-95", "themen": ["Bericht schreiben", "Gegenstandsbeschreibung", "Tierbeschreibung"]},
+            "rechtschreibung": {"name": "Richtig schreiben", "seiten": "210-260", "themen": ["Laute/Buchstaben", "Groß-/Kleinschreibung", "Zeichensetzung"]},
+            "grammatik": {"name": "Sprache untersuchen", "seiten": "160-209", "themen": ["Wortarten", "Satzglieder", "Zeitformen"]},
+            "lesen": {"name": "Lesen und Verstehen", "seiten": "96-140", "themen": ["Erzähltexte", "Sachtexte", "Gedichte"]}
+        }
+    },
+    "deutsch_kompetent_6": {
+        "id": "deutsch_kompetent_6",
+        "name": "Deutsch kompetent 6",
+        "verlag": "Klett",
+        "isbn": "978-3-12-316002-9",
+        "klassenstufe": "5/6",
+        "kapitel": {
+            "erzaehlen": {"name": "Erzählen und Gestalten", "seiten": "12-58", "themen": ["Nacherzählung", "Reizwortgeschichte", "Innerer Monolog"]},
+            "berichten": {"name": "Informieren", "seiten": "59-102", "themen": ["Unfallbericht", "Vorgangsbeschreibung", "Protokoll"]},
+            "rechtschreibung": {"name": "Richtig schreiben", "seiten": "220-270", "themen": ["Dehnung/Schärfung", "s-Laute", "Fremdwörter"]},
+            "grammatik": {"name": "Sprache untersuchen", "seiten": "170-219", "themen": ["Tempus vertieft", "Kasus", "Satzgefüge"]},
+            "lesen": {"name": "Lesen und Verstehen", "seiten": "103-148", "themen": ["Jugendbuch", "Fabeln", "Balladen"]}
+        }
+    },
+    "deutsch_kompetent_7": {
+        "id": "deutsch_kompetent_7",
+        "name": "Deutsch kompetent 7",
+        "verlag": "Klett",
+        "isbn": "978-3-12-316003-6",
+        "klassenstufe": "7/8",
+        "kapitel": {
+            "argumentieren": {"name": "Argumentieren", "seiten": "10-58", "themen": ["Begründete Stellungnahme", "Leserbrief", "Pro-Contra-Erörterung"]},
+            "beschreiben": {"name": "Informieren und Beschreiben", "seiten": "59-105", "themen": ["Inhaltsangabe", "Charakterisierung", "Diagramme auswerten"]},
+            "rechtschreibung": {"name": "Richtig schreiben", "seiten": "225-275", "themen": ["Kommasetzung", "Getrennt-/Zusammenschreibung", "Zitieren"]},
+            "grammatik": {"name": "Sprache untersuchen", "seiten": "175-224", "themen": ["Aktiv/Passiv", "Konjunktiv", "Nebensätze"]},
+            "lesen": {"name": "Lesen und Verstehen", "seiten": "106-152", "themen": ["Kurzgeschichten", "Balladen", "Sachtexte"]}
+        }
+    },
+    "deutsch_kompetent_8": {
+        "id": "deutsch_kompetent_8",
+        "name": "Deutsch kompetent 8",
+        "verlag": "Klett",
+        "isbn": "978-3-12-316004-3",
+        "klassenstufe": "7/8",
+        "kapitel": {
+            "argumentieren": {"name": "Erörtern", "seiten": "8-62", "themen": ["Lineare Erörterung", "Dialektische Erörterung", "Kommentar"]},
+            "analysieren": {"name": "Analysieren und Interpretieren", "seiten": "63-115", "themen": ["Textanalyse", "Interpretation", "Sprachliche Mittel"]},
+            "rechtschreibung": {"name": "Richtig schreiben", "seiten": "230-278", "themen": ["Fachbegriffe", "Stilübungen", "Korrekturlesen"]},
+            "grammatik": {"name": "Sprache reflektieren", "seiten": "180-229", "themen": ["Sprachebenen", "Jugendsprache", "Sprachgeschichte"]},
+            "lesen": {"name": "Lesen und Verstehen", "seiten": "116-162", "themen": ["Novelle", "Drama", "Lyrik"]}
+        }
+    },
+    "deutsch_kompetent_9": {
+        "id": "deutsch_kompetent_9",
+        "name": "Deutsch kompetent 9",
+        "verlag": "Klett",
+        "isbn": "978-3-12-316005-0",
+        "klassenstufe": "9/10",
+        "kapitel": {
+            "argumentieren": {"name": "Erörtern und Debattieren", "seiten": "10-62", "themen": ["Textgebundene Erörterung", "Essay", "Debatte"]},
+            "analysieren": {"name": "Analysieren vertieft", "seiten": "63-118", "themen": ["Redeanalyse", "Werbung analysieren", "Filmkritik"]},
+            "rechtschreibung": {"name": "Richtig schreiben", "seiten": "235-280", "themen": ["Wissenschaftliches Schreiben", "Quellenarbeit", "Prüfungsvorbereitung"]},
+            "grammatik": {"name": "Sprache und Gesellschaft", "seiten": "185-234", "themen": ["Sprachkritik", "Manipulation", "Kommunikation"]},
+            "lesen": {"name": "Lesen und Verstehen", "seiten": "119-168", "themen": ["Gegenwartsliteratur", "Klassiker", "Epochen"]}
+        }
+    },
+    "deutsch_kompetent_10": {
+        "id": "deutsch_kompetent_10",
+        "name": "Deutsch kompetent 10",
+        "verlag": "Klett",
+        "isbn": "978-3-12-316006-7",
+        "klassenstufe": "9/10",
+        "kapitel": {
+            "argumentieren": {"name": "Erörtern Prüfungsniveau", "seiten": "8-65", "themen": ["Literarische Erörterung", "Materialgestütztes Schreiben", "Rezension"]},
+            "analysieren": {"name": "Interpretation vertieft", "seiten": "66-125", "themen": ["Gedichtvergleich", "Dramenanalyse", "Romananalyse"]},
+            "rechtschreibung": {"name": "Abschlusstraining", "seiten": "240-285", "themen": ["Prüfungsformate", "Zeitmanagement", "Fehleranalyse"]},
+            "grammatik": {"name": "Sprache und Beruf", "seiten": "190-239", "themen": ["Bewerbung", "Fachsprache", "Rhetorik"]},
+            "lesen": {"name": "Literaturgeschichte", "seiten": "126-175", "themen": ["Epochenüberblick", "Werkvergleich", "Literaturkritik"]}
+        }
+    },
+    # ==================== CORNELSEN - Deutschbuch ====================
+    "deutschbuch_5": {
+        "id": "deutschbuch_5",
+        "name": "Deutschbuch 5",
+        "verlag": "Cornelsen",
+        "isbn": "978-3-06-062413-2",
+        "klassenstufe": "5/6",
+        "kapitel": {
+            "erzaehlen": {"name": "Erzählen", "seiten": "14-48", "themen": ["Erlebniserzählung", "Fantasiegeschichte", "Bildergeschichte"]},
+            "berichten": {"name": "Berichten", "seiten": "49-82", "themen": ["Bericht schreiben", "Beschreiben", "Informieren"]},
+            "rechtschreibung": {"name": "Rechtschreibung", "seiten": "200-245", "themen": ["Grundregeln", "Dehnung/Schärfung", "Groß/Klein"]},
+            "grammatik": {"name": "Grammatik", "seiten": "150-199", "themen": ["Wortarten", "Satzglieder", "Zeiten"]},
+            "lesen": {"name": "Lesen", "seiten": "83-120", "themen": ["Sachtexte", "Erzählungen", "Gedichte"]}
+        }
+    },
+    "deutschbuch_6": {
+        "id": "deutschbuch_6",
+        "name": "Deutschbuch 6",
+        "verlag": "Cornelsen",
+        "isbn": "978-3-06-062414-9",
+        "klassenstufe": "5/6",
+        "kapitel": {
+            "erzaehlen": {"name": "Erzählen und Gestalten", "seiten": "12-52", "themen": ["Nacherzählung", "Perspektivwechsel", "Innerer Monolog"]},
+            "berichten": {"name": "Informieren und Berichten", "seiten": "53-90", "themen": ["Unfallbericht", "Vorgangsbeschreibung", "Protokoll"]},
+            "rechtschreibung": {"name": "Rechtschreibung", "seiten": "210-258", "themen": ["Dehnung/Schärfung", "s-Laute", "Fremdwörter"]},
+            "grammatik": {"name": "Grammatik", "seiten": "160-209", "themen": ["Tempus", "Kasus", "Satzgefüge"]},
+            "lesen": {"name": "Lesen", "seiten": "91-135", "themen": ["Jugendbuch", "Fabeln", "Balladen"]}
+        }
+    },
+    "deutschbuch_7": {
+        "id": "deutschbuch_7",
+        "name": "Deutschbuch 7",
+        "verlag": "Cornelsen",
+        "isbn": "978-3-06-062415-6",
+        "klassenstufe": "7/8",
+        "kapitel": {
+            "argumentieren": {"name": "Argumentieren", "seiten": "10-55", "themen": ["Begründete Stellungnahme", "Leserbrief", "Diskussion"]},
+            "beschreiben": {"name": "Informieren", "seiten": "56-98", "themen": ["Inhaltsangabe", "Charakterisierung", "Diagramme"]},
+            "rechtschreibung": {"name": "Rechtschreibung", "seiten": "220-265", "themen": ["Kommasetzung", "Getrennt-/Zusammenschreibung", "Zitieren"]},
+            "grammatik": {"name": "Grammatik", "seiten": "170-219", "themen": ["Aktiv/Passiv", "Konjunktiv", "Nebensätze"]},
+            "lesen": {"name": "Lesen", "seiten": "99-145", "themen": ["Kurzgeschichten", "Balladen", "Sachtexte"]}
+        }
+    },
+    "deutschbuch_8": {
+        "id": "deutschbuch_8",
+        "name": "Deutschbuch 8",
+        "verlag": "Cornelsen",
+        "isbn": "978-3-06-062416-3",
+        "klassenstufe": "7/8",
+        "kapitel": {
+            "argumentieren": {"name": "Erörtern", "seiten": "8-58", "themen": ["Lineare Erörterung", "Dialektische Erörterung", "Kommentar"]},
+            "analysieren": {"name": "Analysieren", "seiten": "59-108", "themen": ["Textanalyse", "Interpretation", "Sprachliche Mittel"]},
+            "rechtschreibung": {"name": "Rechtschreibung", "seiten": "225-270", "themen": ["Fachbegriffe", "Stilübungen", "Korrektur"]},
+            "grammatik": {"name": "Grammatik", "seiten": "175-224", "themen": ["Sprachebenen", "Jugendsprache", "Sprachgeschichte"]},
+            "lesen": {"name": "Lesen", "seiten": "109-155", "themen": ["Novelle", "Drama", "Lyrik"]}
+        }
+    },
+    "deutschbuch_9": {
+        "id": "deutschbuch_9",
+        "name": "Deutschbuch 9",
+        "verlag": "Cornelsen",
+        "isbn": "978-3-06-062417-0",
+        "klassenstufe": "9/10",
+        "kapitel": {
+            "argumentieren": {"name": "Erörtern und Debattieren", "seiten": "10-60", "themen": ["Textgebundene Erörterung", "Essay", "Debatte"]},
+            "analysieren": {"name": "Analysieren vertieft", "seiten": "61-115", "themen": ["Redeanalyse", "Werbung", "Filmanalyse"]},
+            "rechtschreibung": {"name": "Rechtschreibung", "seiten": "230-275", "themen": ["Wissenschaftliches Schreiben", "Quellen", "Prüfung"]},
+            "grammatik": {"name": "Grammatik", "seiten": "180-229", "themen": ["Sprachkritik", "Manipulation", "Kommunikation"]},
+            "lesen": {"name": "Lesen", "seiten": "116-165", "themen": ["Gegenwartsliteratur", "Klassiker", "Epochen"]}
+        }
+    },
+    "deutschbuch_10": {
+        "id": "deutschbuch_10",
+        "name": "Deutschbuch 10",
+        "verlag": "Cornelsen",
+        "isbn": "978-3-06-062418-7",
+        "klassenstufe": "9/10",
+        "kapitel": {
+            "argumentieren": {"name": "Erörtern Prüfungsniveau", "seiten": "8-62", "themen": ["Literarische Erörterung", "Materialgestützt", "Rezension"]},
+            "analysieren": {"name": "Interpretation vertieft", "seiten": "63-120", "themen": ["Gedichtvergleich", "Dramenanalyse", "Romananalyse"]},
+            "rechtschreibung": {"name": "Abschlusstraining", "seiten": "235-280", "themen": ["Prüfungsformate", "Zeitmanagement", "Fehleranalyse"]},
+            "grammatik": {"name": "Grammatik", "seiten": "185-234", "themen": ["Bewerbung", "Fachsprache", "Rhetorik"]},
+            "lesen": {"name": "Literaturgeschichte", "seiten": "121-170", "themen": ["Epochenüberblick", "Werkvergleich", "Literaturkritik"]}
+        }
+    },
+    # ==================== OHNE SCHULBUCH ====================
+    "kein_schulbuch": {
+        "id": "kein_schulbuch",
+        "name": "Ohne Schulbuchbezug",
+        "verlag": "",
+        "isbn": "",
+        "klassenstufe": "alle",
+        "kapitel": {}
+    }
+}
+
+# Pydantic Models für Unterrichtsplanung
+class UnterrichtsreiheRequest(BaseModel):
+    klassenstufe: str
+    kompetenzbereich: str
+    thema_id: str
+    niveau: str  # G, M, E
+    stunden_anzahl: int = 6
+    schulbuch_id: Optional[str] = None  # Optional: Schulbuch-Referenz
+
+class MaterialRequest(BaseModel):
+    thema: str
+    niveau: str
+    material_typ: str  # arbeitsblatt, quiz, raetsel, zuordnung
+    klassenstufe: str
+
+class GeneratedMaterial(BaseModel):
+    typ: str
+    titel: str
+    inhalt: str
+    loesung: Optional[str] = None
+
+# API Endpoints
+
+@api_router.get("/lehrplan/struktur")
+async def get_lehrplan_struktur(user_id: str = Depends(get_current_user)):
+    """Gibt die komplette LP-Struktur für das Auswahlmenü zurück"""
+    struktur = {}
+    for klassenstufe, bereiche in LEHRPLAN_DEUTSCH_RLP.items():
+        struktur[klassenstufe] = {}
+        for bereich_id, bereich_data in bereiche.items():
+            struktur[klassenstufe][bereich_id] = {
+                "name": bereich_data["name"],
+                "themen": [{"id": t["id"], "name": t["name"]} for t in bereich_data["themen"]]
+            }
+    return {"fach": "Deutsch", "bundesland": "RLP", "schulart": "RS+", "struktur": struktur}
+
+@api_router.get("/lehrplan/thema")
+async def get_thema_details(
+    klassenstufe: str = Query(...),
+    kompetenzbereich: str = Query(...),
+    thema_id: str = Query(...),
+    user_id: str = Depends(get_current_user)
+):
+    """Gibt Details zu einem spezifischen Thema zurück"""
+    try:
+        bereich = LEHRPLAN_DEUTSCH_RLP.get(klassenstufe, {}).get(kompetenzbereich, {})
+        themen = bereich.get("themen", [])
+        for thema in themen:
+            if thema["id"] == thema_id:
+                return {
+                    "klassenstufe": klassenstufe,
+                    "kompetenzbereich": bereich.get("name", kompetenzbereich),
+                    "thema": thema
+                }
+        raise HTTPException(status_code=404, detail="Thema nicht gefunden")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/lehrplan/schulbuecher")
+async def get_schulbuecher(
+    klassenstufe: Optional[str] = Query(None),
+    user_id: str = Depends(get_current_user)
+):
+    """Gibt verfügbare Schulbücher zurück, optional gefiltert nach Klassenstufe"""
+    try:
+        result = []
+        for buch_id, buch in SCHULBUECHER_DEUTSCH.items():
+            # Filter nach Klassenstufe wenn angegeben
+            if klassenstufe and buch["klassenstufe"] != "alle":
+                if klassenstufe not in buch["klassenstufe"]:
+                    continue
+            result.append({
+                "id": buch["id"],
+                "name": buch["name"],
+                "verlag": buch["verlag"],
+                "isbn": buch["isbn"],
+                "klassenstufe": buch["klassenstufe"],
+                "kapitel": list(buch["kapitel"].keys())
+            })
+        return {"schulbuecher": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/lehrplan/unterrichtsreihe/generieren")
+async def generiere_unterrichtsreihe(
+    request: UnterrichtsreiheRequest,
+    user_id: str = Depends(get_current_user)
+):
+    """Generiert eine Unterrichtsreihe mit KI, optional mit Schulbuch-Referenzen"""
+    import json as json_lib  # Import hier für Exception-Handling
+    try:
+        # Hole Thema-Details
+        bereich = LEHRPLAN_DEUTSCH_RLP.get(request.klassenstufe, {}).get(request.kompetenzbereich, {})
+        thema_data = None
+        for t in bereich.get("themen", []):
+            if t["id"] == request.thema_id:
+                thema_data = t
+                break
+        
+        if not thema_data:
+            raise HTTPException(status_code=404, detail="Thema nicht gefunden")
+        
+        niveau_text = thema_data.get(request.niveau, "")
+        niveau_name = {"G": "grundlegend", "M": "mittel", "E": "erweitert"}.get(request.niveau, "mittel")
+        
+        # Schulbuch-Informationen vorbereiten
+        schulbuch_info = ""
+        schulbuch_name = None
+        if request.schulbuch_id and request.schulbuch_id != "kein_schulbuch":
+            schulbuch = SCHULBUECHER_DEUTSCH.get(request.schulbuch_id)
+            if schulbuch:
+                schulbuch_name = f"{schulbuch['name']} ({schulbuch['verlag']})"
+                # Finde passende Kapitel basierend auf dem Kompetenzbereich
+                kapitel_info = []
+                for kap_id, kap_data in schulbuch.get("kapitel", {}).items():
+                    # Prüfe ob das Kapitel thematisch passt
+                    kap_themen_lower = [t.lower() for t in kap_data.get("themen", [])]
+                    bereich_name_lower = bereich.get("name", "").lower()
+                    if any(word in bereich_name_lower for word in ["schreib", "erzähl", "bericht"]) and kap_id in ["erzaehlen", "berichten"]:
+                        kapitel_info.append(f"- {kap_data['name']}: Seiten {kap_data['seiten']}")
+                    elif any(word in bereich_name_lower for word in ["lesen", "text", "literatur"]) and kap_id == "lesen":
+                        kapitel_info.append(f"- {kap_data['name']}: Seiten {kap_data['seiten']}")
+                    elif any(word in bereich_name_lower for word in ["sprach", "grammatik", "rechtschreib"]) and kap_id in ["grammatik", "rechtschreibung"]:
+                        kapitel_info.append(f"- {kap_data['name']}: Seiten {kap_data['seiten']}")
+                    elif any(word in bereich_name_lower for word in ["argument", "diskut"]) and kap_id == "argumentieren":
+                        kapitel_info.append(f"- {kap_data['name']}: Seiten {kap_data['seiten']}")
+                
+                # Wenn keine spezifischen Kapitel gefunden, alle Kapitel anbieten
+                if not kapitel_info:
+                    for kap_id, kap_data in schulbuch.get("kapitel", {}).items():
+                        kapitel_info.append(f"- {kap_data['name']}: Seiten {kap_data['seiten']}")
+                
+                schulbuch_info = f"""
+SCHULBUCH-BEZUG:
+Verwende das Schulbuch "{schulbuch['name']}" ({schulbuch['verlag']}, ISBN: {schulbuch['isbn']}).
+Relevante Kapitel:
+{chr(10).join(kapitel_info)}
+
+Bei jeder Stunde: Gib konkrete Seitenzahlen an, z.B. "S. 34-36" oder "Aufgabe 3 auf S. 42".
+Füge bei jedem Material-Eintrag einen Schulbuch-Verweis hinzu wenn passend."""
+        
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        
+        emergent_key = os.environ.get("EMERGENT_LLM_KEY", "")
+        if not emergent_key:
+            raise HTTPException(status_code=500, detail="KI-Service nicht konfiguriert")
+        
+        system_msg = """Du bist ein erfahrener Deutschlehrer an einer Realschule plus in Rheinland-Pfalz. 
+Du erstellst praxisnahe, differenzierte Unterrichtsreihen für den Deutschunterricht.
+Deine Unterrichtsreihen sind klar strukturiert, schülerorientiert und enthalten konkrete Aktivitäten.
+Wenn ein Schulbuch angegeben ist, integrierst du passende Seiten und Aufgaben aus diesem Buch.
+Antworte IMMER im JSON-Format."""
+        
+        chat = LlmChat(
+            api_key=emergent_key,
+            session_id=f"unterricht-{user_id}-{uuid.uuid4()}",
+            system_message=system_msg
+        ).with_model("gemini", "gemini-3-flash-preview")
+        
+        # JSON-Format mit optionalen Schulbuch-Feldern
+        json_format = """{
+    "titel": "Titel der Unterrichtsreihe",
+    "ueberblick": "Kurze Beschreibung (2-3 Sätze)",
+    "schulbuch": "Name des Schulbuchs (falls verwendet)",
+    "lernziele": ["Lernziel 1", "Lernziel 2", "Lernziel 3"],
+    "stunden": [
+        {
+            "nummer": 1,
+            "titel": "Titel der Stunde",
+            "phase": "Einstieg/Erarbeitung/Sicherung",
+            "dauer": "45 min",
+            "inhalt": "Detaillierte Beschreibung der Stundeninhalte",
+            "methoden": ["Methode 1", "Methode 2"],
+            "material": ["Benötigtes Material"],
+            "schulbuch_seiten": "z.B. S. 34-36, Aufgabe 1-3"
+        }
+    ],
+    "differenzierung": {
+        "foerdern": "Maßnahmen für schwächere SuS",
+        "fordern": "Maßnahmen für stärkere SuS"
+    },
+    "leistungsnachweis": "Vorschlag für Leistungsüberprüfung"
+}"""
+        
+        prompt = f"""Erstelle eine Unterrichtsreihe für Deutsch RS+ mit folgenden Parametern:
+
+Klassenstufe: {request.klassenstufe}
+Kompetenzbereich: {bereich.get('name', request.kompetenzbereich)}
+Thema: {thema_data['name']}
+Lehrplaninhalt ({niveau_name}): {niveau_text}
+Niveau: {niveau_name} ({"einfacher, mehr Unterstützung" if request.niveau == "G" else "anspruchsvoller, mehr Eigenständigkeit" if request.niveau == "E" else "mittleres Anforderungsniveau"})
+Anzahl Unterrichtsstunden: {request.stunden_anzahl}
+{schulbuch_info}
+
+Erstelle eine detaillierte Unterrichtsreihe im folgenden JSON-Format:
+{json_format}
+
+Wichtig: 
+- Genau {request.stunden_anzahl} Stunden erstellen
+- Niveau {niveau_name} beachten
+- Praxisnah und umsetzbar
+{"- Bei JEDER Stunde konkrete Schulbuch-Seitenzahlen angeben!" if schulbuch_info else "- schulbuch_seiten kann leer bleiben wenn kein Schulbuch gewählt"}
+- Nur valides JSON zurückgeben, keine Erklärungen davor oder danach"""
+
+        response = await asyncio.wait_for(
+            chat.send_message(UserMessage(text=prompt)),
+            timeout=60.0
+        )
+        
+        # Parse JSON response
+        # Entferne mögliche Markdown-Codeblöcke
+        response_text = response.strip()
+        if response_text.startswith("```json"):
+            response_text = response_text[7:]
+        if response_text.startswith("```"):
+            response_text = response_text[3:]
+        if response_text.endswith("```"):
+            response_text = response_text[:-3]
+        
+        unterrichtsreihe = json_lib.loads(response_text.strip())
+        
+        # Speichere in Datenbank
+        doc = {
+            "user_id": user_id,
+            "klassenstufe": request.klassenstufe,
+            "kompetenzbereich": request.kompetenzbereich,
+            "thema_id": request.thema_id,
+            "niveau": request.niveau,
+            "schulbuch_id": request.schulbuch_id,
+            "schulbuch_name": schulbuch_name,
+            "unterrichtsreihe": unterrichtsreihe,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        result = await db.unterrichtsreihen.insert_one(doc)
+        
+        return {
+            "id": str(result.inserted_id),
+            "unterrichtsreihe": unterrichtsreihe,
+            "schulbuch": schulbuch_name,
+            "meta": {
+                "klassenstufe": request.klassenstufe,
+                "thema": thema_data["name"],
+                "niveau": niveau_name
+            }
+        }
+        
+    except json_lib.JSONDecodeError as e:
+        logger.error(f"JSON Parse error: {e}")
+        raise HTTPException(status_code=500, detail="Fehler beim Parsen der KI-Antwort")
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="KI-Anfrage Timeout")
+    except Exception as e:
+        logger.error(f"Unterrichtsreihe generation error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/lehrplan/material/generieren")
+async def generiere_material(
+    request: MaterialRequest,
+    user_id: str = Depends(get_current_user)
+):
+    """Generiert Unterrichtsmaterial (Arbeitsblatt, Quiz, Rätsel) mit KI"""
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        
+        emergent_key = os.environ.get("EMERGENT_LLM_KEY", "")
+        if not emergent_key:
+            raise HTTPException(status_code=500, detail="KI-Service nicht konfiguriert")
+        
+        niveau_name = {"G": "grundlegend", "M": "mittel", "E": "erweitert"}.get(request.niveau, "mittel")
+        
+        material_prompts = {
+            "arbeitsblatt": f"""Erstelle ein Arbeitsblatt für Deutsch RS+ Klasse {request.klassenstufe} zum Thema "{request.thema}" (Niveau: {niveau_name}).
+
+Das Arbeitsblatt soll enthalten:
+- Überschrift
+- Kurze Einleitung/Erklärung
+- 4-6 abwechslungsreiche Aufgaben
+- Platz für Schülerantworten (markiert mit ___)
+
+Format als JSON:
+{{"titel": "...", "einleitung": "...", "aufgaben": [{{"nummer": 1, "aufgabenstellung": "...", "punkte": 2}}], "loesung": [{{"nummer": 1, "loesung": "..."}}]}}""",
+
+            "quiz": f"""Erstelle ein Quiz für Deutsch RS+ Klasse {request.klassenstufe} zum Thema "{request.thema}" (Niveau: {niveau_name}).
+
+Das Quiz soll 8 Multiple-Choice-Fragen enthalten.
+
+Format als JSON:
+{{"titel": "Quiz: {request.thema}", "fragen": [{{"nummer": 1, "frage": "...", "optionen": ["A) ...", "B) ...", "C) ...", "D) ..."], "richtig": "A", "erklaerung": "..."}}]}}""",
+
+            "raetsel": f"""Erstelle ein Kreuzworträtsel für Deutsch RS+ Klasse {request.klassenstufe} zum Thema "{request.thema}" (Niveau: {niveau_name}).
+
+Das Rätsel soll 8-10 Begriffe enthalten.
+
+Format als JSON:
+{{"titel": "Kreuzworträtsel: {request.thema}", "begriffe": [{{"wort": "...", "hinweis": "...", "richtung": "waagerecht/senkrecht", "nummer": 1}}], "loesung": ["Liste aller Lösungswörter"]}}""",
+
+            "zuordnung": f"""Erstelle eine Zuordnungsübung für Deutsch RS+ Klasse {request.klassenstufe} zum Thema "{request.thema}" (Niveau: {niveau_name}).
+
+Die Übung soll 8 Paare zum Zuordnen enthalten (z.B. Begriff → Definition, Beispiel → Regel).
+
+Format als JSON:
+{{"titel": "Zuordnung: {request.thema}", "anleitung": "Ordne die passenden Paare zu.", "paare": [{{"links": "...", "rechts": "..."}}], "tipp": "Ein hilfreicher Hinweis"}}""",
+
+            "lueckentext": f"""Erstelle einen Lückentext für Deutsch RS+ Klasse {request.klassenstufe} zum Thema "{request.thema}" (Niveau: {niveau_name}).
+
+Der Text soll 8-10 Lücken enthalten.
+
+Format als JSON:
+{{"titel": "Lückentext: {request.thema}", "text": "Der Text mit ___(1)___ Lücken ___(2)___ markiert...", "luecken": [{{"nummer": 1, "loesung": "...", "hinweis": "..."}}], "woerter_box": ["Liste der einzusetzenden Wörter (gemischt)"]}}"""
+        }
+        
+        prompt = material_prompts.get(request.material_typ, material_prompts["arbeitsblatt"])
+        
+        chat = LlmChat(
+            api_key=emergent_key,
+            session_id=f"material-{user_id}-{uuid.uuid4()}",
+            system_message="""Du bist ein erfahrener Deutschlehrer an einer Realschule plus. 
+Du erstellst kreative, schülergerechte Unterrichtsmaterialien.
+Antworte IMMER nur mit validem JSON, ohne Erklärungen."""
+        ).with_model("gemini", "gemini-3-flash-preview")
+        
+        response = await asyncio.wait_for(
+            chat.send_message(UserMessage(text=prompt)),
+            timeout=45.0
+        )
+        
+        # Parse JSON
+        import json as json_lib
+        response_text = response.strip()
+        if response_text.startswith("```json"):
+            response_text = response_text[7:]
+        if response_text.startswith("```"):
+            response_text = response_text[3:]
+        if response_text.endswith("```"):
+            response_text = response_text[:-3]
+        
+        material = json_lib.loads(response_text.strip())
+        
+        return {
+            "typ": request.material_typ,
+            "niveau": niveau_name,
+            "klassenstufe": request.klassenstufe,
+            "thema": request.thema,
+            "material": material
+        }
+        
+    except json_lib.JSONDecodeError as e:
+        logger.error(f"JSON Parse error: {e}")
+        raise HTTPException(status_code=500, detail="Fehler beim Parsen der KI-Antwort")
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="KI-Anfrage Timeout")
+    except Exception as e:
+        logger.error(f"Material generation error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/lehrplan/unterrichtsreihen")
+async def get_saved_unterrichtsreihen(user_id: str = Depends(get_current_user)):
+    """Gibt alle gespeicherten Unterrichtsreihen des Nutzers zurück"""
+    cursor = db.unterrichtsreihen.find({"user_id": user_id})
+    reihen = []
+    async for doc in cursor:
+        reihen.append({
+            "id": str(doc["_id"]),
+            "klassenstufe": doc.get("klassenstufe"),
+            "kompetenzbereich": doc.get("kompetenzbereich"),
+            "thema_id": doc.get("thema_id"),
+            "niveau": doc.get("niveau"),
+            "unterrichtsreihe": doc.get("unterrichtsreihe"),
+            "created_at": doc.get("created_at")
+        })
+    return {"unterrichtsreihen": reihen}
+
+@api_router.delete("/lehrplan/unterrichtsreihe/{reihe_id}")
+async def delete_unterrichtsreihe(reihe_id: str, user_id: str = Depends(get_current_user)):
+    """Löscht eine gespeicherte Unterrichtsreihe"""
+    from bson import ObjectId
+    try:
+        result = await db.unterrichtsreihen.delete_one({
+            "_id": ObjectId(reihe_id),
+            "user_id": user_id
+        })
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Unterrichtsreihe nicht gefunden")
+        return {"success": True, "message": "Unterrichtsreihe gelöscht"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ============== ROOT ==============
+
+@api_router.get("/")
+async def root():
+    return {"message": "PlanEd API v2.0.0", "status": "running"}
+
+# Include the router in the main app
+app.include_router(api_router)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_credentials=True,
+    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.on_event("shutdown")
+async def shutdown_db_client():
+    client.close()
