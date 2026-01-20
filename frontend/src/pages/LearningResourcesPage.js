@@ -330,6 +330,8 @@ const LearningResourcesPage = () => {
   });
   const [activeTab, setActiveTab] = useState('platforms');
   const [showAllPlatforms, setShowAllPlatforms] = useState(false);
+  const [learningAppsSearch, setLearningAppsSearch] = useState('');
+  const [learningAppsFach, setLearningAppsFach] = useState('Deutsch');
 
   // Gefilterte Plattformen
   const filteredPlatforms = useMemo(() => {
