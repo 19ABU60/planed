@@ -2407,6 +2407,7 @@ async def generiere_unterrichtsreihe(
     user_id: str = Depends(get_current_user)
 ):
     """Generiert eine Unterrichtsreihe mit KI, optional mit Schulbuch-Referenzen"""
+    import json as json_lib  # Import hier für Exception-Handling
     try:
         # Hole Thema-Details
         bereich = LEHRPLAN_DEUTSCH_RLP.get(request.klassenstufe, {}).get(request.kompetenzbereich, {})
