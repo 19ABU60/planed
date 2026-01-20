@@ -173,6 +173,24 @@ PlanEd ist eine Web-Anwendung für Lehrer zur Verwaltung von Arbeitsplänen, die
 
 ## Changelog
 
+### 20.01.2026 - Mathe-Schulbücher erweitert + Excel-Import Frontend + Auth-Refactoring ✅
+- **Mathe-Schulbücher massiv erweitert (24 Bücher):**
+  - Cornelsen - Mathe Live 5-10 (komplette Reihe mit detaillierten Kapitelstrukturen)
+  - Schroedel - Mathematik Neue Wege 5-10 (neue Reihe hinzugefügt)
+  - Alle Bücher mit echten Seitenangaben und Themenübersichten
+  
+- **Excel-Import Frontend implementiert:**
+  - Neuer "Excel Import" Button in der Arbeitsplan-Tabelle
+  - Datei-Upload (.xlsx, .xls) mit FormData
+  - Automatisches Neuladen der Daten nach Import
+  - Loading-Spinner während des Imports
+  - Datei: `/app/frontend/src/pages/WorkplanTablePage.js`
+  
+- **Backend-Refactoring: Auth-Routes ausgelagert:**
+  - Auth-Endpunkte aus server.py entfernt (62 Zeilen)
+  - `routes/auth.py` wird jetzt aktiv verwendet
+  - server.py reduziert auf 2100 Zeilen (von 2162)
+
 ### 20.01.2026 - Frontend Fach-Auswahl (Deutsch/Mathematik) ✅
 - **Neues Feature:** Fach-Dropdown in der Unterrichtsplanung
 - **UI-Änderungen:**
