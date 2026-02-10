@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import { 
   BookOpen, Sparkles, RefreshCw, Edit3, Trash2, Plus,
-  Lightbulb, Target, Calendar
+  Lightbulb, Target, Calendar, FileText, Download
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { AlternativeTabs, AlternativeModal } from './AlternativeTabs';
+import { API } from './constants';
 
 export const UnterrichtsreiheView = ({
   unterrichtsreihe,
@@ -18,6 +21,9 @@ export const UnterrichtsreiheView = ({
   schulbuecher,
   loadingSchulbuecher,
   selectedThema,
+  selectedKlasse,
+  selectedNiveau,
+  selectedFach,
   generatingReihe,
   generiereUnterrichtsreihe,
   // Alternativen
@@ -30,8 +36,12 @@ export const UnterrichtsreiheView = ({
   generatingAlternative,
   generiereAlternative,
   // Workplan
-  setShowWorkplanModal
+  setShowWorkplanModal,
+  token
 }) => {
+  const [generatingStundenMaterial, setGeneratingStundenMaterial] = useState(null);
+  const [stundenMaterial, setStundenMaterial] = useState({});
+
   const deleteStunde = (index) => {
     const updated = editedStunden.filter((_, i) => i !== index);
     setEditedStunden(updated.map((s, i) => ({ ...s, nummer: i + 1 })));
@@ -43,13 +53,89 @@ export const UnterrichtsreiheView = ({
       {
         nummer: editedStunden.length + 1,
         titel: 'Neue Stunde',
+        lernziel: '',
         phase: 'Erarbeitung',
         dauer: '45 min',
         inhalt: 'Inhalt hier eingeben...',
+        aufgaben: [],
         methoden: [],
         material: []
       }
     ]);
+  };
+
+  // Material für einzelne Stunde generieren
+  const generiereStundenMaterial = async (stunde, idx) => {
+    setGeneratingStundenMaterial(idx);
+    try {
+      const response = await fetch(`${API}/api/lehrplan/stunde/material/generieren`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          stunde_titel: stunde.titel,
+          stunde_inhalt: stunde.inhalt,
+          stunde_aufgaben: stunde.aufgaben || stunde.methoden || [],
+          stunde_lernziel: stunde.lernziel || '',
+          klassenstufe: selectedKlasse,
+          niveau: selectedNiveau,
+          thema: unterrichtsreihe?.titel || selectedThema
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Fehler beim Generieren');
+      }
+
+      const data = await response.json();
+      setStundenMaterial(prev => ({ ...prev, [idx]: data }));
+      toast.success('Aufgaben- und Lösungsblatt erstellt!');
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Fehler beim Generieren der Materialien');
+    } finally {
+      setGeneratingStundenMaterial(null);
+    }
+  };
+
+  // Material als Word herunterladen
+  const downloadStundenMaterial = async (idx) => {
+    const material = stundenMaterial[idx];
+    if (!material) return;
+
+    try {
+      const response = await fetch(`${API}/api/lehrplan/stunde/material/export/word`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          aufgabenblatt: material.aufgabenblatt,
+          loesungsblatt: material.loesungsblatt
+        })
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Stunde_${idx + 1}_Material.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        toast.success('Material heruntergeladen!');
+      } else {
+        toast.error('Download fehlgeschlagen');
+      }
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('Download fehlgeschlagen');
+    }
   };
 
   return (
@@ -179,7 +265,7 @@ export const UnterrichtsreiheView = ({
           {unterrichtsreihe.lernziele && (
             <div style={{ marginBottom: '1rem', padding: '0.5rem', background: 'rgba(34, 197, 94, 0.1)', borderRadius: '6px' }}>
               <div style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--success)', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                <Target size={12} /> Lernziele
+                <Target size={12} /> Übergeordnete Lernziele
               </div>
               <ul style={{ fontSize: '0.75rem', margin: 0, paddingLeft: '1rem' }}>
                 {unterrichtsreihe.lernziele.map((z, i) => (
@@ -212,22 +298,22 @@ export const UnterrichtsreiheView = ({
           </div>
 
           {/* Stunden-Liste */}
-          <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+          <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
             {editedStunden.map((stunde, idx) => (
               <div 
                 key={idx}
                 style={{ 
-                  padding: '0.6rem',
-                  marginBottom: '0.5rem',
+                  padding: '0.75rem',
+                  marginBottom: '0.75rem',
                   background: 'var(--bg-subtle)',
-                  borderRadius: '6px',
+                  borderRadius: '8px',
                   borderLeft: '3px solid var(--primary)',
                   fontSize: '0.8rem'
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>
+                    <div style={{ fontWeight: '600', marginBottom: '0.35rem' }}>
                       <span style={{ 
                         background: 'var(--primary)', 
                         color: 'white', 
@@ -240,9 +326,29 @@ export const UnterrichtsreiheView = ({
                       </span>
                       {stunde.titel}
                     </div>
+                    
+                    {/* Stunden-Lernziel */}
+                    {stunde.lernziel && (
+                      <div style={{ 
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '0.35rem',
+                        padding: '0.35rem 0.5rem',
+                        background: 'rgba(34, 197, 94, 0.1)',
+                        borderRadius: '4px',
+                        fontSize: '0.7rem',
+                        color: '#22c55e',
+                        marginBottom: '0.35rem'
+                      }}>
+                        <Target size={12} style={{ marginTop: '0.1rem', flexShrink: 0 }} />
+                        <span>{stunde.lernziel}</span>
+                      </div>
+                    )}
+                    
                     <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', margin: '0.25rem 0' }}>
                       {stunde.inhalt?.substring(0, 150)}...
                     </p>
+                    
                     {/* Schulbuch-Seiten anzeigen */}
                     {stunde.schulbuch_seiten && (
                       <div style={{ 
@@ -254,26 +360,80 @@ export const UnterrichtsreiheView = ({
                         borderRadius: '3px',
                         fontSize: '0.65rem',
                         color: 'var(--primary)',
-                        marginBottom: '0.25rem'
+                        marginBottom: '0.35rem',
+                        marginRight: '0.5rem'
                       }}>
                         <BookOpen size={10} />
                         {stunde.schulbuch_seiten}
                       </div>
                     )}
-                    {stunde.methoden?.length > 0 && (
-                      <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
-                        {stunde.methoden.map((m, i) => (
+                    
+                    {/* Aufgaben/Methoden Tags */}
+                    {(stunde.aufgaben?.length > 0 || stunde.methoden?.length > 0) && (
+                      <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', marginTop: '0.35rem' }}>
+                        {(stunde.aufgaben || stunde.methoden || []).map((m, i) => (
                           <span key={i} style={{ 
                             fontSize: '0.65rem', 
-                            padding: '0.1rem 0.3rem',
+                            padding: '0.15rem 0.4rem',
                             background: 'var(--bg-default)',
-                            borderRadius: '3px'
+                            borderRadius: '3px',
+                            border: '1px solid var(--border-default)'
                           }}>
                             {m}
                           </span>
                         ))}
                       </div>
                     )}
+                    
+                    {/* Material-Button für diese Stunde */}
+                    <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                      <button
+                        onClick={() => generiereStundenMaterial(stunde, idx)}
+                        disabled={generatingStundenMaterial === idx}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          padding: '0.3rem 0.5rem',
+                          fontSize: '0.65rem',
+                          background: stundenMaterial[idx] ? 'rgba(34, 197, 94, 0.15)' : 'rgba(59, 130, 246, 0.1)',
+                          color: stundenMaterial[idx] ? '#22c55e' : 'var(--primary)',
+                          border: `1px solid ${stundenMaterial[idx] ? 'rgba(34, 197, 94, 0.3)' : 'rgba(59, 130, 246, 0.3)'}`,
+                          borderRadius: '4px',
+                          cursor: 'pointer'
+                        }}
+                        data-testid={`generate-stunde-material-${idx}`}
+                      >
+                        {generatingStundenMaterial === idx ? (
+                          <RefreshCw size={10} className="spin" />
+                        ) : (
+                          <FileText size={10} />
+                        )}
+                        {stundenMaterial[idx] ? 'Material erstellt ✓' : 'Aufgaben-/Lösungsblatt'}
+                      </button>
+                      
+                      {stundenMaterial[idx] && (
+                        <button
+                          onClick={() => downloadStundenMaterial(idx)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                            padding: '0.3rem 0.5rem',
+                            fontSize: '0.65rem',
+                            background: 'var(--primary)',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer'
+                          }}
+                          data-testid={`download-stunde-material-${idx}`}
+                        >
+                          <Download size={10} />
+                          Word
+                        </button>
+                      )}
+                    </div>
                   </div>
                   {editMode && (
                     <button
