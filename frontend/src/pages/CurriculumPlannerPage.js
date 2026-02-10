@@ -472,6 +472,9 @@ const CurriculumPlannerPage = () => {
             schulbuecher={schulbuecher}
             loadingSchulbuecher={loadingSchulbuecher}
             selectedThema={selectedThema}
+            selectedKlasse={selectedKlasse}
+            selectedNiveau={selectedNiveau}
+            selectedFach={selectedFach}
             generatingReihe={generatingReihe}
             generiereUnterrichtsreihe={generiereUnterrichtsreihe}
             alternativen={alternativen}
@@ -483,6 +486,7 @@ const CurriculumPlannerPage = () => {
             generatingAlternative={generatingAlternative}
             generiereAlternative={generiereAlternative}
             setShowWorkplanModal={setShowWorkplanModal}
+            token={token}
           />
         </div>
 
