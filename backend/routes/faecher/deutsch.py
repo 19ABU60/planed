@@ -185,14 +185,16 @@ Antworte IMMER im JSON-Format."""
     "titel": "Titel der Unterrichtsreihe",
     "ueberblick": "Kurze Beschreibung (2-3 Sätze)",
     "schulbuch": "Name des Schulbuchs (falls verwendet)",
-    "lernziele": ["Lernziel 1", "Lernziel 2", "Lernziel 3"],
+    "lernziele": ["Übergeordnetes Lernziel 1", "Übergeordnetes Lernziel 2"],
     "stunden": [
         {
             "nummer": 1,
             "titel": "Titel der Stunde",
+            "lernziel": "Konkretes Lernziel dieser Stunde (Die SuS können...)",
             "phase": "Einstieg/Erarbeitung/Sicherung",
             "dauer": "45 min",
             "inhalt": "Detaillierte Beschreibung der Stundeninhalte",
+            "aufgaben": ["Konkrete Aufgabe 1", "Konkrete Aufgabe 2"],
             "methoden": ["Methode 1", "Methode 2"],
             "material": ["Benötigtes Material"],
             "schulbuch_seiten": "z.B. S. 34-36, Aufgabe 1-3"
