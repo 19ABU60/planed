@@ -381,6 +381,267 @@ Antworte IMMER nur mit validem JSON, ohne Erklärungen."""
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ============== STUNDEN-MATERIAL (AUFGABEN- UND LÖSUNGSBLÄTTER) ==============
+
+class StundenMaterialRequest(BaseModel):
+    stunde_titel: str
+    stunde_inhalt: str
+    stunde_aufgaben: list  # Liste der Aufgaben aus der Stunde
+    stunde_lernziel: Optional[str] = None
+    klassenstufe: str
+    niveau: str
+    thema: str
+
+@router.post("/stunde/material/generieren")
+async def generiere_stunden_material(
+    request: StundenMaterialRequest,
+    user_id: str = Depends(get_current_user)
+):
+    """Generiert Aufgaben- und Lösungsblätter für eine spezifische Unterrichtsstunde"""
+    import json as json_lib
+    
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        
+        emergent_key = os.environ.get("EMERGENT_LLM_KEY", "")
+        if not emergent_key:
+            raise HTTPException(status_code=500, detail="KI-Service nicht konfiguriert")
+        
+        niveau_name = {"G": "grundlegend", "M": "mittel", "E": "erweitert"}.get(request.niveau, "mittel")
+        
+        # Aufgaben als String formatieren
+        aufgaben_text = "\n".join([f"- {a}" for a in request.stunde_aufgaben]) if request.stunde_aufgaben else "Keine spezifischen Aufgaben angegeben"
+        
+        prompt = f"""Erstelle ein detailliertes Aufgabenblatt mit Lösungen für folgende Unterrichtsstunde:
+
+STUNDENDETAILS:
+- Titel: {request.stunde_titel}
+- Thema: {request.thema}
+- Klassenstufe: {request.klassenstufe}
+- Niveau: {niveau_name}
+- Lernziel: {request.stunde_lernziel or 'Nicht angegeben'}
+- Inhalt: {request.stunde_inhalt}
+- Geplante Aufgaben/Aktivitäten:
+{aufgaben_text}
+
+Erstelle basierend auf diesen Stundeninhalten ein KOMPLETTES Aufgabenblatt mit Lösungen.
+
+Format als JSON:
+{{
+    "aufgabenblatt": {{
+        "titel": "Aufgabenblatt: {request.stunde_titel}",
+        "klassenstufe": "{request.klassenstufe}",
+        "lernziel": "Das konkrete Lernziel",
+        "aufgaben": [
+            {{
+                "nummer": 1,
+                "titel": "Aufgabentitel",
+                "aufgabenstellung": "Detaillierte Aufgabenstellung mit klaren Anweisungen",
+                "punkte": 4,
+                "material": "Optionaler Arbeitstext oder Tabelle falls nötig",
+                "platz_fuer_antwort": true
+            }}
+        ],
+        "gesamtpunkte": 20
+    }},
+    "loesungsblatt": {{
+        "titel": "Lösungen: {request.stunde_titel}",
+        "loesungen": [
+            {{
+                "nummer": 1,
+                "loesung": "Die vollständige Musterlösung",
+                "hinweise": "Optionale Korrekturhinweise für Lehrer"
+            }}
+        ]
+    }}
+}}
+
+WICHTIG:
+- Erstelle 4-6 abwechslungsreiche Aufgaben, die DIREKT zu den geplanten Aktivitäten passen
+- Die Aufgaben sollen zum Niveau "{niveau_name}" passen
+- Jede Aufgabe braucht eine klare, schülergerechte Aufgabenstellung
+- Die Lösungen müssen vollständig und für Lehrer korrigierfreundlich sein
+- Bei Textaufgaben: Füge einen passenden Arbeitstext als "material" hinzu
+- Nur valides JSON zurückgeben"""
+
+        chat = LlmChat(
+            api_key=emergent_key,
+            session_id=f"stunden-material-{user_id}-{uuid.uuid4()}",
+            system_message="""Du bist ein erfahrener Deutschlehrer an einer Realschule plus. 
+Du erstellst professionelle Arbeitsblätter mit klaren Aufgabenstellungen und vollständigen Lösungen.
+Deine Aufgaben sind abwechslungsreich und auf das Niveau der Schüler abgestimmt.
+Antworte IMMER nur mit validem JSON, ohne Erklärungen."""
+        ).with_model("gemini", "gemini-3-flash-preview")
+        
+        response = await asyncio.wait_for(
+            chat.send_message(UserMessage(text=prompt)),
+            timeout=60.0
+        )
+        
+        response_text = response.strip()
+        if response_text.startswith("```json"):
+            response_text = response_text[7:]
+        if response_text.startswith("```"):
+            response_text = response_text[3:]
+        if response_text.endswith("```"):
+            response_text = response_text[:-3]
+        
+        material = json_lib.loads(response_text.strip())
+        
+        return {
+            "stunde_titel": request.stunde_titel,
+            "klassenstufe": request.klassenstufe,
+            "niveau": niveau_name,
+            "aufgabenblatt": material.get("aufgabenblatt", {}),
+            "loesungsblatt": material.get("loesungsblatt", {})
+        }
+        
+    except json_lib.JSONDecodeError as e:
+        logger.error(f"JSON Parse error: {e}")
+        raise HTTPException(status_code=500, detail="Fehler beim Parsen der KI-Antwort")
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="KI-Anfrage Timeout")
+    except Exception as e:
+        logger.error(f"Stunden-Material generation error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/stunde/material/export/word")
+async def export_stunden_material_to_word(
+    aufgabenblatt: dict,
+    loesungsblatt: dict,
+    user_id: str = Depends(get_current_user)
+):
+    """Exportiert Aufgaben- und Lösungsblatt als separate Word-Dokumente in einem ZIP"""
+    from docx import Document
+    from docx.shared import Pt, Cm
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    import zipfile
+    
+    def create_aufgabenblatt(data):
+        doc = Document()
+        for section in doc.sections:
+            section.top_margin = Cm(2)
+            section.bottom_margin = Cm(2)
+            section.left_margin = Cm(2.5)
+            section.right_margin = Cm(2.5)
+        
+        # Titel
+        title = doc.add_heading(data.get("titel", "Aufgabenblatt"), 0)
+        title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        
+        # Metadaten
+        meta = doc.add_paragraph()
+        meta.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        meta_text = f"Klassenstufe {data.get('klassenstufe', '')} • Name: _________________ • Datum: _________"
+        meta.add_run(meta_text).italic = True
+        
+        # Lernziel
+        if data.get("lernziel"):
+            doc.add_paragraph()
+            lz = doc.add_paragraph()
+            lz.add_run("Lernziel: ").bold = True
+            lz.add_run(data["lernziel"])
+        
+        doc.add_paragraph()
+        
+        # Aufgaben
+        for aufgabe in data.get("aufgaben", []):
+            # Aufgabenkopf
+            heading = doc.add_paragraph()
+            heading.add_run(f"Aufgabe {aufgabe.get('nummer', '')}: {aufgabe.get('titel', '')}").bold = True
+            heading.add_run(f" ({aufgabe.get('punkte', 0)} Punkte)")
+            
+            # Aufgabenstellung
+            if aufgabe.get("aufgabenstellung"):
+                doc.add_paragraph(aufgabe["aufgabenstellung"])
+            
+            # Material/Text
+            if aufgabe.get("material"):
+                doc.add_paragraph()
+                mat_para = doc.add_paragraph()
+                mat_para.add_run("Material/Text:").bold = True
+                doc.add_paragraph(aufgabe["material"])
+            
+            # Platz für Antwort
+            if aufgabe.get("platz_fuer_antwort", True):
+                doc.add_paragraph()
+                doc.add_paragraph("Deine Antwort:")
+                for _ in range(4):
+                    doc.add_paragraph("_" * 70)
+            
+            doc.add_paragraph()
+        
+        # Gesamtpunkte
+        total = doc.add_paragraph()
+        total.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        total.add_run(f"Gesamtpunkte: ___ / {data.get('gesamtpunkte', 20)}").bold = True
+        
+        return doc
+    
+    def create_loesungsblatt(data):
+        doc = Document()
+        for section in doc.sections:
+            section.top_margin = Cm(2)
+            section.bottom_margin = Cm(2)
+            section.left_margin = Cm(2.5)
+            section.right_margin = Cm(2.5)
+        
+        # Titel
+        title = doc.add_heading(data.get("titel", "Lösungsblatt"), 0)
+        title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        
+        doc.add_paragraph()
+        
+        # Lösungen
+        for loesung in data.get("loesungen", []):
+            heading = doc.add_paragraph()
+            heading.add_run(f"Lösung {loesung.get('nummer', '')}:").bold = True
+            
+            doc.add_paragraph(loesung.get("loesung", ""))
+            
+            if loesung.get("hinweise"):
+                hint = doc.add_paragraph()
+                hint.add_run("Korrekturhinweis: ").italic = True
+                hint.add_run(loesung["hinweise"]).italic = True
+            
+            doc.add_paragraph()
+        
+        return doc
+    
+    try:
+        # Erstelle beide Dokumente
+        aufgaben_doc = create_aufgabenblatt(aufgabenblatt)
+        loesung_doc = create_loesungsblatt(loesungsblatt)
+        
+        # Speichere in BytesIO
+        aufgaben_buffer = BytesIO()
+        loesung_buffer = BytesIO()
+        aufgaben_doc.save(aufgaben_buffer)
+        loesung_doc.save(loesung_buffer)
+        aufgaben_buffer.seek(0)
+        loesung_buffer.seek(0)
+        
+        # Erstelle ZIP
+        zip_buffer = BytesIO()
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            titel = aufgabenblatt.get("titel", "Material").replace(":", "-").replace("/", "-")
+            zipf.writestr(f"{titel}_Aufgabenblatt.docx", aufgaben_buffer.read())
+            zipf.writestr(f"{titel}_Loesungsblatt.docx", loesung_buffer.read())
+        
+        zip_buffer.seek(0)
+        
+        return StreamingResponse(
+            zip_buffer,
+            media_type="application/zip",
+            headers={"Content-Disposition": f"attachment; filename=Stundenmaterial.zip"}
+        )
+        
+    except Exception as e:
+        logger.error(f"Word export error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ============== GESPEICHERTE UNTERRICHTSREIHEN ==============
 
 @router.get("/unterrichtsreihen")
