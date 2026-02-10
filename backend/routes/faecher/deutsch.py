@@ -223,6 +223,8 @@ Erstelle eine detaillierte Unterrichtsreihe im folgenden JSON-Format:
 Wichtig: 
 - Genau {request.stunden_anzahl} Stunden erstellen
 - Niveau {niveau_name} beachten
+- JEDE Stunde muss ein konkretes "lernziel" haben (beginnt mit "Die SuS können...")
+- JEDE Stunde muss 2-4 konkrete "aufgaben" haben (z.B. "Textvergleich", "Tabelle erstellen", "Partnerarbeit")
 - Praxisnah und umsetzbar
 {"- Bei JEDER Stunde konkrete Schulbuch-Seitenzahlen angeben!" if schulbuch_info else "- schulbuch_seiten kann leer bleiben wenn kein Schulbuch gewählt"}
 - Nur valides JSON zurückgeben, keine Erklärungen davor oder danach"""
