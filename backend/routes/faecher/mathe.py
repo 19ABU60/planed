@@ -173,14 +173,16 @@ Antworte IMMER im JSON-Format."""
     "titel": "Titel der Unterrichtsreihe",
     "ueberblick": "Kurze Beschreibung (2-3 Sätze)",
     "schulbuch": "Name des Schulbuchs (falls verwendet)",
-    "lernziele": ["Lernziel 1", "Lernziel 2", "Lernziel 3"],
+    "lernziele": ["Übergeordnetes Lernziel 1", "Übergeordnetes Lernziel 2"],
     "stunden": [
         {
             "nummer": 1,
             "titel": "Titel der Stunde",
+            "lernziel": "Konkretes Lernziel dieser Stunde (Die SuS können...)",
             "phase": "Einstieg/Erarbeitung/Übung/Sicherung",
             "dauer": "45 min",
             "inhalt": "Detaillierte Beschreibung mit konkreten Beispielaufgaben",
+            "aufgaben": ["Konkrete Aufgabe 1", "Konkrete Aufgabe 2"],
             "methoden": ["Methode 1", "Methode 2"],
             "material": ["Benötigtes Material"],
             "schulbuch_seiten": "z.B. S. 34-36, Aufgabe 1-3",
@@ -210,6 +212,8 @@ Erstelle eine detaillierte Unterrichtsreihe im folgenden JSON-Format:
 Wichtig: 
 - Genau {request.stunden_anzahl} Stunden erstellen
 - Niveau {niveau_name} beachten
+- JEDE Stunde muss ein konkretes "lernziel" haben (beginnt mit "Die SuS können...")
+- JEDE Stunde muss 2-4 konkrete "aufgaben" haben (z.B. "Übungsaufgaben rechnen", "Sachaufgabe lösen")
 - KONKRETE Beispielaufgaben mit Zahlen bei jeder Stunde
 - Mathematische Notation klar und verständlich
 - Nur valides JSON zurückgeben"""
