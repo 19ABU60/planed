@@ -4,15 +4,14 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 
 # Dependencies
-COPY package.json ./
-COPY yarn.lock* ./
-RUN yarn install
+COPY package*.json ./
+RUN npm install --legacy-peer-deps
 
 # Build
 COPY . .
 ARG REACT_APP_BACKEND_URL
 ENV REACT_APP_BACKEND_URL=$REACT_APP_BACKEND_URL
-RUN yarn build
+RUN npm run build
 
 # Production
 FROM nginx:alpine
