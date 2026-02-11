@@ -1,23 +1,18 @@
-# Frontend Dockerfile für PlanEd
+# Frontend Dockerfile für PlanEd - Pre-built approach
 FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Install all dependencies including dev
-COPY package*.json ./
-COPY yarn.lock* ./
-RUN npm install --legacy-peer-deps --force
-
-# Copy source
+# Copy everything
 COPY . .
 
-# Build with warnings ignored
+# Install and build
+RUN npm install --legacy-peer-deps --force 2>/dev/null || yarn install --network-timeout 100000
 ENV CI=false
 ENV DISABLE_ESLINT_PLUGIN=true
-ENV SKIP_PREFLIGHT_CHECK=true
-RUN npm run build || yarn build
+RUN npm run build 2>/dev/null || yarn build
 
-# Production - serve with nginx
+# Production
 FROM nginx:alpine
 COPY --from=builder /app/build /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
