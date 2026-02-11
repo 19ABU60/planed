@@ -324,16 +324,12 @@ Format als JSON:
         
         prompt = material_prompts.get(request.material_typ, material_prompts["arbeitsblatt"])
         
-        chat = LlmChat(
-            api_key=emergent_key,
-            session_id=f"mathe-material-{user_id}-{uuid.uuid4()}",
-            system_message="""Du bist ein erfahrener Mathematiklehrer an einer Realschule plus. 
+        system_msg = """Du bist ein erfahrener Mathematiklehrer an einer Realschule plus. 
 Du erstellst klare, schülergerechte Unterrichtsmaterialien mit konkreten Zahlenbeispielen.
 Antworte IMMER nur mit validem JSON, ohne Erklärungen."""
-        ).with_model("gemini", "gemini-3-flash-preview")
         
         response = await asyncio.wait_for(
-            chat.send_message(UserMessage(text=prompt)),
+            chat_completion(prompt=prompt, system_message=system_msg, model="gpt-4o-mini"),
             timeout=45.0
         )
         
