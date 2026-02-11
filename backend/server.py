@@ -1184,19 +1184,11 @@ async def get_ai_suggestions(data: AITopicSuggestionRequest, user_id: str = Depe
     import re
     
     try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        from services.openai_helper import chat_completion
         
-        api_key = os.environ.get('EMERGENT_LLM_KEY')
-        if not api_key:
-            raise HTTPException(status_code=500, detail="AI service not configured")
-        
-        chat = LlmChat(
-            api_key=api_key,
-            session_id=f"planed-{user_id}-{uuid.uuid4()}",
-            system_message="""Du bist ein erfahrener Lehrer und Lehrplanexperte. 
+        system_msg = """Du bist ein erfahrener Lehrer und Lehrplanexperte. 
             Erstelle konkrete, praxisnahe Unterrichtsvorschläge basierend auf dem deutschen Lehrplan.
             Antworte immer auf Deutsch und strukturiere deine Vorschläge klar."""
-        ).with_model("gemini", "gemini-3-flash-preview")
         
         prompt = f"""Erstelle 3 Unterrichtsthemen-Vorschläge für:
         Fach: {data.subject}
@@ -1208,7 +1200,7 @@ async def get_ai_suggestions(data: AITopicSuggestionRequest, user_id: str = Depe
         
         try:
             response = await asyncio.wait_for(
-                chat.send_message(UserMessage(text=prompt)),
+                chat_completion(prompt=prompt, system_message=system_msg, model="gpt-4o-mini"),
                 timeout=25.0
             )
         except asyncio.TimeoutError:
