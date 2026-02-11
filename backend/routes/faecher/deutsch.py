@@ -279,11 +279,7 @@ async def generiere_material(
     import json as json_lib
     
     try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
-        
-        emergent_key = os.environ.get("EMERGENT_LLM_KEY", "")
-        if not emergent_key:
-            raise HTTPException(status_code=500, detail="KI-Service nicht konfiguriert")
+        from services.openai_helper import chat_completion
         
         niveau_name = {"G": "grundlegend", "M": "mittel", "E": "erweitert"}.get(request.niveau, "mittel")
         
@@ -391,11 +387,7 @@ async def generiere_stunden_material(
     import json as json_lib
     
     try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
-        
-        emergent_key = os.environ.get("EMERGENT_LLM_KEY", "")
-        if not emergent_key:
-            raise HTTPException(status_code=500, detail="KI-Service nicht konfiguriert")
+        from services.openai_helper import chat_completion
         
         niveau_name = {"G": "grundlegend", "M": "mittel", "E": "erweitert"}.get(request.niveau, "mittel")
         
