@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  # MongoDB Datenbank
+  mongodb:
+    image: mongo:7
+    container_name: planed-mongodb
+    restart: unless-stopped
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=planed
+    networks:
+      - planed-network
+
+  # Backend (FastAPI)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: planed-backend
+    restart: unless-stopped
+    environment:
+      - MONGO_URL=mongodb://mongodb:27017/planed
+      - DB_NAME=planed
+      - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-this}
+      - EMERGENT_LLM_KEY=${EMERGENT_LLM_KEY}
+    depends_on:
+      - mongodb
+    networks:
+      - planed-network
+
+  # Frontend (React + Nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - REACT_APP_BACKEND_URL=${DOMAIN_URL:-http://localhost}
+    container_name: planed-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - planed-network
+
+volumes:
+  mongodb_data:
+
+networks:
+  planed-network:
+    driver: bridge
