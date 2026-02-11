@@ -442,17 +442,13 @@ WICHTIG:
 - Bei Textaufgaben: Füge einen passenden Arbeitstext als "material" hinzu
 - Nur valides JSON zurückgeben"""
 
-        chat = LlmChat(
-            api_key=emergent_key,
-            session_id=f"stunden-material-{user_id}-{uuid.uuid4()}",
-            system_message="""Du bist ein erfahrener Deutschlehrer an einer Realschule plus. 
+        system_msg = """Du bist ein erfahrener Deutschlehrer an einer Realschule plus. 
 Du erstellst professionelle Arbeitsblätter mit klaren Aufgabenstellungen und vollständigen Lösungen.
 Deine Aufgaben sind abwechslungsreich und auf das Niveau der Schüler abgestimmt.
 Antworte IMMER nur mit validem JSON, ohne Erklärungen."""
-        ).with_model("gemini", "gemini-3-flash-preview")
         
         response = await asyncio.wait_for(
-            chat.send_message(UserMessage(text=prompt)),
+            chat_completion(prompt=prompt, system_message=system_msg, model="gpt-4o-mini"),
             timeout=60.0
         )
         
