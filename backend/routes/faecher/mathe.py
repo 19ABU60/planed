@@ -151,23 +151,13 @@ Relevante Kapitel:
 
 Bei jeder Stunde: Gib konkrete Seitenzahlen und Aufgabennummern an."""
         
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
-        
-        emergent_key = os.environ.get("EMERGENT_LLM_KEY", "")
-        if not emergent_key:
-            raise HTTPException(status_code=500, detail="KI-Service nicht konfiguriert")
+        from services.openai_helper import chat_completion
         
         system_msg = """Du bist ein erfahrener Mathematiklehrer an einer Realschule plus in Rheinland-Pfalz. 
 Du erstellst praxisnahe, differenzierte Unterrichtsreihen für den Mathematikunterricht.
 Deine Unterrichtsreihen enthalten konkrete Aufgaben, Beispiele und Übungen.
 Wenn ein Schulbuch angegeben ist, integrierst du passende Seiten und Aufgaben.
 Antworte IMMER im JSON-Format."""
-        
-        chat = LlmChat(
-            api_key=emergent_key,
-            session_id=f"mathe-{user_id}-{uuid.uuid4()}",
-            system_message=system_msg
-        ).with_model("gemini", "gemini-3-flash-preview")
         
         json_format = """{
     "titel": "Titel der Unterrichtsreihe",
