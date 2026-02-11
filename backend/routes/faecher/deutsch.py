@@ -163,23 +163,13 @@ Relevante Kapitel:
 Bei jeder Stunde: Gib konkrete Seitenzahlen an, z.B. "S. 34-36" oder "Aufgabe 3 auf S. 42".
 Füge bei jedem Material-Eintrag einen Schulbuch-Verweis hinzu wenn passend."""
         
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
-        
-        emergent_key = os.environ.get("EMERGENT_LLM_KEY", "")
-        if not emergent_key:
-            raise HTTPException(status_code=500, detail="KI-Service nicht konfiguriert")
+        from services.openai_helper import chat_completion
         
         system_msg = """Du bist ein erfahrener Deutschlehrer an einer Realschule plus in Rheinland-Pfalz. 
 Du erstellst praxisnahe, differenzierte Unterrichtsreihen für den Deutschunterricht.
 Deine Unterrichtsreihen sind klar strukturiert, schülerorientiert und enthalten konkrete Aktivitäten.
 Wenn ein Schulbuch angegeben ist, integrierst du passende Seiten und Aufgaben aus diesem Buch.
 Antworte IMMER im JSON-Format."""
-        
-        chat = LlmChat(
-            api_key=emergent_key,
-            session_id=f"unterricht-{user_id}-{uuid.uuid4()}",
-            system_message=system_msg
-        ).with_model("gemini", "gemini-3-flash-preview")
         
         json_format = """{
     "titel": "Titel der Unterrichtsreihe",
