@@ -1,0 +1,97 @@
+{
+  "name": "PlanEd - Lehrer-Arbeitsplan",
+  "short_name": "PlanEd",
+  "description": "Verwalten Sie Ihre Unterrichtsplanung professionell - Arbeitspläne, Kalender, Schulferien und mehr",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#3b82f6",
+  "orientation": "any",
+  "scope": "/",
+  "lang": "de-DE",
+  "categories": ["education", "productivity"],
+  "icons": [
+    {
+      "src": "/icons/icon-72x72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-128x128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-144x144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-152x152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-384x384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/dashboard.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Dashboard mit Übersicht"
+    },
+    {
+      "src": "/screenshots/calendar.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Kalender mit Unterrichtsstunden"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Kalender",
+      "short_name": "Kalender",
+      "description": "Zum Unterrichtskalender",
+      "url": "/dashboard?page=calendar",
+      "icons": [{ "src": "/icons/calendar-icon.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Neue Klasse",
+      "short_name": "Klasse",
+      "description": "Neue Klasse anlegen",
+      "url": "/dashboard?page=classes",
+      "icons": [{ "src": "/icons/class-icon.png", "sizes": "96x96" }]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
+}
