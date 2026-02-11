@@ -11,10 +11,7 @@ RUN apt-get update && apt-get install -y \
 
 # Python dependencies
 COPY requirements.txt .
-
-# Install emergentintegrations from special index, then rest
-RUN pip install --no-cache-dir emergentintegrations --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/ && \
-    pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application
 COPY . .
