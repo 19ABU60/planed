@@ -20,6 +20,8 @@ services:
       dockerfile: Dockerfile
     container_name: planed-backend
     restart: unless-stopped
+    volumes:
+      - backend_config:/app/config
     environment:
       - MONGO_URL=mongodb://mongodb:27017/planed
       - DB_NAME=planed
@@ -46,6 +48,7 @@ services:
 
 volumes:
   mongodb_data:
+  backend_config:
 
 networks:
   planed-network:
