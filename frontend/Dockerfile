@@ -4,8 +4,9 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 
 # Dependencies
-COPY package.json yarn.lock ./
-RUN yarn install --frozen-lockfile
+COPY package.json ./
+COPY yarn.lock* ./
+RUN yarn install
 
 # Build
 COPY . .
