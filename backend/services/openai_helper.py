@@ -4,6 +4,13 @@
 import os
 from openai import AsyncOpenAI
 
+# Load .env file if exists
+try:
+    from dotenv import load_dotenv
+    load_dotenv('/app/.env')
+except:
+    pass
+
 # OpenAI Client
 _client = None
 
@@ -12,8 +19,19 @@ def get_openai_client():
     if _client is None:
         api_key = os.environ.get("OPENAI_API_KEY")
         if not api_key:
+            # Try reading directly from file
+            try:
+                with open('/app/.env', 'r') as f:
+                    for line in f:
+                        if line.startswith('OPENAI_API_KEY='):
+                            api_key = line.strip().split('=', 1)[1]
+                            break
+            except:
+                pass
+        if not api_key:
             raise ValueError("OPENAI_API_KEY nicht konfiguriert")
         _client = AsyncOpenAI(api_key=api_key)
+    return _client
     return _client
 
 async def chat_completion(
