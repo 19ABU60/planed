@@ -24,7 +24,7 @@ services:
       - MONGO_URL=mongodb://mongodb:27017/planed
       - DB_NAME=planed
       - JWT_SECRET=planed-secret-key-2025-secure-hosting
-      - OPENAI_API_KEY
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
     depends_on:
       - mongodb
     networks:
