@@ -220,7 +220,7 @@ Wichtig:
 - Nur valides JSON zurückgeben, keine Erklärungen davor oder danach"""
 
         response = await asyncio.wait_for(
-            chat.send_message(UserMessage(text=prompt)),
+            chat_completion(prompt=prompt, system_message=system_msg, model="gpt-4o-mini"),
             timeout=60.0
         )
         
