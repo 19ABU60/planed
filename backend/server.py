@@ -1378,6 +1378,37 @@ app.include_router(research_router)
 async def root():
     return {"message": "PlanEd API v2.1.0 - Modular", "status": "running"}
 
+@api_router.get("/debug/env")
+async def debug_env():
+    """Debug endpoint to check environment configuration"""
+    import os
+    api_key = os.environ.get("OPENAI_API_KEY", "")
+    
+    # Try to read directly from files
+    file_status = {}
+    for path in ['/app/config/.env', '/app/.env']:
+        try:
+            with open(path, 'r') as f:
+                content = f.read()
+                has_key = 'OPENAI_API_KEY' in content
+                file_status[path] = {
+                    "exists": True,
+                    "has_openai_key": has_key,
+                    "size": len(content)
+                }
+        except FileNotFoundError:
+            file_status[path] = {"exists": False}
+        except Exception as e:
+            file_status[path] = {"error": str(e)}
+    
+    return {
+        "env_key_set": bool(api_key),
+        "env_key_length": len(api_key) if api_key else 0,
+        "env_key_preview": f"...{api_key[-4:]}" if api_key and len(api_key) > 4 else "NOT SET",
+        "file_status": file_status,
+        "all_env_keys": [k for k in os.environ.keys() if 'KEY' in k or 'SECRET' in k or 'MONGO' in k]
+    }
+
 # Include the main router
 app.include_router(api_router)
 
