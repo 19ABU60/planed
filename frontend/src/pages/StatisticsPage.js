@@ -5,7 +5,8 @@ import { useAuth } from '../context/AuthContext';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+// Use relative URL for production (nginx proxy) or env var for development
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
 const API = `${BACKEND_URL}/api`;
 
 const StatisticsPage = ({ classes, lessons }) => {
