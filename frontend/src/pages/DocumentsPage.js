@@ -3,7 +3,8 @@ import { Upload, Download, Trash2, FileText, FolderOpen } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+// Use relative URL for production (nginx proxy) or env var for development
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
 const API = `${BACKEND_URL}/api`;
 
 const DocumentsPage = ({ classes }) => {
