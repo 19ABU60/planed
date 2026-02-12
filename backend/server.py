@@ -1,10 +1,21 @@
+# Load environment variables FIRST - before any other imports that might need them
+import os
+for env_path in ['/app/config/.env', '/app/.env']:
+    try:
+        with open(env_path, 'r') as f:
+            for line in f:
+                if '=' in line and not line.startswith('#'):
+                    key, val = line.strip().split('=', 1)
+                    os.environ[key] = val
+    except:
+        pass
+
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, UploadFile, File, status, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from fastapi.responses import StreamingResponse
-import os
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field, EmailStr
