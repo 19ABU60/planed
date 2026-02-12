@@ -1,6 +1,7 @@
 import { FileText, HelpCircle, Puzzle, ListChecks, Edit3 } from 'lucide-react';
 
-export const API = process.env.REACT_APP_BACKEND_URL;
+// Use relative URL for production (nginx proxy) or env var for development
+export const API = process.env.REACT_APP_BACKEND_URL || '';
 
 export const NIVEAU_LABELS = {
   G: { name: 'Grundlegend', color: '#22c55e', bg: 'rgba(34, 197, 94, 0.15)' },
