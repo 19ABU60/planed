@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { LogOut } from 'lucide-react';
+import { LogOut, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
 
@@ -7,6 +7,7 @@ const SettingsPage = () => {
   const { user, logout, authAxios, updateUser } = useAuth();
   const [bundeslaender, setBundeslaender] = useState([]);
   const [settings, setSettings] = useState({ 
+    name: user?.name || '',
     bundesland: user?.bundesland || 'rheinland-pfalz', 
     theme: user?.theme || 'dark' 
   });
@@ -24,6 +25,17 @@ const SettingsPage = () => {
     fetchBundeslaender();
   }, [authAxios]);
 
+  useEffect(() => {
+    if (user) {
+      setSettings(prev => ({
+        ...prev,
+        name: user.name || '',
+        bundesland: user.bundesland || 'rheinland-pfalz',
+        theme: user.theme || 'dark'
+      }));
+    }
+  }, [user]);
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -31,7 +43,7 @@ const SettingsPage = () => {
       updateUser(response.data);
       toast.success('Einstellungen gespeichert');
     } catch (error) { 
-      toast.error('Fehler'); 
+      toast.error('Fehler beim Speichern'); 
     }
     setSaving(false);
   };
@@ -47,11 +59,20 @@ const SettingsPage = () => {
         <div style={{ marginTop: '1rem' }}>
           <div className="form-group">
             <label className="form-label">Name</label>
-            <input type="text" className="form-input" value={user?.name || ''} readOnly />
+            <input 
+              type="text" 
+              className="form-input" 
+              value={settings.name} 
+              onChange={e => setSettings({ ...settings, name: e.target.value })}
+              placeholder="Ihr Name"
+            />
           </div>
           <div className="form-group">
             <label className="form-label">E-Mail</label>
-            <input type="email" className="form-input" value={user?.email || ''} readOnly />
+            <input type="email" className="form-input" value={user?.email || ''} readOnly style={{ opacity: 0.7 }} />
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+              E-Mail kann nicht geändert werden
+            </p>
           </div>
         </div>
       </div>
@@ -74,10 +95,13 @@ const SettingsPage = () => {
               Schulferien werden automatisch im Kalender angezeigt
             </p>
           </div>
-          <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-            {saving ? <span className="spinner" /> : 'Speichern'}
-          </button>
         </div>
+      </div>
+
+      <div className="card" style={{ maxWidth: '600px', marginBottom: '1.5rem' }}>
+        <button className="btn btn-primary" onClick={handleSave} disabled={saving} style={{ width: '100%' }}>
+          {saving ? <span className="spinner" /> : <><Save size={18} /> Änderungen speichern</>}
+        </button>
       </div>
 
       <div className="card" style={{ maxWidth: '600px' }}>
