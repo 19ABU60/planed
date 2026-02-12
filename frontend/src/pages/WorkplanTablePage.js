@@ -5,7 +5,8 @@ import { de } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
 
-const API = process.env.REACT_APP_BACKEND_URL;
+// Use relative URL for production (nginx proxy) or env var for development
+const API = process.env.REACT_APP_BACKEND_URL || '';
 
 const WEEKDAYS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 
