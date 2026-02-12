@@ -1,177 +1,297 @@
 <analysis>**original_problem_statement:**
-The user, speaking German, requested an application named PlanEd to replace their Excel-based work plan for teachers. The core requirements include managing work plans for school years, classes, and subjects, integrating holidays, a calendar view, a document repository, and AI-powered suggestions for lesson topics.
+The user, speaking German, requested a comprehensive teacher planning application named PlanEd. The initial goal was to replace an Excel-based system with a digital solution for managing work plans, subjects, classes, and holidays.
 
-The user has recently expanded the scope to include:
-- A new Lernprogramme (Learning Resources) page to find and filter educational platforms and publisher materials.
-- A new Unterrichtsplanung (Lesson Planning) page that uses a user-provided curriculum document () and an AI (Gemini) to generate detailed, multi-level lesson plans and associated materials (worksheets, quizzes, etc.).
-- A set of follow-up requirements to enhance the new lesson planning feature:
-    1. Integrate specific schoolbooks (e.g., Westermann's Praxis Sprache) into the KI generation.
-    2. Allow generating alternative lesson plans based on different schoolbooks.
-    3. Integrate the generated lesson plans directly into the main Arbeitsplan (Workplan).
-    4. Save the generated lesson plans to the user's account so they persist between sessions.
+The project scope has significantly expanded to include:
+- A Lernprogramme (Learning Resources) page.
+- A Recherche (Research) page.
+- An advanced Unterrichtsplanung (Lesson Planning) page that uses an AI model to generate detailed lesson plans and accompanying materials (worksheets, quizzes, etc.).
+- Support for multiple subjects (Deutsch, Mathematik).
+- The ability to generate, save, compare, and delete lesson plans.
+- A feature to download all generated materials as editable Microsoft Word  files.
+- An Excel import function for the main workplan.
+- **New Requirements:**
+    - Generate specific learning goals for each individual hour within a lesson plan.
+    - Generate and download dedicated worksheet and solution sheet  files for each hour's specific tasks.
+    - Deploy the application to a user-provided Hostinger VPS for permanent, 24/7 access.
 
 **User's preferred language**: German. The next agent MUST respond in German.
 
 **what currently exists?**
-A full-stack application (React, FastAPI, MongoDB) with a PWA configuration. The app features user authentication and management of school years, classes, and subjects.
+A full-stack application (React, FastAPI, MongoDB) with user authentication. Key functionalities include a workplan table, calendar, AI-powered lesson planning, and material generation with  export.
 
-Key Implemented Features:
-- **Core Planning Tools:** A collaborative Arbeitsplan (Workplan) table and a synchronized Kalender (Calendar) view.
-- **AI-Powered Research:** A Recherche page to search for images (Wikimedia), videos (YouTube), and academic papers (OpenAlex) with AI-powered translation.
-- **Learning Resources:** A new Lernprogramme page with filterable lists of educational platforms and direct links to publisher materials, optimized for the user's RS+ school type.
-- **AI-Powered Lesson Planning:** A new Unterrichtsplanung page built around the user's Deutsch RS+ RLP curriculum. It features:
-    - Cascading dropdowns to select curriculum topics (Class -> Competence -> Topic -> Level).
-    - AI generation of detailed lesson plans (title, goals, hourly breakdown) using Gemini.
-    - Generation of various teaching materials (worksheets, quizzes, etc.).
-    - Functionality to save, load, and delete generated lesson plans, which are stored per-user in the database.
+Key updates from the last session:
+- **Major Frontend Refactoring:** The monolithic  (1920 lines) was successfully broken down into 8 smaller, reusable components located in , significantly improving maintainability.
+- **New Feature Implemented:** The system can now generate hour-specific learning goals and create dedicated worksheets/solution sheets for each hour within a lesson plan. This involved updates to both backend (, ) and frontend ().
+- **External Deployment:** The application has been deployed to the user's Hostinger VPS using Docker and Coolify. This required a major backend refactor, replacing the internal  library with the standard usage: openai [-h] [-v] [-b API_BASE] [-k API_KEY] [-p PROXY [PROXY ...]]
+              [-o ORGANIZATION] [-t {openai,azure}]
+              [--api-version API_VERSION] [--azure-endpoint AZURE_ENDPOINT]
+              [--azure-ad-token AZURE_AD_TOKEN] [-V]
+              {api,tools,migrate,grit} ...
+
+positional arguments:
+  {api,tools,migrate,grit}
+    api                 Direct API calls
+    tools               Client side tools for convenience
+
+options:
+  -h, --help            show this help message and exit
+  -v, --verbose         Set verbosity.
+  -b API_BASE, --api-base API_BASE
+                        What API base url to use.
+  -k API_KEY, --api-key API_KEY
+                        What API key to use.
+  -p PROXY [PROXY ...], --proxy PROXY [PROXY ...]
+                        What proxy to use.
+  -o ORGANIZATION, --organization ORGANIZATION
+                        Which organization to run as (will use your default
+                        organization if not specified)
+  -t {openai,azure}, --api-type {openai,azure}
+                        The backend API to call, must be `openai` or `azure`
+  --api-version API_VERSION
+                        The Azure API version, e.g.
+                        'https://learn.microsoft.com/en-us/azure/ai-
+                        services/openai/reference#rest-api-versioning'
+  --azure-endpoint AZURE_ENDPOINT
+                        The Azure endpoint, e.g.
+                        'https://endpoint.openai.azure.com'
+  --azure-ad-token AZURE_AD_TOKEN
+                        A token from Azure Active Directory,
+                        https://www.microsoft.com/en-
+                        us/security/business/identity-access/microsoft-entra-
+                        id
+  -V, --version         show program's version number and exit library to allow external hosting. The application is running, but the core AI feature is not functional due to an API key configuration issue.
 
 **Last working item**:
-- **Last item agent was working:** The user reported that after successfully using the In Arbeitsplan übernehmen (Integrate into Workplan) feature, the generated lesson plan entries were not appearing in the workplan table. The agent diagnosed that the entries were being saved to the database correctly but with a hardcoded , while the class's actual schedule had lessons in different periods (e.g., 2nd, 3rd hour). This mismatch caused the UI to filter them out. The agent was about to correct this by dynamically using the selected class's schedule to assign the correct period to each entry.
-- **Status:** IN PROGRESS
-- **Agent Testing Done:** N
-- **Which testing method agent to use?** frontend testing agent. After implementing the fix, the agent needs to test the end-to-end flow:
-    1. Navigate to Unterrichtsplanung.
-    2. Generate or load a lesson plan.
-    3. Click In Arbeitsplan übernehmen.
-    4. In the modal, select a class with a known schedule (e.g., 6a - Deutsch).
-    5. Click Übernehmen.
-    6. Navigate to the Arbeitsplan page.
-    7. Select the same class (6a - Deutsch).
-    8. Navigate to the correct date range.
-    9. Verify that the lesson plan hours appear in the correct cells, corresponding to the dates and periods from the class's schedule.
-- **User Testing Done:** N
+- **Last item agent was working:** Debugging a critical failure on the user's newly deployed Hostinger VPS. The core AI generation feature fails with an OpenAI nicht konfiguriert (OpenAI not configured) error because the running FastAPI application is not correctly loading the .
+- **Status:** BLOCKED
+- **Agent Testing Done:** N (The agent's debugging steps confirmed the key exists on the server, but the E2E test by the user fails.)
+- **Which testing method agent to use?** Manual testing via python -c in the Coolify backend container terminal.
+- **User Testing Done:** Y (and it repeatedly failed).
 
 **All Pending/In progress Issue list**:
-- **Issue 1: Workplan entries not visible after transfer from Lesson Planner (P0)**
-    - **Description:** When a user transfers a generated lesson plan to the workplan, a success message appears, but the entries do not show up in the workplan table for the selected class. The data is saved in the database but is not rendered in the UI.
-    - **Attempted fixes:** The agent identified the root cause: the frontend  function in  sends all entries with a hardcoded . The workplan UI correctly filters entries based on the actual schedule for the class, so these  entries are not displayed if the class's lessons are at different times.
+- **Issue 1: AI Generation Fails on Deployed Hostinger VPS (P0)**
+    - **Description:** The core value proposition of the app—AI lesson generation—is completely broken on the user's live, self-hosted server. The  is not being accessed by the running  process, despite numerous attempts to provide it.
+    - **Attempted fixes:**
+        - Passing the key via Coolify's built-in Environment Variables (failed to be passed to the container).
+        - Creating a persistent volume () and manually writing an  file () via the terminal.
+        - Modifying  to explicitly load this  file on startup.
+        - The agent confirmed the  file persists after restarts and that a standalone Python script in the terminal *can* read the key, but the running server process *cannot*.
     - **Next debug checklist:**
-        1.  In , locate the  function.
-        2.  Find the  object from the  state using the . This object contains the .
-        3.  Modify the logic that creates the  array. Instead of hardcoding , iterate through the weeks starting from the , find the days the subject is taught according to the , and use the correct  from the schedule for each entry.
-        4.  Ensure the logic correctly handles weeks with holidays or no scheduled classes.
-    - **Why fix this issue and what will be achieved with the fix?** This is a critical bug blocking the completion of the Integrate into Workplan feature (User Request #3). Fixing it will complete the core workflow from AI-powered planning to practical scheduling.
-    - **Status:** IN PROGRESS
-    - **Is recurring issue?** N
-    - **Should Test frontend/backend/both after fix?** frontend
-    - **Blocked on other issue:** None.
+        1. Connect to the  container terminal in Coolify.
+        2. Confirm the latest  with the  loading logic is present: .
+        3. The core issue is that the server starts *before* the environment is correctly configured. A robust fix is needed. Re-implement a startup script () that explicitly sources the  file before executing the  server. The previous attempt at this was overwritten during the deployment chaos.
+        4. The  should look like this:
+           
+        5. Update the  to use .
+        6. Push to GitHub and redeploy. After redeploy, manually create the  file *one last time*. Check the logs for the INFO: Loaded... message.
+    - **Why fix this issue and what will be achieved with the fix?** This is a complete blocker. Fixing it will make the user's self-hosted application fully functional as intended.
+    - **Status:** BLOCKED
+    - **Is recurring issue?** Y
+    - **Should Test frontend/backend/both after fix?** backend
+    - **Blocked on other issue:** None. This is the main blocker.
 
 **In progress Task List**:
-- **Task 1: Complete Integrate into Workplan feature (P0)**
-    - **Where to resume:**  within the  function.
-    - **What will be achieved with this?** Generated lesson plans will be correctly added to the user's workplan, appearing in the right time slots according to the selected class's schedule. This completes a major user request.
+- **Task 1: Finalize Hostinger Deployment (P0)**
+    - **Where to resume:** Implement the robust startup script fix detailed in Issue 1 to resolve the API key loading problem.
+    - **What will be achieved with this?** A fully functional, self-hosted version of the PlanEd application on the user's VPS.
     - **Status:** IN PROGRESS
-    - **Should Test frontend/backend/both after fix?** frontend
+    - **Should Test frontend/backend/both after fix?** both
     - **Blocked on something:** Blocked by Issue 1.
 
 **Upcoming and Future Tasks**
-- **(P1) Schulbuch-Integration:** (User Request #1 & #2)
-    - Modify the Gemini prompt to include references from a specific textbook (Westermann's Praxis Sprache).
-    - Add a UI element (e.g., dropdown) to allow users to select different textbooks to generate alternative lesson plans.
-- **(P1) Erweiterte KI-Materialerstellung:** (User Request #3) Enhance the Material erstellen feature to generate or find interactive materials like quizzes, puzzles, or e-learning games.
-- **(P1) Excel-Import:** Allow importing existing work plans from Excel files.
-- **(P1) Kommentare:** Add a commenting feature to shared work plans.
-- **(P2) PWA Auto-Update-Benachrichtigung:** Implement a notification for PWA users when a new version of the app is available, to mitigate the user's persistent caching issues.
-- **(P2) Erweiterte Statistik-Diagramme:** Enhance the statistics page with more chart types.
-- **(P2) E-Mail-Benachrichtigungen:** Implement email notifications for shares and comments.
+- **Upcoming Tasks:**
+    - (P1) Text-to-Speech (TTS) Integration: Implement a Vorlesen (Read Aloud) feature for generated materials.
+- **Future Tasks:**
+    - (P2) PWA Auto-Update Notification: Implement a notification for PWA users when a new app version is available.
+    - (P2) Connect a custom domain to the Hostinger VPS.
+    - (P2) Add the ability to leave comments on shared work plans.
+    - (P2) Enhance the statistics page.
+    - (P2) Implement email alerts for shares and comments.
 
 **Completed work in this session**
-- **Image Search Bug Fix:** Replaced failing image APIs with the Wikimedia Commons API in  and updated the frontend () to handle the new data structure and fix a crash-on-download bug.
-- **UI Refinements:** Iteratively adjusted the UI of the Recherche page search bar to be more compact based on user feedback.
-- **New Feature: Lernprogramme Page:** Created and refined a new page () for discovering educational resources, with filters and direct links. The UI was heavily optimized based on user feedback for compactness and relevance.
-- **New Feature: Unterrichtsplanung Page:**
-    - Built a new page () and corresponding backend endpoints.
-    - Integrated a user-provided curriculum from a  file into a structured database.
-    - Implemented AI-powered generation of detailed lesson plans and teaching materials using Gemini.
-- **Save/Load Lesson Plans:** Added functionality for users to save, load, and delete their generated lesson plans, making them persistent across sessions.
+- **Frontend Refactoring:** Successfully refactored the massive  into 8 modular components, resolving the P0 bug from the previous session (multi-subject plan management) and improving code quality.
+- **New Feature: Hour-Specific Materials:** Implemented the user's request for hour-specific learning goals and the generation of dedicated worksheets/solution sheets for each hour in a lesson plan.
+- **Deployment & Backend Refactoring:** Deployed the application to the user's Hostinger VPS. This involved a significant backend refactor to remove the  library and use the standard usage: openai [-h] [-v] [-b API_BASE] [-k API_KEY] [-p PROXY [PROXY ...]]
+              [-o ORGANIZATION] [-t {openai,azure}]
+              [--api-version API_VERSION] [--azure-endpoint AZURE_ENDPOINT]
+              [--azure-ad-token AZURE_AD_TOKEN] [-V]
+              {api,tools,migrate,grit} ...
+
+positional arguments:
+  {api,tools,migrate,grit}
+    api                 Direct API calls
+    tools               Client side tools for convenience
+
+options:
+  -h, --help            show this help message and exit
+  -v, --verbose         Set verbosity.
+  -b API_BASE, --api-base API_BASE
+                        What API base url to use.
+  -k API_KEY, --api-key API_KEY
+                        What API key to use.
+  -p PROXY [PROXY ...], --proxy PROXY [PROXY ...]
+                        What proxy to use.
+  -o ORGANIZATION, --organization ORGANIZATION
+                        Which organization to run as (will use your default
+                        organization if not specified)
+  -t {openai,azure}, --api-type {openai,azure}
+                        The backend API to call, must be `openai` or `azure`
+  --api-version API_VERSION
+                        The Azure API version, e.g.
+                        'https://learn.microsoft.com/en-us/azure/ai-
+                        services/openai/reference#rest-api-versioning'
+  --azure-endpoint AZURE_ENDPOINT
+                        The Azure endpoint, e.g.
+                        'https://endpoint.openai.azure.com'
+  --azure-ad-token AZURE_AD_TOKEN
+                        A token from Azure Active Directory,
+                        https://www.microsoft.com/en-
+                        us/security/business/identity-access/microsoft-entra-
+                        id
+  -V, --version         show program's version number and exit library, making external hosting possible.
 
 **Earlier issues found/mentioned but not fixed**
 - None.
 
 **Known issue recurrence from previous fork**
-- **Issue:** The user, primarily using Safari, consistently encounters severe browser caching problems. They often see outdated versions of the application even after a fix has been successfully deployed and verified by the agent.
-- **Recurrence count:** High (occurred multiple times this session).
-- **Status:** NOT RESOLVED (This is a client-side environmental issue, but the agent suggested implementing a PWA update notification as a future mitigation strategy).
+- **Issue:** The user, who primarily uses Safari, consistently faces severe browser caching problems.
+- **Recurrence count:** High.
+- **Status:** NOT RESOLVED. This is a client-side issue. A PWA update notification is planned as a future task.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Backend:** FastAPI, MongoDB (), Pydantic, JWT.
-- **Frontend:** React, , , .
-- **AI Integration:**  library for Gemini API calls to generate lesson plans and materials.
-- **File Analysis:** Used  to parse curriculum data from a user-uploaded  file.
-- **State Management:** Complex UI state managed with React Hooks (, ) for cascading dropdowns and dynamically generated AI content.
-- **URL Parameter Handling:** Fixed a routing issue by switching from path parameters to query parameters to handle special characters (e.g.,  in a grade level like ).
+- **Core:** React, FastAPI, MongoDB, .
+- **Deployment:** Docker, Docker Compose, Nginx (in frontend container), Coolify (VPS management panel), Hostinger VPS.
+- **AI:** usage: openai [-h] [-v] [-b API_BASE] [-k API_KEY] [-p PROXY [PROXY ...]]
+              [-o ORGANIZATION] [-t {openai,azure}]
+              [--api-version API_VERSION] [--azure-endpoint AZURE_ENDPOINT]
+              [--azure-ad-token AZURE_AD_TOKEN] [-V]
+              {api,tools,migrate,grit} ...
+
+positional arguments:
+  {api,tools,migrate,grit}
+    api                 Direct API calls
+    tools               Client side tools for convenience
+
+options:
+  -h, --help            show this help message and exit
+  -v, --verbose         Set verbosity.
+  -b API_BASE, --api-base API_BASE
+                        What API base url to use.
+  -k API_KEY, --api-key API_KEY
+                        What API key to use.
+  -p PROXY [PROXY ...], --proxy PROXY [PROXY ...]
+                        What proxy to use.
+  -o ORGANIZATION, --organization ORGANIZATION
+                        Which organization to run as (will use your default
+                        organization if not specified)
+  -t {openai,azure}, --api-type {openai,azure}
+                        The backend API to call, must be `openai` or `azure`
+  --api-version API_VERSION
+                        The Azure API version, e.g.
+                        'https://learn.microsoft.com/en-us/azure/ai-
+                        services/openai/reference#rest-api-versioning'
+  --azure-endpoint AZURE_ENDPOINT
+                        The Azure endpoint, e.g.
+                        'https://endpoint.openai.azure.com'
+  --azure-ad-token AZURE_AD_TOKEN
+                        A token from Azure Active Directory,
+                        https://www.microsoft.com/en-
+                        us/security/business/identity-access/microsoft-entra-
+                        id
+  -V, --version         show program's version number and exit Python library (replaced ).
+- **Technique:** Use of persistent volumes in Docker to maintain state ( file) across container restarts.
 
 **key DB schema**
-- ****: New collection to store user-generated lesson plans. Contains , , , , and the full  JSON object.
-- ****: The target of the current buggy feature. The fix requires correctly populating the  field based on the class schedule.
+- ****: The  array within documents now contains a  (string) and  (array of strings) for each hour object.
 
 **changes in tech stack**
-- No changes to the core stack. Increased reliance on the  library for Gemini.
+- The AI backend has been migrated from the proprietary  library to the standard usage: openai [-h] [-v] [-b API_BASE] [-k API_KEY] [-p PROXY [PROXY ...]]
+              [-o ORGANIZATION] [-t {openai,azure}]
+              [--api-version API_VERSION] [--azure-endpoint AZURE_ENDPOINT]
+              [--azure-ad-token AZURE_AD_TOKEN] [-V]
+              {api,tools,migrate,grit} ...
+
+positional arguments:
+  {api,tools,migrate,grit}
+    api                 Direct API calls
+    tools               Client side tools for convenience
+
+options:
+  -h, --help            show this help message and exit
+  -v, --verbose         Set verbosity.
+  -b API_BASE, --api-base API_BASE
+                        What API base url to use.
+  -k API_KEY, --api-key API_KEY
+                        What API key to use.
+  -p PROXY [PROXY ...], --proxy PROXY [PROXY ...]
+                        What proxy to use.
+  -o ORGANIZATION, --organization ORGANIZATION
+                        Which organization to run as (will use your default
+                        organization if not specified)
+  -t {openai,azure}, --api-type {openai,azure}
+                        The backend API to call, must be `openai` or `azure`
+  --api-version API_VERSION
+                        The Azure API version, e.g.
+                        'https://learn.microsoft.com/en-us/azure/ai-
+                        services/openai/reference#rest-api-versioning'
+  --azure-endpoint AZURE_ENDPOINT
+                        The Azure endpoint, e.g.
+                        'https://endpoint.openai.azure.com'
+  --azure-ad-token AZURE_AD_TOKEN
+                        A token from Azure Active Directory,
+                        https://www.microsoft.com/en-
+                        us/security/business/identity-access/microsoft-entra-
+                        id
+  -V, --version         show program's version number and exit library to facilitate external hosting.
 
 **All files of reference**
-- : The primary file containing the logic for the current bug.
-- : Contains the backend endpoints for curriculum planning and the workplan.
-- : The UI where the fix's result will be verified.
-- : Contains routing for the new pages.
-- : Contains navigation links for the new pages.
-
-**Areas that need refactoring**:
--  has become extremely large and monolithic. It should be broken down into separate files for routes, models, and services/helpers, especially for the distinct features like , , and .
--  is now over 1000 lines long and handles many distinct pieces of logic (state management, API calls, UI rendering for multiple sections, modals). It should be refactored into smaller, reusable components.
-
-**key api endpoints**
-- : Endpoint used to transfer the lesson plan to the workplan. This is part of the buggy feature.
-- : Generates a lesson plan via the Gemini API.
-- : Saves a generated lesson plan to the user's account.
-- : Retrieves all saved lesson plans for the current user.
-- : Deletes a specific saved lesson plan.
-- : Retrieves details for a curriculum topic.
+- : Critical for deployment. Defines services, ports, and the persistent volume for the API key.
+- : Defines how the backend image is built. Needs to be updated to use a  script.
+- : Recently modified to attempt loading the  file on startup.
+- : New service that centralizes all calls to the OpenAI API.
+-  (on the deployed server): The manually created file in the persistent volume that holds the .
 
 **Critical Info for New Agent**
-- Your immediate and highest priority is to fix the bug preventing transferred lesson plans from appearing in the workplan. The root cause is a hardcoded  in . You must fetch the actual schedule for the selected class and use the correct period for each entry.
-- All communication must be in German.
-- Be prepared to guide the user through cache-clearing steps (, private windows). This is a recurring issue for them, especially on Safari.
-- The user's account  with password  is known to work. If they have login issues, it's likely due to a browser extension (tracker blocker) or VPN, which you should advise them to temporarily disable for the site.
+- **PRIORITY #1:** Fix the OpenAI nicht konfiguriert error on the user's live server. This is a total blocker. Follow the Next debug checklist for Issue 1, focusing on implementing a robust  script.
+- **DEPLOYMENT CONTEXT:** The app is deployed on the user's Hostinger VPS, managed via a web panel called Coolify. The agent has access to the container terminals through Coolify.
+- **API KEY SECURITY:** The user's OpenAI API key has already been revoked once due to exposure. **DO NOT** write the key in the chat, logs, or commit it to GitHub. It must only exist in the  file, which is created manually on the server.
+- **Communicate in German.**
 
 **documents and test reports created in this job**
 - 
 - 
+- 
+- 
+- 
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** Reports that the workplan is empty after a successful transfer.
-2.  **Agent:** Investigates, confirms data exists in the database.
-3.  **Agent:** Suspects a UI display issue and asks the user to check the date range and class selection in the workplan.
-4.  **User:** Sends a screenshot of the empty workplan.
-5.  **Agent:** Analyzes the screenshot and realizes the problem: entries were saved with  while the class schedule uses different periods. Identifies this as the root cause.
-6.  **User:** The class/subject dropdown works, but theres still no transfer to the workplan."
-7.  **Agent:** Does extensive testing and confirms via screenshots that the transfer now works on their end, and the data is correctly saved in the database.
-8.  **User:** "Im told it was transferred, but my workplan is still empty!
-9.  **Agent:** Re-confirms the data is in the database and realizes the UI is not showing it due to the period mismatch.
-10. **Agent:** Identifies the hardcoded  as the definitive problem and is about to start fixing it.
+The user is very frustrated with the deployment issues. The last sequence of messages involved the agent and user trying various debugging steps in the Coolify terminal to solve the nicht konfiguriert error. The user confirmed that the  file with the key was persistent after a restart, but the Python environment check showed the key was still not being loaded into the running server process, leading to the final nicht konfiguriert error message before the session ended.
 
 **Project Health Check:**
--   **Broken:** The integration between the Unterrichtsplanung and Arbeitsplan features is broken due to the  assignment bug.
--   **Mocked:** None.
+- **Broken:** The core AI generation functionality on the self-hosted production server is non-operational.
+- **Mocked:** None.
 
 **3rd Party Integrations**
--   **Gemini:** For AI-powered lesson plan and material generation (uses Emergent LLM Key).
--   **holidays:** Python library for German school holidays.
--   **OpenAlex:** For academic paper search.
--   **Wikimedia Commons:** For image search.
+- **OpenAI:** Replaced Gemini for all AI generation tasks. Requires a user-provided API Key.
+- **Hostinger/Coolify:** The platform for the self-hosted deployment.
+- **:** For generating  files.
+- , , OpenAlex, Wikimedia Commons.
 
 **Testing status**
--   **Testing agent used after significant changes:** YES, for the image search feature fix.
--   **Troubleshoot agent used after agent stuck in loop:** NO
--   **Test files created:** None
--   **Known regressions:** None.
+- **Testing agent used after significant changes:** YES (for the initial frontend refactoring).
+- **Test files created:** None in this session.
+- **Known regressions:** The entire AI functionality is broken on the deployed server.
 
 **Credentials to test flow:**
--   **Invitation Code for Registration:** 
--   **Test User:** 
--   **Test Password:** 
+- **App Login:**
+    - User: 
+    - Password: 
+- **Server Access (via Coolify Terminal):**
+    - Coolify URL:  (user has login)
+- **OpenAI API Key:** The user has the current, valid key. Do not ask for it. Instruct the user to re-enter it when needed.
 
 **What agent forgot to execute**
--   The agent correctly diagnosed the root cause of the workplan integration bug (hardcoded ) but the session ended just before they could implement the fix in . The immediate next step is to execute that fix.</analysis>
+- The agent did not implement a sufficiently robust mechanism for loading the API key during the deployment process. Attempts to modify  or create a  script were made but were lost or ineffective during the chaotic debugging. A final, solid implementation of a startup script that  the key before -ing the server is required.</analysis>
