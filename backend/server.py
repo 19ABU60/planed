@@ -1,14 +1,27 @@
-# Load environment variables FIRST - before any other imports that might need them
+# Load environment variables from .env files
 import os
-for env_path in ['/app/config/.env', '/app/.env']:
+import logging
+
+def _load_env_file(filepath: str):
+    """Load environment variables from a .env file"""
     try:
-        with open(env_path, 'r') as f:
+        with open(filepath, 'r') as f:
             for line in f:
-                if '=' in line and not line.startswith('#'):
-                    key, val = line.strip().split('=', 1)
-                    os.environ[key] = val
-    except:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, value = line.split('=', 1)
+                    value = value.strip('"').strip("'")
+                    if key not in os.environ or not os.environ[key]:
+                        os.environ[key] = value
+                        print(f"[ENV] Loaded {key} from {filepath}")
+    except FileNotFoundError:
         pass
+    except Exception as e:
+        print(f"[ENV] Error reading {filepath}: {e}")
+
+# Load from persistent volume first, then local
+_load_env_file('/app/config/.env')
+_load_env_file('/app/.env')
 
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, UploadFile, File, status, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
