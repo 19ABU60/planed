@@ -353,7 +353,7 @@ const CurriculumPlannerPage = () => {
   };
 
   // Material generieren
-  const generiereMaterial = async () => {
+  const generiereMaterial = async (stundeInfo = null) => {
     if (!themaDetails && !unterrichtsreihe) {
       toast.error('Bitte zuerst ein Thema auswählen oder eine Unterrichtsreihe laden');
       return;
@@ -372,15 +372,38 @@ const CurriculumPlannerPage = () => {
         ? `${API}/api/mathe/material/generieren`
         : `${API}/api/lehrplan/material/generieren`;
       
-      const res = await axios.post(apiPath, {
+      // Request-Body mit optionaler Stunden-Info
+      const requestBody = {
         thema: themaName,
         niveau: selectedNiveau,
         material_typ: selectedMaterialTyp,
         klassenstufe: selectedKlasse || unterrichtsreihe?.klassenstufe
-      }, { headers: { Authorization: `Bearer ${token}` } });
+      };
       
-      setGeneratedMaterial(res.data);
-      toast.success('Material erstellt!');
+      // Stunden-spezifische Informationen hinzufügen
+      if (stundeInfo) {
+        requestBody.stunde_nummer = stundeInfo.nummer;
+        requestBody.stunde_titel = stundeInfo.titel;
+        requestBody.stunde_inhalt = stundeInfo.inhalt;
+        requestBody.stunde_lernziel = stundeInfo.lernziel || '';
+        requestBody.stunde_aufgaben = stundeInfo.aufgaben || stundeInfo.methoden || [];
+      }
+      
+      const res = await axios.post(apiPath, requestBody, { 
+        headers: { Authorization: `Bearer ${token}` } 
+      });
+      
+      // Stunden-Nummer ins Ergebnis einfügen
+      const result = { ...res.data };
+      if (stundeInfo) {
+        result.stunde_nummer = stundeInfo.nummer;
+      }
+      
+      setGeneratedMaterial(result);
+      toast.success(stundeInfo 
+        ? `Material für Stunde ${stundeInfo.nummer} erstellt!` 
+        : 'Material erstellt!'
+      );
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Fehler bei der Generierung');
     } finally {
