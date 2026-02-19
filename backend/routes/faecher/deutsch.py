@@ -289,51 +289,69 @@ async def generiere_material(
         
         niveau_name = {"G": "grundlegend", "M": "mittel", "E": "erweitert"}.get(request.niveau, "mittel")
         
+        # Stunden-spezifischer Kontext wenn vorhanden
+        stunden_kontext = ""
+        if request.stunde_nummer and request.stunde_titel:
+            stunden_kontext = f"""
+WICHTIG: Das Material ist speziell für Stunde {request.stunde_nummer}: "{request.stunde_titel}".
+"""
+            if request.stunde_lernziel:
+                stunden_kontext += f"Lernziel dieser Stunde: {request.stunde_lernziel}\n"
+            if request.stunde_inhalt:
+                stunden_kontext += f"Stundeninhalt: {request.stunde_inhalt[:500]}\n"
+            if request.stunde_aufgaben:
+                aufgaben_str = ", ".join(request.stunde_aufgaben[:5])
+                stunden_kontext += f"Geplante Aktivitäten: {aufgaben_str}\n"
+            stunden_kontext += "\nDas Material muss sich konkret auf diese Stunde und deren Lernziel beziehen!\n"
+        
+        thema_bezug = request.stunde_titel if request.stunde_titel else request.thema
+        
         material_prompts = {
-            "arbeitsblatt": f"""Erstelle ein Arbeitsblatt für Deutsch RS+ Klasse {request.klassenstufe} zum Thema "{request.thema}" (Niveau: {niveau_name}).
-
+            "arbeitsblatt": f"""Erstelle ein Arbeitsblatt für Deutsch RS+ Klasse {request.klassenstufe} zum Thema "{thema_bezug}" (Niveau: {niveau_name}).
+{stunden_kontext}
 Das Arbeitsblatt soll enthalten:
 - Überschrift
 - Kurze Einleitung/Erklärung
-- 4-6 abwechslungsreiche Aufgaben
+- 4-6 abwechslungsreiche Aufgaben{' passend zum Lernziel der Stunde' if request.stunde_lernziel else ''}
 - Platz für Schülerantworten (markiert mit ___)
 
 Format als JSON:
 {{"titel": "...", "einleitung": "...", "aufgaben": [{{"nummer": 1, "aufgabenstellung": "...", "punkte": 2}}], "loesung": [{{"nummer": 1, "loesung": "..."}}]}}""",
 
-            "quiz": f"""Erstelle ein Quiz für Deutsch RS+ Klasse {request.klassenstufe} zum Thema "{request.thema}" (Niveau: {niveau_name}).
-
-Das Quiz soll 8 Multiple-Choice-Fragen enthalten.
-
-Format als JSON:
-{{"titel": "Quiz: {request.thema}", "fragen": [{{"nummer": 1, "frage": "...", "optionen": ["A) ...", "B) ...", "C) ...", "D) ..."], "richtig": "A", "erklaerung": "..."}}]}}""",
-
-            "raetsel": f"""Erstelle ein Kreuzworträtsel für Deutsch RS+ Klasse {request.klassenstufe} zum Thema "{request.thema}" (Niveau: {niveau_name}).
-
-Das Rätsel soll 8-10 Begriffe enthalten.
+            "quiz": f"""Erstelle ein Quiz für Deutsch RS+ Klasse {request.klassenstufe} zum Thema "{thema_bezug}" (Niveau: {niveau_name}).
+{stunden_kontext}
+Das Quiz soll 8 Multiple-Choice-Fragen enthalten{' die das Lernziel der Stunde abfragen' if request.stunde_lernziel else ''}.
 
 Format als JSON:
-{{"titel": "Kreuzworträtsel: {request.thema}", "begriffe": [{{"wort": "...", "hinweis": "...", "richtung": "waagerecht/senkrecht", "nummer": 1}}], "loesung": ["Liste aller Lösungswörter"]}}""",
+{{"titel": "Quiz: {thema_bezug}", "fragen": [{{"nummer": 1, "frage": "...", "optionen": ["A) ...", "B) ...", "C) ...", "D) ..."], "richtig": "A", "erklaerung": "..."}}]}}""",
 
-            "zuordnung": f"""Erstelle eine Zuordnungsübung für Deutsch RS+ Klasse {request.klassenstufe} zum Thema "{request.thema}" (Niveau: {niveau_name}).
+            "raetsel": f"""Erstelle ein Kreuzworträtsel für Deutsch RS+ Klasse {request.klassenstufe} zum Thema "{thema_bezug}" (Niveau: {niveau_name}).
+{stunden_kontext}
+Das Rätsel soll 8-10 Begriffe enthalten{' die in dieser Stunde behandelt werden' if request.stunde_titel else ''}.
 
+Format als JSON:
+{{"titel": "Kreuzworträtsel: {thema_bezug}", "begriffe": [{{"wort": "...", "hinweis": "...", "richtung": "waagerecht/senkrecht", "nummer": 1}}], "loesung": ["Liste aller Lösungswörter"]}}""",
+
+            "zuordnung": f"""Erstelle eine Zuordnungsübung für Deutsch RS+ Klasse {request.klassenstufe} zum Thema "{thema_bezug}" (Niveau: {niveau_name}).
+{stunden_kontext}
 Die Übung soll 8 Paare zum Zuordnen enthalten (z.B. Begriff → Definition, Beispiel → Regel).
 
 Format als JSON:
-{{"titel": "Zuordnung: {request.thema}", "anleitung": "Ordne die passenden Paare zu.", "paare": [{{"links": "...", "rechts": "..."}}], "tipp": "Ein hilfreicher Hinweis"}}""",
+{{"titel": "Zuordnung: {thema_bezug}", "anleitung": "Ordne die passenden Paare zu.", "paare": [{{"links": "...", "rechts": "..."}}], "tipp": "Ein hilfreicher Hinweis"}}""",
 
-            "lueckentext": f"""Erstelle einen Lückentext für Deutsch RS+ Klasse {request.klassenstufe} zum Thema "{request.thema}" (Niveau: {niveau_name}).
-
-Der Text soll 8-10 Lücken enthalten.
+            "lueckentext": f"""Erstelle einen Lückentext für Deutsch RS+ Klasse {request.klassenstufe} zum Thema "{thema_bezug}" (Niveau: {niveau_name}).
+{stunden_kontext}
+Der Text soll 8-10 Lücken enthalten{' und das Lernziel dieser Stunde festigen' if request.stunde_lernziel else ''}.
 
 Format als JSON:
-{{"titel": "Lückentext: {request.thema}", "text": "Der Text mit ___(1)___ Lücken ___(2)___ markiert...", "luecken": [{{"nummer": 1, "loesung": "...", "hinweis": "..."}}], "woerter_box": ["Liste der einzusetzenden Wörter (gemischt)"]}}"""
+{{"titel": "Lückentext: {thema_bezug}", "text": "Der Text mit ___(1)___ Lücken ___(2)___ markiert...", "luecken": [{{"nummer": 1, "loesung": "...", "hinweis": "..."}}], "woerter_box": ["Liste der einzusetzenden Wörter (gemischt)"]}}"""
         }
         
         prompt = material_prompts.get(request.material_typ, material_prompts["arbeitsblatt"])
         
         system_msg = """Du bist ein erfahrener Deutschlehrer an einer Realschule plus. 
 Du erstellst kreative, schülergerechte Unterrichtsmaterialien.
+Wenn eine spezifische Stunde genannt wird, beziehe dich konkret auf deren Inhalt und Lernziel.
 Antworte IMMER nur mit validem JSON, ohne Erklärungen."""
         
         response = await asyncio.wait_for(
