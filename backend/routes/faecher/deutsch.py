@@ -36,6 +36,12 @@ class MaterialRequest(BaseModel):
     niveau: str
     material_typ: str  # arbeitsblatt, quiz, raetsel, zuordnung
     klassenstufe: str
+    # NEU: Optionale Stunden-spezifische Informationen
+    stunde_nummer: Optional[int] = None
+    stunde_titel: Optional[str] = None
+    stunde_inhalt: Optional[str] = None
+    stunde_lernziel: Optional[str] = None
+    stunde_aufgaben: Optional[list] = None
 
 
 # ============== LEHRPLAN STRUKTUR ==============
