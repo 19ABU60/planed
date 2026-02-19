@@ -1,4 +1,5 @@
-import { FileText, Sparkles, RefreshCw, Download, ChevronRight } from 'lucide-react';
+import { useState } from 'react';
+import { FileText, Sparkles, RefreshCw, Download, ChevronRight, Target } from 'lucide-react';
 import { toast } from 'sonner';
 import { API, MATERIAL_TYPEN } from './constants';
 
@@ -10,8 +11,20 @@ export const MaterialGenerator = ({
   generatingMaterial,
   generiereMaterial,
   selectedKlasse,
-  selectedNiveau
+  selectedNiveau,
+  // NEU: Stunden für Auswahl
+  stunden = [],
+  unterrichtsreihe = null
 }) => {
+  // Gewählte Stunde (0 = alle/Überblick, 1-n = spezifische Stunde)
+  const [selectedStunde, setSelectedStunde] = useState(0);
+
+  const handleGeneriereMaterial = () => {
+    // Stunden-Info an generiereMaterial übergeben
+    const stundeInfo = selectedStunde > 0 ? stunden[selectedStunde - 1] : null;
+    generiereMaterial(stundeInfo);
+  };
+
   const downloadWord = async () => {
     try {
       const authToken = localStorage.getItem('planed_token');
@@ -83,6 +96,9 @@ export const MaterialGenerator = ({
     }
   };
 
+  // Info zur gewählten Stunde
+  const selectedStundeInfo = selectedStunde > 0 ? stunden[selectedStunde - 1] : null;
+
   return (
     <div className="card" style={{ padding: '1rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
@@ -91,7 +107,7 @@ export const MaterialGenerator = ({
           Material erstellen
         </h3>
         <button
-          onClick={generiereMaterial}
+          onClick={handleGeneriereMaterial}
           disabled={!selectedThema || generatingMaterial}
           className="btn btn-primary btn-sm"
           style={{ fontSize: '0.75rem', padding: '0.35rem 0.6rem' }}
@@ -101,6 +117,77 @@ export const MaterialGenerator = ({
           Erstellen
         </button>
       </div>
+
+      {/* NEU: Stunden-Auswahl wenn Unterrichtsreihe vorhanden */}
+      {stunden.length > 0 && (
+        <div style={{ marginBottom: '1rem' }}>
+          <label style={{ 
+            fontSize: '0.75rem', 
+            color: 'var(--text-muted)', 
+            display: 'block', 
+            marginBottom: '0.35rem' 
+          }}>
+            Für welche Stunde?
+          </label>
+          <select
+            value={selectedStunde}
+            onChange={(e) => setSelectedStunde(parseInt(e.target.value))}
+            style={{
+              width: '100%',
+              padding: '0.5rem',
+              fontSize: '0.8rem',
+              borderRadius: '6px',
+              border: '1px solid var(--border-default)',
+              background: selectedStunde > 0 ? 'rgba(139, 92, 246, 0.1)' : 'var(--bg-subtle)',
+              color: 'var(--text-default)'
+            }}
+            data-testid="stunde-select"
+          >
+            <option value={0}>Gesamte Unterrichtsreihe (Überblick)</option>
+            {stunden.map((stunde, idx) => (
+              <option key={idx} value={idx + 1}>
+                Stunde {stunde.nummer}: {stunde.titel}
+              </option>
+            ))}
+          </select>
+          
+          {/* Info zur gewählten Stunde */}
+          {selectedStundeInfo && (
+            <div style={{ 
+              marginTop: '0.5rem', 
+              padding: '0.5rem', 
+              background: 'rgba(139, 92, 246, 0.1)', 
+              borderRadius: '6px',
+              fontSize: '0.75rem'
+            }}>
+              <div style={{ fontWeight: '600', marginBottom: '0.25rem', color: 'var(--primary)' }}>
+                Stunde {selectedStundeInfo.nummer}: {selectedStundeInfo.titel}
+              </div>
+              {selectedStundeInfo.lernziel && (
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'flex-start', 
+                  gap: '0.25rem',
+                  color: '#22c55e',
+                  fontSize: '0.7rem'
+                }}>
+                  <Target size={12} style={{ marginTop: '0.1rem', flexShrink: 0 }} />
+                  {selectedStundeInfo.lernziel}
+                </div>
+              )}
+              {selectedStundeInfo.inhalt && (
+                <div style={{ 
+                  marginTop: '0.25rem', 
+                  color: 'var(--text-muted)',
+                  fontSize: '0.7rem'
+                }}>
+                  {selectedStundeInfo.inhalt?.substring(0, 100)}...
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Material-Typ Auswahl */}
       <div style={{ display: 'flex', gap: '0.35rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
@@ -193,6 +280,24 @@ export const MaterialGenerator = ({
               </button>
             </div>
           </div>
+
+          {/* Stunden-Badge wenn für spezifische Stunde */}
+          {generatedMaterial.stunde_nummer && (
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.25rem',
+              padding: '0.2rem 0.5rem',
+              background: 'rgba(139, 92, 246, 0.15)',
+              borderRadius: '4px',
+              fontSize: '0.7rem',
+              color: 'var(--primary)',
+              marginBottom: '0.75rem'
+            }}>
+              <Target size={12} />
+              Material für Stunde {generatedMaterial.stunde_nummer}
+            </div>
+          )}
 
           {/* Arbeitsblatt */}
           {generatedMaterial.typ === 'arbeitsblatt' && generatedMaterial.material.aufgaben && (
@@ -327,7 +432,12 @@ export const MaterialGenerator = ({
       {!generatedMaterial && !generatingMaterial && (
         <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
           <FileText size={32} style={{ opacity: 0.3, marginBottom: '0.5rem' }} />
-          <p style={{ fontSize: '0.8rem' }}>Wählen Sie einen Material-Typ und klicken Sie auf &quot;Erstellen&quot;</p>
+          <p style={{ fontSize: '0.8rem' }}>
+            {stunden.length > 0 
+              ? 'Wählen Sie eine Stunde und Material-Typ, dann klicken Sie auf "Erstellen"'
+              : 'Wählen Sie einen Material-Typ und klicken Sie auf "Erstellen"'
+            }
+          </p>
         </div>
       )}
     </div>
