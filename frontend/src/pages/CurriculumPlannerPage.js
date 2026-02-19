@@ -501,6 +501,8 @@ const CurriculumPlannerPage = () => {
             generiereMaterial={generiereMaterial}
             selectedKlasse={selectedKlasse}
             selectedNiveau={selectedNiveau}
+            stunden={editedStunden}
+            unterrichtsreihe={unterrichtsreihe}
           />
         </div>
       </div>
